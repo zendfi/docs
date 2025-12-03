@@ -1,0 +1,58 @@
+.chatButton {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #635bff 0%, #5851ea 100%);
+  color: white;
+  border: none;
+  border-radius: 100px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.8125rem;
+  box-shadow: 0 2px 12px rgba(99, 91, 255, 0.35);
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.chatButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(99, 91, 255, 0.45);
+}
+
+.chatButton:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(99, 91, 255, 0.3);
+}
+
+.chatIcon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.chatLabel {
+  display: inline;
+  letter-spacing: 0.01em;
+}
+
+/* Mobile: compact pill */
+@media (max-width: 640px) {
+  .chatButton {
+    padding: 12px;
+    border-radius: 50%;
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .chatLabel {
+    display: none;
+  }
+  
+  .chatIcon {
+    font-size: 1.125rem;
+  }
+}
