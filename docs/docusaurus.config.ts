@@ -60,10 +60,10 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/zendfi-social-card.jpg',
     navbar: {
-      title: 'ZendFi Docs',
+      title: '',
       logo: {
         alt: 'ZendFi Logo',
-        src: 'img/logo.svg',
+        src: 'img/logo.png',
       },
       items: [
         {
@@ -148,7 +148,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} ZendFi. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} ZendFi.`,
     },
     prism: {
       theme: prismThemes.github,
