@@ -10,6 +10,8 @@ Create payment links that you can share anywhere - email, social media, messagin
 
 ## Quick Start
 
+<TryIt method="POST" endpoint="/api/v1/payment-links" description="Create a simple payment link">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payment-links \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -32,6 +34,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links \
   "currency": "USD"
 }
 ```
+
+</TryIt>
 
 Share `https://zendfi.tech/pay/plink_abc123` and start collecting payments! 🎉
 
@@ -95,6 +99,8 @@ POST /api/v1/payment-links
 
 ### Example: Fixed Amount Product
 
+<TryIt method="POST" endpoint="/api/v1/payment-links" description="Create a payment link for a product">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payment-links \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -114,7 +120,11 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links \
   }'
 ```
 
+</TryIt>
+
 ### Example: Pay What You Want (Tips/Donations)
+
+<TryIt method="POST" endpoint="/api/v1/payment-links" description="Create a pay-what-you-want payment link">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payment-links \
@@ -136,7 +146,11 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links \
   }'
 ```
 
+</TryIt>
+
 ### Example: Event Tickets with Quantity
+
+<TryIt method="POST" endpoint="/api/v1/payment-links" description="Create a payment link for event tickets">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payment-links \
@@ -162,7 +176,11 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links \
   }'
 ```
 
+</TryIt>
+
 ### Example: Limited Time Offer
+
+<TryIt method="POST" endpoint="/api/v1/payment-links" description="Create a limited-time payment link">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payment-links \
@@ -182,6 +200,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links \
   }'
 ```
 
+</TryIt>
+
 ---
 
 ## Get Payment Link
@@ -196,10 +216,14 @@ GET /api/v1/payment-links/:id
 
 ### Example
 
+<TryIt method="GET" endpoint="/api/v1/payment-links/plink_abc123" description="Get payment link details">
+
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/payment-links/plink_abc123 \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 **Response:**
 
@@ -251,10 +275,14 @@ GET /api/v1/payment-links
 
 ### Example
 
+<TryIt method="GET" endpoint="/api/v1/payment-links?active=true&limit=10" description="List active payment links">
+
 ```bash
 curl -X GET "https://api.zendfi.tech/api/v1/payment-links?active=true&limit=10" \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 ---
 
@@ -270,6 +298,8 @@ PATCH /api/v1/payment-links/:id
 
 ### Example: Update Price
 
+<TryIt method="PATCH" endpoint="/api/v1/payment-links/plink_abc123" description="Update a payment link">
+
 ```bash
 curl -X PATCH https://api.zendfi.tech/api/v1/payment-links/plink_abc123 \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -279,6 +309,8 @@ curl -X PATCH https://api.zendfi.tech/api/v1/payment-links/plink_abc123 \
     "description": "Holiday Sale - $50 off!"
   }'
 ```
+
+</TryIt>
 
 ---
 
@@ -294,10 +326,14 @@ POST /api/v1/payment-links/:id/deactivate
 
 ### Example
 
+<TryIt method="POST" endpoint="/api/v1/payment-links/plink_abc123/deactivate" description="Deactivate a payment link">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payment-links/plink_abc123/deactivate \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 ---
 
@@ -313,10 +349,14 @@ POST /api/v1/payment-links/:id/activate
 
 ### Example
 
+<TryIt method="POST" endpoint="/api/v1/payment-links/plink_abc123/activate" description="Reactivate a payment link">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payment-links/plink_abc123/activate \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 ---
 
@@ -332,10 +372,14 @@ GET /api/v1/payment-links/:id/analytics
 
 ### Example
 
+<TryIt method="GET" endpoint="/api/v1/payment-links/plink_abc123/analytics" description="Get payment link analytics">
+
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/payment-links/plink_abc123/analytics \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 **Response:**
 

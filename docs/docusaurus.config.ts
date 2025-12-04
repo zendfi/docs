@@ -60,26 +60,45 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/zendfi-social-card.jpg',
     navbar: {
-      title: '',
+      title: 'DOCS',
       logo: {
         alt: 'ZendFi Logo',
         src: 'img/logo.png',
       },
       items: [
+        // Left side - main navigation tabs
         {
-          type: 'docSidebar',
-          sidebarId: 'docsSidebar',
+          type: 'doc',
+          docId: 'getting-started',
           position: 'left',
-          label: 'Documentation',
+          label: 'Get started',
         },
         {
-          href: 'https://zendfi.tech',
-          label: 'ZendFi.tech',
+          type: 'docSidebar',
+          sidebarId: 'paymentsSidebar',
+          position: 'left',
+          label: 'Payments',
+        },
+        {
+          type: 'docSidebar',
+          sidebarId: 'developerResourcesSidebar',
+          position: 'left',
+          label: 'Developer resources',
+        },
+        {
+          type: 'doc',
+          docId: 'agentic-payments',
+          position: 'left',
+          label: 'Agentic Payments',
+        },
+        // Right side
+        {
+          type: 'search',
           position: 'right',
         },
         {
-          href: 'https://github.com/zendfi',
-          label: 'GitHub',
+          href: 'https://zendfi.tech',
+          label: 'zendfi.tech',
           position: 'right',
         },
       ],
@@ -91,8 +110,8 @@ const config: Config = {
           title: 'Documentation',
           items: [
             {
-              label: 'Getting Started',
-              to: '/getting-started',
+              label: 'Get Started',
+              to: '/',
             },
             {
               label: 'API Reference',

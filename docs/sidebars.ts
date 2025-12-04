@@ -2,19 +2,15 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
 /**
  * ZendFi Documentation Sidebar
- * Structured to match the original Next.js docs layout
+ * Restructured for separate nav tabs
  */
 const sidebars: SidebarsConfig = {
-  docsSidebar: [
+  // Payments sidebar - API Reference and Features
+  paymentsSidebar: [
     {
       type: 'doc',
       id: 'intro',
       label: '📖 Introduction',
-    },
-    {
-      type: 'doc',
-      id: 'getting-started',
-      label: '🚀 Getting Started',
     },
     {
       type: 'category',
@@ -39,12 +35,23 @@ const sidebars: SidebarsConfig = {
         'features/wallet-management',
       ],
     },
+  ],
+
+  // Developer Resources sidebar - SDKs, CLI, etc.
+  developerResourcesSidebar: [
     {
       type: 'category',
-      label: '🛠️ Developer Tools',
+      label: '🛠️ SDKs & Libraries',
       collapsed: false,
       items: [
         'developer-tools/sdks',
+      ],
+    },
+    {
+      type: 'category',
+      label: '💻 CLI',
+      collapsed: false,
+      items: [
         'developer-tools/cli',
       ],
     },

@@ -1,6 +1,6 @@
 ---
-sidebar_position: 1
-slug: /
+sidebar_position: 2
+slug: /intro
 title: Introduction
 ---
 
@@ -27,7 +27,7 @@ ZendFi is a **crypto payment API** built on the Solana blockchain that enables m
 
 | Resource | Description |
 |----------|-------------|
-| [🚀 Getting Started](/getting-started) | Set up your merchant account and create your first payment |
+| [🚀 Get Started](/) | Set up your merchant account and create your first payment |
 | [🔌 Payments API](/api/payments) | Complete API reference for creating payments |
 | [🔄 Subscriptions](/api/subscriptions) | Recurring billing and subscription management |
 | [🪝 Webhooks](/features/webhooks) | Real-time event notifications |
@@ -73,4 +73,4 @@ Real-time notifications for all payment events. 23 event types across 8 categori
 
 ---
 
-Ready to get started? Head over to the [Getting Started](/getting-started) guide!
+Ready to get started? Head over to the [Get Started](/) guide!

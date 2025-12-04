@@ -1,6 +1,7 @@
 ---
-sidebar_position: 2
-title: Getting Started
+sidebar_position: 1
+slug: /
+title: Get started
 description: Set up your ZendFi merchant account and create your first payment
 ---
 

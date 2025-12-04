@@ -61,6 +61,8 @@ POST /api/v1/installments
 
 ### Example: 4-Month Plan
 
+<TryIt method="POST" endpoint="/api/v1/installments" description="Create an installment plan">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -134,7 +136,11 @@ curl -X POST https://api.zendfi.tech/api/v1/installments \
 }
 ```
 
+</TryIt>
+
 ### Example: Custom Down Payment
+
+<TryIt method="POST" endpoint="/api/v1/installments" description="Create installment plan with custom down payment">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments \
@@ -150,6 +156,8 @@ curl -X POST https://api.zendfi.tech/api/v1/installments \
     "customer_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"
   }'
 ```
+
+</TryIt>
 
 This creates:
 - Down payment: $500 (due immediately)
@@ -169,10 +177,14 @@ GET /api/v1/installments/:id
 
 ### Example
 
+<TryIt method="GET" endpoint="/api/v1/installments/inst_abc123def456" description="Get installment plan details">
+
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/installments/inst_abc123def456 \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 ---
 
@@ -188,10 +200,14 @@ GET /api/v1/installments?customer_wallet=:wallet
 
 ### Example
 
+<TryIt method="GET" endpoint="/api/v1/installments?customer_wallet=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" description="List installment plans for a customer">
+
 ```bash
 curl -X GET "https://api.zendfi.tech/api/v1/installments?customer_wallet=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 ---
 
@@ -207,10 +223,14 @@ POST /api/v1/installments/:id/pay
 
 ### Example
 
+<TryIt method="POST" endpoint="/api/v1/installments/inst_abc123def456/pay" description="Pay the current due installment">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/pay \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 **Response:**
 
@@ -245,6 +265,8 @@ POST /api/v1/installments/:id/payoff
 
 ### Example: Early Payoff with Discount
 
+<TryIt method="POST" endpoint="/api/v1/installments/inst_abc123def456/payoff" description="Pay off remaining balance early">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/payoff \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -267,6 +289,8 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/payof
   "payment_url": "https://zendfi.tech/pay/pay_payoff_xyz789"
 }
 ```
+
+</TryIt>
 
 :::tip Early Payoff Incentives
 Offering a small discount for early payoff (3-5%) can improve your cash flow and reduce collection overhead!
@@ -293,6 +317,8 @@ POST /api/v1/installments/:id/cancel
 
 ### Example
 
+<TryIt method="POST" endpoint="/api/v1/installments/inst_abc123def456/cancel" description="Cancel an installment plan">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/cancel \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -302,6 +328,8 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/cance
     "refund_paid": true
   }'
 ```
+
+</TryIt>
 
 ---
 

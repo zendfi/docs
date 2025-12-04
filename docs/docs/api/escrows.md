@@ -74,6 +74,8 @@ The sum of all milestone amounts must equal `total_amount`!
 
 ### Example: Freelance Project
 
+<TryIt method="POST" endpoint="/api/v1/escrows" description="Create a milestone-based escrow payment">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/escrows \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -160,6 +162,8 @@ curl -X POST https://api.zendfi.tech/api/v1/escrows \
 }
 ```
 
+</TryIt>
+
 ---
 
 ## Get Escrow Details
@@ -174,10 +178,14 @@ GET /api/v1/escrows/:id
 
 ### Example
 
+<TryIt method="GET" endpoint="/api/v1/escrows/escrow_abc123def456" description="Get escrow details">
+
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456 \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
+
+</TryIt>
 
 ---
 
@@ -192,6 +200,8 @@ POST /api/v1/escrows/:id/fund
 ```
 
 ### Example
+
+<TryIt method="POST" endpoint="/api/v1/escrows/escrow_abc123def456/fund" description="Fund an escrow payment">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/fund \
@@ -215,6 +225,8 @@ curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/fund \
 }
 ```
 
+</TryIt>
+
 Once the buyer completes payment, escrow status changes to `funded`.
 
 ---
@@ -230,6 +242,8 @@ POST /api/v1/escrows/:id/milestones/:milestone_id/release
 ```
 
 ### Example
+
+<TryIt method="POST" endpoint="/api/v1/escrows/escrow_abc123def456/milestones/milestone_001/release" description="Release funds for a completed milestone">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/milestones/milestone_001/release \
@@ -255,6 +269,8 @@ curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/mileston
 }
 ```
 
+</TryIt>
+
 ---
 
 ## Open Dispute
@@ -278,6 +294,8 @@ POST /api/v1/escrows/:id/dispute
 | `evidence_urls` | array | No | URLs to evidence (screenshots, files, etc.) |
 
 ### Example
+
+<TryIt method="POST" endpoint="/api/v1/escrows/escrow_abc123def456/dispute" description="Open a dispute on an escrow">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/dispute \
@@ -310,6 +328,8 @@ curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/dispute 
 }
 ```
 
+</TryIt>
+
 ---
 
 ## Resolve Dispute
@@ -333,6 +353,8 @@ POST /api/v1/escrows/:id/resolve
 
 ### Example: Split Resolution
 
+<TryIt method="POST" endpoint="/api/v1/escrows/escrow_abc123def456/resolve" description="Resolve a dispute with a split decision">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/resolve \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -344,6 +366,8 @@ curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/resolve 
     "resolution_note": "Seller completed 60% of work satisfactorily. Remaining 40% will be refunded to buyer."
   }'
 ```
+
+</TryIt>
 
 ---
 
@@ -363,6 +387,8 @@ You cannot cancel a funded escrow. Use the dispute process or release all milest
 
 ### Example
 
+<TryIt method="POST" endpoint="/api/v1/escrows/escrow_abc123def456/cancel" description="Cancel an unfunded escrow">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/cancel \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -371,6 +397,8 @@ curl -X POST https://api.zendfi.tech/api/v1/escrows/escrow_abc123def456/cancel \
     "reason": "Project cancelled by mutual agreement"
   }'
 ```
+
+</TryIt>
 
 ---
 
