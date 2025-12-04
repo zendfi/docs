@@ -16,7 +16,6 @@ ZendFi is a **crypto payment API** built on the Solana blockchain that enables m
 
 - Accept payments in **USDC**, **SOL**, and **USDT**
 - Create **recurring subscriptions** with automated billing
-- Set up **escrow payments** for secure transactions
 - Offer **installment plans** for high-ticket items
 - Generate **professional invoices** with email delivery
 - Create **reusable payment links** for social media and e-commerce
@@ -40,9 +39,6 @@ Accept one-time crypto payments with QR codes and payment links. Support for USD
 
 ### Subscriptions
 Create recurring billing plans with flexible intervals (daily, weekly, monthly, yearly). Free trials, automatic billing, and webhook notifications included.
-
-### Escrow
-Secure high-value transactions with third-party escrow. Funds held safely until conditions are met - perfect for marketplaces and freelance work.
 
 ### Installments
 Break large payments into manageable installments. Late fee support, grace periods, and automatic payment tracking.

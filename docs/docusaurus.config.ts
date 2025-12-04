@@ -97,9 +97,10 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://zendfi.tech',
-          label: 'zendfi.tech',
+          href: 'https://dashboard.zendfi.tech/',
+          label: 'Log in',
           position: 'right',
+          className: 'navbar__link--login',
         },
       ],
     },

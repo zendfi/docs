@@ -237,7 +237,6 @@ All splits settle in a single Solana transaction:
 | Scenario | Settlement |
 |----------|------------|
 | **Standard Payment** | Immediate (same block as payment) |
-| **Escrow Release** | Splits applied when milestone released |
 | **Subscription Renewal** | Splits applied each billing cycle |
 
 ---
@@ -373,4 +372,3 @@ If percentages total less than 100%, the remainder goes to your merchant wallet:
 
 - [Payments API](/api/payments) - Create payments with splits
 - [Webhooks](/features/webhooks) - Get notified of split settlements
-- [Escrow](/api/escrows) - Apply splits to escrow releases

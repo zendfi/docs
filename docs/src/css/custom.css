@@ -273,6 +273,53 @@ p {
   background: #1e293b;
 }
 
+/* Login button - Clean, minimal Stripe-style */
+.navbar__link--login {
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff !important;
+  background: linear-gradient(to bottom, #635bff, #5851ea);
+  border: none;
+  padding: 7px 16px !important;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(99, 91, 255, 0.15);
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: auto;
+  height: auto !important;
+}
+
+.navbar__link--login:hover {
+  color: #fff !important;
+  background: linear-gradient(to bottom, #7a73ff, #635bff) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(99, 91, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.navbar__link--login:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='dark'] .navbar__link--login {
+  color: #fff !important;
+  background: linear-gradient(to bottom, #818cf8, #6366f1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(129, 140, 248, 0.2);
+}
+
+[data-theme='dark'] .navbar__link--login:hover {
+  color: #fff !important;
+  background: linear-gradient(to bottom, #a5b4fc, #818cf8) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(129, 140, 248, 0.3);
+}
+
 /* Color mode toggle - more subtle */
 .navbar__items--right [class*="colorModeToggle"] {
   margin-left: 4px;

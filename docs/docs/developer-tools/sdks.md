@@ -120,26 +120,6 @@ await zendfi.subscriptions.cancel(subscription.id, {
 });
 ```
 
-### Escrows
-
-```typescript
-// Create escrow
-const escrow = await zendfi.escrows.create({
-  title: 'Website Development',
-  totalAmount: 5000,
-  currency: 'USD',
-  sellerWallet: 'SellerWallet...',
-  milestones: [
-    { title: 'Design', amount: 1500, dueDate: '2025-11-15' },
-    { title: 'Development', amount: 2500, dueDate: '2025-12-01' },
-    { title: 'Launch', amount: 1000, dueDate: '2025-12-15' }
-  ]
-});
-
-// Release milestone
-await zendfi.escrows.releaseMilestone(escrow.id, 'milestone_001');
-```
-
 ### Webhooks
 
 ```typescript
@@ -503,7 +483,6 @@ import type {
   PaymentStatus,
   Subscription,
   SubscriptionPlan,
-  Escrow,
   Invoice,
   WebhookEvent,
   CreatePaymentParams,

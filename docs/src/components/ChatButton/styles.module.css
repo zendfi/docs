@@ -1,37 +1,38 @@
 .chatButton {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 100;
+  top: 12px;
+  right: 24px;
+  z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, #635bff 0%, #5851ea 100%);
-  color: white;
-  border: none;
-  border-radius: 100px;
+  gap: 5px;
+  padding: 5px 12px;
+  background: transparent;
+  color: #525f7f;
+  border: 1px solid #e3e8ee;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 400;
   font-size: 0.8125rem;
-  box-shadow: 0 2px 12px rgba(99, 91, 255, 0.35);
-  transition: all 0.2s ease;
+  line-height: 1.4;
+  box-shadow: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
   font-family: inherit;
 }
 
 .chatButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(99, 91, 255, 0.45);
+  background-color: #f7f8f9;
+  border-color: #d3d9e0;
 }
 
 .chatButton:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(99, 91, 255, 0.3);
+  background-color: #eef0f3;
 }
 
-.chatIcon {
-  font-size: 1rem;
-  line-height: 1;
+.sparkleIcon {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
 }
 
 .chatLabel {
@@ -39,20 +40,44 @@
   letter-spacing: 0.01em;
 }
 
-/* Mobile: compact pill */
+/* Dark mode */
+[data-theme='dark'] .chatButton {
+  background: transparent;
+  color: #a3acb9;
+  border-color: #3c4257;
+}
+
+[data-theme='dark'] .chatButton:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: #4f566b;
+}
+
+[data-theme='dark'] .chatButton:active {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Mobile adjustments */
+@media (max-width: 996px) {
+  .chatButton {
+    padding: 5px 10px;
+    right: 70px;
+    top: 12px;
+  }
+}
+
 @media (max-width: 640px) {
   .chatButton {
-    padding: 12px;
-    border-radius: 50%;
-    bottom: 16px;
-    right: 16px;
+    padding: 6px 10px;
+    top: 10px;
+    right: 60px;
   }
 
   .chatLabel {
     display: none;
   }
   
-  .chatIcon {
-    font-size: 1.125rem;
+  .sparkleIcon {
+    width: 14px;
+    height: 14px;
   }
 }

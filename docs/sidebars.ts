@@ -19,7 +19,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'api/payments',
         'api/subscriptions',
-        'api/escrows',
         'api/installments',
         'api/invoices',
         'api/payment-links',

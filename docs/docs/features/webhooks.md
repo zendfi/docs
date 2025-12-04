@@ -129,17 +129,6 @@ Once registered, ZendFi will send events to your URL immediately when they occur
 | `subscription.cancelled` | Subscription cancelled | Cancel API called |
 | `subscription.expired` | Subscription expired | Max cycles reached |
 
-### Escrow Events
-
-| Event | Description | Trigger |
-|-------|-------------|---------|
-| `escrow.created` | Escrow created | Create escrow API called |
-| `escrow.funded` | Escrow fully funded | Buyer payment confirmed |
-| `escrow.milestone_released` | Milestone payment released | Release API called |
-| `escrow.disputed` | Dispute opened | Dispute API called |
-| `escrow.resolved` | Dispute resolved | Resolution API called |
-| `escrow.completed` | All funds distributed | Final release completed |
-| `escrow.expired` | Escrow expired | Expiration reached |
 
 ### Installment Events
 

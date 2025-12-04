@@ -284,41 +284,6 @@ Percentages must total exactly 100%.
 
 **Subscription Statuses:** trialing → active | past_due | cancelled | expired
 
----
-
-## ESCROW API
-
-For milestone-based payments (freelance, contracts, services).
-
-### Create Escrow
-\`POST /api/v1/escrows\`
-
-\`\`\`json
-{
-  "title": "Website Redesign",
-  "total_amount": 5000,
-  "currency": "USD",
-  "payer_email": "client@example.com",
-  "payee_wallet": "Freelancer123...",
-  "milestones": [
-    { "title": "Design Mockups", "amount": 1500 },
-    { "title": "Development", "amount": 2500 },
-    { "title": "Launch", "amount": 1000 }
-  ]
-}
-\`\`\`
-
-### Fund Escrow
-\`POST /api/v1/escrows/:id/fund\`
-
-### Release Milestone
-\`POST /api/v1/escrows/:id/milestones/:mid/release\`
-
-### Open Dispute
-\`POST /api/v1/escrows/:id/dispute\`
-
----
-
 ## INSTALLMENTS API
 
 Split large payments over time (buy-now-pay-later).
@@ -411,8 +376,6 @@ Real-time event notifications to your server.
 | subscription.created | New subscription |
 | subscription.renewed | Billing cycle completed |
 | subscription.cancelled | Subscription cancelled |
-| escrow.funded | Escrow fully funded |
-| escrow.milestone_released | Milestone released |
 | invoice.paid | Invoice fully paid |
 
 ### Signature Verification
@@ -517,12 +480,6 @@ zendfi payments create --amount 49.99 --currency USD
 1. Create payment with splits array
 2. Platform fee goes to your wallet
 3. Seller receives their share automatically
-
-### Freelance Escrow
-1. Create escrow with milestones
-2. Client funds escrow
-3. Release milestones as work completes
-4. Dispute mechanism if issues arise
 `;
   };
 
@@ -584,7 +541,7 @@ You have deep knowledge of ZendFi's platform from the documentation below. Use t
 - SDK usage (TypeScript, Python, React)
 - Webhook implementation and signature verification
 - Choosing the right payment method for a use case
-- Architectural decisions (when to use escrow vs payments, etc.)
+- Architectural decisions (when to use subscriptions vs payments, etc.)
 - Debugging integration issues
 - Best practices for production deployments
 
@@ -602,7 +559,7 @@ ${getDocsContext()}
 Now, help this developer with their question. Be specific, provide code when helpful, and anticipate what they might need next.`;
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-exp:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -676,7 +633,6 @@ Now, help this developer with their question. Be specific, provide code when hel
     'What\'s the best way to set up recurring billing?',
     'How do I split payments between sellers?',
     'Help me set up webhooks',
-    'Compare escrow vs regular payments',
   ];
 
   if (!isOpen) return null;

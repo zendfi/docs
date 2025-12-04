@@ -256,7 +256,6 @@ Now that you have the basics down, explore more features:
 
 - [📄 Payments API](/api/payments) - Full payment API reference
 - [🔄 Subscriptions](/api/subscriptions) - Recurring billing
-- [🔒 Escrow](/api/escrows) - Secure marketplace transactions
 - [🔗 Payment Links](/api/payment-links) - Reusable payment URLs
 - [🪝 Webhooks](/features/webhooks) - Event notifications
 - [📦 SDKs](/developer-tools/sdks) - TypeScript SDK reference
