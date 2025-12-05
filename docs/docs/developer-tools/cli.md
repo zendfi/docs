@@ -12,13 +12,13 @@ Command-line tools for managing your ZendFi integration, scaffolding projects, a
 
 ```bash
 # npm
-npm install -g @zendfi/cli
+npm install -g create-zendfi-app
 
 # yarn
-yarn global add @zendfi/cli
+yarn global add create-zendfi-app
 
 # pnpm
-pnpm add -g @zendfi/cli
+pnpm add -g create-zendfi-app
 
 # Verify installation
 zendfi --version
@@ -28,31 +28,16 @@ zendfi --version
 
 ## Authentication
 
-### Login
+Set your API key as an environment variable:
 
 ```bash
-zendfi login
+export ZENDFI_API_KEY=zfi_test_your_key_here
 ```
 
-This opens a browser window for authentication. After logging in, your credentials are stored securely.
+Or create a `.env` file in your project:
 
-### Login with API Key
-
-```bash
-zendfi login --api-key zfi_live_abc123...
-```
-
-### Check Authentication
-
-```bash
-zendfi whoami
-# Output: Logged in as: merchant@example.com (merchant_abc123)
-```
-
-### Logout
-
-```bash
-zendfi logout
+```env
+ZENDFI_API_KEY=zfi_test_your_key_here
 ```
 
 ---
@@ -62,142 +47,302 @@ zendfi logout
 ### Create New Project
 
 ```bash
+# Interactive mode (recommended)
+npx create-zendfi-app my-store
+
+# With template specified
+npx create-zendfi-app my-store --template nextjs-ecommerce
+
+# Skip prompts
+npx create-zendfi-app my-store --template nextjs-saas --skip-install
+```
+
+### Available Templates
+
+- **nextjs-ecommerce** - Full-featured online store with Next.js 14
+- **nextjs-saas** - SaaS application with subscription billing
+- **express-api** - Backend API server with crypto payment endpoints
+
+### Initialize Existing Project
+
+```bash
+# Add ZendFi to an existing project
 zendfi init
-```
 
-Interactive prompts guide you through project setup:
+# Specify framework
+zendfi init --framework nextjs
 
-```
-? What type of project? (Use arrow keys)
-❯ Next.js E-commerce
-  Express API Server
-  React Checkout
-  Python Flask
-  Custom (Manual setup)
-
-? Include examples? Yes
-? Configure webhooks? Yes
-? Set up test environment? Yes
-
-✔ Created project structure
-✔ Installed dependencies
-✔ Configured environment
-✔ Set up webhook endpoint
-
-🚀 Ready! Run: cd my-zendfi-app && npm run dev
-```
-
-### Templates
-
-```bash
-# Specific template
-zendfi init --template nextjs-store
-
-# List available templates
-zendfi templates list
-
-# Available templates:
-# - nextjs-store        Next.js e-commerce with checkout
-# - express-api         Express.js API server
-# - react-checkout      React payment components
-# - flask-webhooks      Python Flask webhook handler
-# - fastapi-webhooks    Python FastAPI webhook handler
-```
-
-### Options
-
-```bash
-zendfi init my-project \
-  --template nextjs-store \
-  --package-manager pnpm \
-  --typescript \
-  --git
+# Skip dependency installation
+zendfi init --skip-install
 ```
 
 ---
 
-## Payments
+## Testing Payments
 
-### Create Payment
+### Create Test Payment
 
 ```bash
-zendfi payments create \
+# Interactive mode
+zendfi test payment
+
+# Quick test payment
+zendfi test payment --amount 50
+
+# Full options
+zendfi test payment \
+  --amount 100 \
+  --description "Premium subscription" \
+  --email customer@example.com \
+  --open \
+  --watch
+```
+
+**Options:**
+- `--amount <number>` - Payment amount in USD
+- `--description <text>` - Payment description
+- `--email <email>` - Customer email
+- `--open` - Open payment URL in browser
+- `--watch` - Watch payment status in real-time
+
+### Check Payment Status
+
+```bash
+zendfi status pay_test_abc123xyz
+```
+
+**Output:**
+```
+Payment Status: pay_test_abc123xyz
+
+Status: Confirmed ✅
+Amount: $50.00 USD
+Currency: USDC
+Customer: customer@example.com
+Created: 2025-11-09 10:30:15 AM
+Confirmed: 2025-11-09 10:31:42 AM
+```
+
+---
+
+## Webhooks
+
+### Listen for Webhooks
+
+Forward webhooks to your local machine during development:
+
+```bash
+# Listen on default port (3000)
+zendfi webhooks listen
+
+# Forward to specific endpoint
+zendfi webhooks listen --forward-to http://localhost:3000/api/webhooks
+```
+
+**Output:**
+```
+Webhook listener started
+
+Listening on: http://localhost:3000/webhooks
+Forwarding to: http://localhost:3000/api/webhooks/zendfi
+
+[10:45:23] payment.confirmed
+  Payment ID: pay_test_xyz789
+  Amount: $25.00 USDC
+  ✓ Signature verified
+  ✓ Forwarded to endpoint
+```
+
+---
+
+## API Keys
+
+### List API Keys
+
+```bash
+zendfi keys list
+```
+
+### Create API Key
+
+```bash
+# Interactive
+zendfi keys create
+
+# With options
+zendfi keys create --name "Production Key" --mode live
+```
+
+---
+
+## Agentic Intent Protocol Commands
+
+### Agent Keys & Sessions
+
+```bash
+# Create an agent API key
+zendfi agent keys create
+
+# With options
+zendfi agent keys create --name "Shopping Bot" --agent-id shopping-v1
+
+# List all agent keys
+zendfi agent keys list
+
+# Revoke an agent key
+zendfi agent keys revoke <key-id>
+
+# Create session with spending limits
+zendfi agent sessions create \
+  --agent-id shopping-v1 \
+  --wallet Hx7B...abc \
+  --max-per-day 100 \
+  --max-per-transaction 25 \
+  --duration 24
+
+# List all sessions
+zendfi agent sessions list
+
+# Revoke a session
+zendfi agent sessions revoke <session-id>
+
+# View agent analytics
+zendfi agent analytics
+```
+
+### Payment Intents
+
+```bash
+# Create a payment intent
+zendfi intents create --amount 99.99
+
+# List all intents
+zendfi intents list
+
+# Get intent details
+zendfi intents get <intent-id>
+
+# Confirm an intent
+zendfi intents confirm <intent-id> --wallet Hx7B...abc
+
+# Cancel an intent
+zendfi intents cancel <intent-id>
+```
+
+### PPP Pricing
+
+```bash
+# Get PPP factor for a country
+zendfi ppp check BR
+
+# Check with price calculation
+zendfi ppp check BR --price 99.99
+
+# List all PPP factors
+zendfi ppp factors
+
+# Sort by discount percentage
+zendfi ppp factors --sort discount
+
+# Calculate localized price
+zendfi ppp calculate --price 99.99 --country IN
+```
+
+**Output:**
+```
+🌍 PPP Factor Lookup
+
+  🇧🇷 Brazil (BR)
+
+  PPP Factor:       0.35
+  Discount:         65%
+  Local Currency:   BRL
+
+  Example: $100 → $35.00
+```
+
+### Autonomous Delegation
+
+```bash
+# Enable autonomy interactively
+zendfi autonomy enable
+
+# With options
+zendfi autonomy enable \
+  --wallet Hx7B...abc \
+  --agent-id shopping-v1 \
+  --max-per-day 100 \
+  --max-per-transaction 25 \
+  --duration 24
+
+# Check autonomy status
+zendfi autonomy status <wallet-address>
+
+# List all delegates
+zendfi autonomy delegates
+
+# Revoke delegation
+zendfi autonomy revoke <delegate-id>
+```
+
+### Smart Payments
+
+```bash
+# Create a smart payment
+zendfi smart create \
   --amount 99.99 \
-  --currency USD \
-  --description "Test payment"
-```
+  --wallet Hx7B...abc \
+  --country BR \
+  --ppp
 
-Output:
-
-```
-✔ Payment created
-
-Payment ID:    pay_xyz789abc123
-Amount:        $99.99 USD
-Status:        pending
-Payment URL:   https://zendfi.tech/pay/pay_xyz789abc123
-
-QR Code: (scan with mobile wallet)
-█████████████████████████
-██ ▄▄▄▄▄ ██▄▄▄██ ▄▄▄▄▄ ██
-██ █   █ █ ▄▄ ▄█ █   █ ██
-...
-```
-
-### Get Payment
-
-```bash
-zendfi payments get pay_xyz789abc123
-```
-
-### List Payments
-
-```bash
-# Recent payments
-zendfi payments list
-
-# With filters
-zendfi payments list --status completed --limit 10
-
-# Output as JSON
-zendfi payments list --json
-```
-
-### Watch Payment
-
-```bash
-zendfi payments watch pay_xyz789abc123
-```
-
-This watches the payment in real-time and notifies when status changes:
-
-```
-Watching payment pay_xyz789abc123...
-Status: pending ⏳
-
-[15:30:05] Status changed: pending → completed ✅
-Transaction: 5K2Nz7J8H2gK...
-
-Payment complete! 🎉
+# Simulate pricing (no actual payment)
+zendfi smart simulate --amount 99.99 --country BR
 ```
 
 ---
 
-## Subscriptions
+## Command Reference
 
-### Create Plan
+```
+zendfi [command] [options]
 
-```bash
-zendfi plans create \
-  --name "Pro Monthly" \
-  --amount 29.99 \
-  --interval monthly \
-  --trial-days 14
+Commands:
+  init                  Add ZendFi to an existing project
+  test payment          Create test payments
+  status <payment-id>   Check payment status
+  webhooks listen       Forward webhooks locally
+  keys                  Manage API keys
+  
+  # Agentic Intent Protocol
+  agent keys            Manage agent API keys
+  agent sessions        Manage agent sessions
+  agent analytics       View agent metrics
+  intents               Payment intent management
+  ppp                   PPP pricing commands
+  autonomy              Autonomous delegation
+  smart                 Smart payments
+
+Options:
+  --version             Show version number
+  --help                Show help
 ```
 
-### List Plans
+---
 
-```bash
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `ZENDFI_API_KEY` | API key for authentication |
+| `ZENDFI_API_URL` | Custom API URL (optional) |
+
+---
+
+## Next Steps
+
+- [SDKs](/developer-tools/sdks) - Integrate ZendFi in your application
+- [Webhooks](/features/webhooks) - Set up event notifications
+- [Agentic Payments](/agentic-payments) - AI agent payment capabilities
 zendfi plans list
 ```
 

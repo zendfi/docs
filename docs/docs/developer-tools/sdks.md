@@ -12,9 +12,9 @@ Official SDKs to integrate ZendFi into your applications. Full type safety, auto
 
 | Language | Package | Version | Install |
 |----------|---------|---------|---------|
-| **TypeScript/Node.js** | `@zendfi/sdk` | 1.0.0 | `npm install @zendfi/sdk` |
-| **Python** | `zendfi` | 1.0.0 | `pip install zendfi` |
-| **React** | `@zendfi/react` | 1.0.0 | `npm install @zendfi/react` |
+| **TypeScript/Node.js** | `@zendfi/sdk` | 0.4.0 | `npm install @zendfi/sdk` |
+| **Python** | `zendfi` | Coming soon | — |
+| **React** | `@zendfi/react` | Coming soon | — |
 
 ---
 
@@ -33,38 +33,30 @@ pnpm add @zendfi/sdk
 ### Quick Start
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { zendfi } from '@zendfi/sdk';
 
-const zendfi = new ZendFi({
-  apiKey: process.env.ZENDFI_API_KEY!,
-  network: 'mainnet' // or 'devnet' for testing
-});
-
-// Create a payment
-const payment = await zendfi.payments.create({
+// Automatically configured from ZENDFI_API_KEY environment variable
+const payment = await zendfi.createPayment({
   amount: 99.99,
-  currency: 'USD',
   description: 'Pro Plan Subscription'
 });
 
-console.log('Payment URL:', payment.paymentUrl);
+console.log('Payment URL:', payment.payment_url);
 ```
 
 ### Configuration
 
 ```typescript
-const zendfi = new ZendFi({
+import { ZendFiClient } from '@zendfi/sdk';
+
+const zendfi = new ZendFiClient({
   apiKey: 'zfi_live_abc123...',
-  network: 'mainnet',
   
   // Optional configuration
   timeout: 30000,           // Request timeout in ms
-  maxRetries: 3,            // Automatic retry count
-  baseUrl: 'https://...',   // Custom API URL (rare)
-  
-  // Logging
+  retries: 3,               // Automatic retry count
+  baseURL: 'https://...',   // Custom API URL (rare)
   debug: true,              // Enable debug logging
-  logger: console           // Custom logger
 });
 ```
 
@@ -72,26 +64,24 @@ const zendfi = new ZendFi({
 
 ```typescript
 // Create payment
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 100,
   currency: 'USD',
+  token: 'USDC', // 'SOL', 'USDC', or 'USDT'
   description: 'Order #12345',
-  customerEmail: 'customer@example.com',
+  customer_email: 'customer@example.com',
   metadata: { orderId: '12345' },
-  expiresIn: 3600, // 1 hour
-  splits: [
-    { wallet: 'PartnerWallet...', percentage: 10 }
-  ]
+  redirect_url: 'https://yourapp.com/success',
 });
 
 // Get payment
-const payment = await zendfi.payments.get('pay_xyz789');
+const payment = await zendfi.getPayment('pay_xyz789');
 
 // List payments
-const payments = await zendfi.payments.list({
-  status: 'completed',
+const payments = await zendfi.listPayments({
+  status: 'Confirmed',
   limit: 20,
-  startDate: new Date('2025-10-01')
+  from_date: '2025-01-01'
 });
 ```
 
@@ -99,74 +89,225 @@ const payments = await zendfi.payments.list({
 
 ```typescript
 // Create subscription plan
-const plan = await zendfi.subscriptionPlans.create({
+const plan = await zendfi.createSubscriptionPlan({
   name: 'Pro Monthly',
   amount: 29.99,
-  currency: 'USD',
-  billingInterval: 'monthly',
-  trialDays: 14
+  interval: 'monthly',
+  trial_days: 14
 });
 
 // Subscribe customer
-const subscription = await zendfi.subscriptions.create({
-  planId: plan.id,
-  customerWallet: '7xKXtg...',
-  customerEmail: 'customer@example.com'
+const subscription = await zendfi.createSubscription({
+  plan_id: plan.id,
+  customer_wallet: '7xKXtg...',
+  customer_email: 'customer@example.com'
 });
 
 // Cancel subscription
-await zendfi.subscriptions.cancel(subscription.id, {
-  cancelAtPeriodEnd: true
-});
+await zendfi.cancelSubscription(subscription.id);
 ```
 
 ### Webhooks
 
 ```typescript
-// Verify webhook signature
-import { verifyWebhookSignature } from '@zendfi/sdk';
+// Next.js App Router
+import { createNextWebhookHandler } from '@zendfi/sdk/nextjs';
 
-const isValid = verifyWebhookSignature(
-  payload,
-  signature,
-  webhookSecret
-);
-
-// Or use the WebhookHandler helper
-const handler = new zendfi.WebhookHandler(webhookSecret);
-
-handler.on('payment.completed', async (event) => {
-  console.log('Payment completed:', event.data.paymentId);
-  // Update your database, send confirmation, etc.
-});
-
-handler.on('subscription.renewed', async (event) => {
-  console.log('Subscription renewed:', event.data.subscriptionId);
-});
-
-// In your Express route
-app.post('/webhooks/zendfi', async (req, res) => {
-  await handler.handle(req.body, req.headers['x-zendfi-signature']);
-  res.json({ received: true });
+export const POST = createNextWebhookHandler({
+  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  handlers: {
+    'payment.confirmed': async (payment) => {
+      console.log('Payment completed:', payment.id);
+      // Update your database
+    },
+    'subscription.activated': async (subscription) => {
+      console.log('Subscription activated:', subscription.id);
+    },
+  },
 });
 ```
 
 ### Error Handling
 
 ```typescript
-import { ZendFiError, PaymentNotFoundError, ValidationError } from '@zendfi/sdk';
+import { ZendFiError, AuthenticationError, ValidationError } from '@zendfi/sdk';
 
 try {
-  const payment = await zendfi.payments.get('invalid_id');
+  const payment = await zendfi.getPayment('invalid_id');
 } catch (error) {
-  if (error instanceof PaymentNotFoundError) {
-    console.log('Payment not found');
+  if (error instanceof AuthenticationError) {
+    console.log('Invalid API key');
   } else if (error instanceof ValidationError) {
-    console.log('Validation errors:', error.errors);
+    console.log('Validation errors:', error.message);
   } else if (error instanceof ZendFiError) {
     console.log('API error:', error.message, error.code);
   }
 }
+```
+
+---
+
+## Agentic Intent Protocol
+
+Enable AI agents to make payments autonomously with scoped permissions and spending limits.
+
+### Namespaced APIs
+
+```typescript
+import { zendfi } from '@zendfi/sdk';
+
+// Agent API - Manage agent keys and sessions
+zendfi.agent.createKey(...)
+zendfi.agent.createSession(...)
+
+// Payment Intents - Two-phase payment flow
+zendfi.intents.create(...)
+zendfi.intents.confirm(...)
+
+// Pricing - PPP and AI pricing
+zendfi.pricing.getPPPFactor(...)
+
+// Autonomy - Autonomous delegation
+zendfi.autonomy.enable(...)
+
+// Smart Payments - AI-powered routing
+zendfi.smart.execute(...)
+```
+
+### Agent API Keys
+
+Create scoped API keys for AI agents with limited permissions:
+
+```typescript
+// Create an agent API key (prefixed with zai_)
+const agentKey = await zendfi.agent.createKey({
+  name: 'Shopping Assistant',
+  agent_id: 'shopping-assistant-v1',
+  scopes: ['create_payments', 'read_analytics'],
+  rate_limit_per_hour: 500,
+});
+
+// IMPORTANT: Save full_key now - it won't be shown again!
+console.log(agentKey.full_key); // => "zai_test_abc123..."
+
+// List agent keys
+const keys = await zendfi.agent.listKeys();
+
+// Revoke a key
+await zendfi.agent.revokeKey(keyId);
+```
+
+### Agent Sessions
+
+Create sessions with spending limits for user-approved agent actions:
+
+```typescript
+// Create a session with spending limits
+const session = await zendfi.agent.createSession({
+  agent_id: 'shopping-assistant-v1',
+  user_wallet: 'Hx7B...abc',
+  limits: {
+    max_per_transaction: 50,  // $50 max per payment
+    max_per_day: 200,         // $200 daily limit
+  },
+  duration_hours: 24,
+});
+
+// List active sessions
+const sessions = await zendfi.agent.listSessions();
+
+// Revoke session
+await zendfi.agent.revokeSession(sessionId);
+```
+
+### Payment Intents
+
+Modern two-phase payment flow for reliable checkout:
+
+```typescript
+// Step 1: Create intent when user starts checkout
+const intent = await zendfi.intents.create({
+  amount: 99.99,
+  description: 'Premium subscription',
+  capture_method: 'automatic',
+});
+
+// Step 2: Pass client_secret to frontend
+console.log(intent.client_secret); // cs_abc123...
+
+// Step 3: Confirm when user clicks "Pay"
+const confirmed = await zendfi.intents.confirm(intent.id, {
+  client_secret: intent.client_secret,
+  customer_wallet: 'Hx7B...abc',
+});
+
+// Or cancel if needed
+await zendfi.intents.cancel(intent.id);
+```
+
+### PPP Pricing
+
+Automatically adjust prices based on customer location:
+
+```typescript
+// Get PPP factor for a country
+const factor = await zendfi.pricing.getPPPFactor('BR');
+// {
+//   country_code: 'BR',
+//   country_name: 'Brazil',
+//   ppp_factor: 0.35,
+//   adjustment_percentage: 35.0
+// }
+
+// Calculate localized price
+const basePrice = 100;
+const localPrice = basePrice * factor.ppp_factor;
+console.log(`$${localPrice} for Brazilian customers`); // $35
+
+// List all supported countries
+const factors = await zendfi.pricing.listFactors();
+```
+
+**Supported Countries (27+):** Argentina, Australia, Brazil, Canada, China, Colombia, Egypt, France, Germany, Ghana, India, Indonesia, Japan, Kenya, Mexico, Nigeria, Philippines, Poland, South Africa, Thailand, Turkey, Ukraine, United Kingdom, Vietnam, and more.
+
+### Autonomous Delegation
+
+Enable agents to make payments without per-transaction approval:
+
+```typescript
+// Enable autonomous mode
+const delegate = await zendfi.autonomy.enable({
+  wallet_address: 'Hx7B...abc',
+  agent_id: 'shopping-assistant',
+  max_per_day_usd: 100,
+  max_per_transaction_usd: 25,
+  duration_hours: 24,
+});
+
+// Check status
+const status = await zendfi.autonomy.getStatus(walletAddress);
+
+// Revoke
+await zendfi.autonomy.revoke(delegateId);
+```
+
+### Smart Payments
+
+AI-powered payments with automatic PPP:
+
+```typescript
+const payment = await zendfi.smart.execute({
+  agent_id: 'my-agent',
+  user_wallet: 'Hx7B...abc',
+  amount_usd: 99.99,
+  country_code: 'BR', // Apply PPP automatically
+  description: 'Pro subscription',
+});
+
+console.log(`Original: $${payment.original_amount_usd}`);
+console.log(`Final: $${payment.final_amount_usd}`);
+// Original: $99.99
+// Final: $64.99 (35% PPP discount applied)
 ```
 
 ---
