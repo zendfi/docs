@@ -11,8 +11,11 @@ Enable AI agents to make payments autonomously with scoped permissions, spending
 :::tip What is the Agentic Intent Protocol?
 The Agentic Intent Protocol (AIP) is ZendFi's framework for enabling AI agents to handle payments on behalf of users. It provides:
 - **Scoped API keys** with limited permissions
-- **Spending limits** per transaction and per day
+- **Spending limits** per transaction, per day, per week, and per month
 - **Time-bound sessions** that auto-expire
+- **Device-bound session keys** for non-custodial signing
+- **Autonomous delegates** for hands-free operation
+- **PKP session identity** (optional on-chain audit trail via Lit Protocol)
 - **PPP pricing** for global reach
 - **Complete audit trails** for compliance
 :::
@@ -59,11 +62,28 @@ const session = await zendfi.agent.createSession({
   limits: {
     max_per_transaction: 50,  // $50 max per payment
     max_per_day: 200,         // $200 daily limit
-    allowed_merchants: ['merchant_123'], // Optional whitelist
+    max_per_week: 1000,       // $1000 weekly limit
+    max_per_month: 3000,      // $3000 monthly limit
+    require_approval_above: 25, // Manual approval above $25
   },
+  allowed_merchants: ['merchant_123'], // Optional whitelist
   duration_hours: 24,
+  mint_pkp: true,  // Optional: create on-chain session identity
 });
+
+// Session response includes remaining limits
+console.log(`Remaining today: $${session.remaining_today}`);
+console.log(`PKP address: ${session.pkp_address}`); // If mint_pkp: true
 ```
+
+:::info On-Chain Session Identity (PKP)
+When `mint_pkp: true` is set, ZendFi mints a Programmable Key Pair (PKP) via Lit Protocol. This creates a blockchain-verified session identity for audit and compliance purposes. The PKP provides:
+- **Audit trail**: Verifiable proof that a session existed with specific parameters
+- **Session identity**: Unique blockchain-based identifier (ETH address)
+- **Tamper-proof creation time**: On-chain timestamp
+
+Note: Spending limits are enforced server-side for speed and Solana compatibility. The PKP serves as an identity anchor, not a signing key.
+:::
 
 ### Payment Intents
 
@@ -188,6 +208,49 @@ console.log(`PPP Applied: ${payment.ppp_discount_applied}`);
 
 ---
 
+## Device-Bound Session Keys
+
+For maximum security, use device-bound session keys where the private key never leaves the user's device:
+
+```typescript
+import { ZendFiSessionKeyManager } from '@zendfi/sdk';
+
+const manager = new ZendFiSessionKeyManager('your-api-key');
+
+// Create a device-bound session key with a PIN
+const { sessionKey, recoveryQR } = await manager.createSessionKey({
+  userWallet: 'Hx7B...abc',
+  limitUsdc: 500,
+  durationDays: 30,
+  pin: '123456',  // User's chosen PIN
+});
+
+// IMPORTANT: Show recoveryQR to user for backup!
+console.log('Save this QR code for recovery:', recoveryQR.dataUrl);
+
+// Make a payment (requires PIN to decrypt key)
+const payment = await manager.makePayment(
+  sessionKey.id,
+  {
+    amount: 25.00,
+    recipient: 'merchant_wallet...',
+    description: 'Coffee',
+    pin: '123456',
+  }
+);
+```
+
+### Custodial vs Non-Custodial
+
+| Feature | Custodial (default) | Device-Bound |
+|---------|---------------------|--------------|
+| Key storage | ZendFi servers | User's device only |
+| Auto-signing | ✅ Yes | ❌ Requires PIN |
+| Recovery | Server backup | QR code backup |
+| Best for | Convenience | Maximum security |
+
+---
+
 ## Security Model
 
 ### Permission Hierarchy
@@ -202,10 +265,25 @@ Agent Key (zai_)
   └── No access to merchant settings
   
 Session Token
-  └── Spending limits enforced
+  └── Spending limits enforced (server-side)
   └── Time-bound (auto-expires)
   └── Wallet-specific
+  └── Optional PKP identity (on-chain audit trail)
+  
+Device-Bound Key
+  └── Private key never leaves device
+  └── PIN-protected decryption
+  └── QR code recovery
 ```
+
+### Spending Limit Enforcement
+
+Spending limits are enforced **server-side** for:
+- **Speed**: No blockchain latency for limit checks
+- **Solana compatibility**: PKPs use ECDSA (Ethereum) while Solana uses Ed25519
+- **Reliability**: No network failures can bypass limits
+
+When `mint_pkp: true` is set, the session gets an on-chain identity via Lit Protocol. This provides an audit trail, not cryptographic enforcement.
 
 ### Best Practices
 
@@ -214,6 +292,8 @@ Session Token
 3. **Use short session durations** - 24 hours is recommended
 4. **Enable merchant whitelists** - Restrict where payments can go
 5. **Monitor with analytics** - Track agent activity
+6. **Use device-bound keys** for high-value operations
+7. **Enable `mint_pkp`** for compliance-critical sessions
 
 ---
 
@@ -234,6 +314,9 @@ The Agentic Intent Protocol adds new webhook events:
 | `intent.canceled` | Payment intent canceled |
 | `autonomy.enabled` | Autonomous delegation enabled |
 | `autonomy.revoked` | Autonomous delegation revoked |
+| `session_key.created` | Device-bound session key created |
+| `session_key.topped_up` | Session key balance added |
+| `session_key.payment` | Payment made via session key |
 
 ---
 

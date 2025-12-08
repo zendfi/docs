@@ -34,6 +34,15 @@ const sidebars: SidebarsConfig = {
         'features/wallet-management',
       ],
     },
+    {
+      type: 'category',
+      label: '🤖 Agentic Payments',
+      collapsed: false,
+      items: [
+        'agentic-payments',
+        'sdk-examples',
+      ],
+    },
   ],
 
   // Developer Resources sidebar - SDKs, CLI, etc.
@@ -44,6 +53,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'developer-tools/sdks',
+        'sdk-examples',
       ],
     },
     {
