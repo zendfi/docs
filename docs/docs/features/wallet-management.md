@@ -46,47 +46,40 @@ Your Key = Share 1 (Your Device) + Share 2 (ZendFi) + Share 3 (Recovery)
 
 ### Setting Up MPC Wallet
 
-#### 1. Register Passkey
+MPC wallet creation is handled through the API during merchant onboarding. Once set up, you can use the SDK for payments.
+
+#### 1. Merchant Registration (API)
+
+When you register as a merchant, an MPC wallet is automatically created:
+
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/merchants \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_name": "My Business",
+    "email": "merchant@example.com"
+  }'
+```
+
+This returns a passkey setup URL for WebAuthn registration.
+
+#### 2. Using the SDK After Setup
 
 ```typescript
-// Using ZendFi SDK
-import { ZendFi } from '@zendfi/sdk';
+import { zendfi } from '@zendfi/sdk';
 
-const zendfi = new ZendFi({
-  apiKey: 'zfi_live_abc123...',
-  network: 'mainnet'
+// Create payments - wallet signing handled by the API
+const payment = await zendfi.createPayment({
+  amount: 100,
+  description: 'Product purchase'
 });
 
-// Register WebAuthn passkey (triggers browser biometric prompt)
-const wallet = await zendfi.wallets.createMPC({
-  name: 'My Merchant Wallet',
-  authenticator: 'platform' // Uses device biometrics
-});
-
-console.log('Wallet created:', wallet.address);
-// Wallet created: 7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU
+console.log('Payment URL:', payment.payment_url);
 ```
 
-#### 2. Authenticate with Passkey
+#### 3. Transaction Signing
 
-```typescript
-// For subsequent sessions, authenticate with your passkey
-const session = await zendfi.auth.authenticate();
-// Triggers Face ID / Touch ID / Windows Hello
-
-console.log('Authenticated! Session expires:', session.expiresAt);
-```
-
-#### 3. Sign Transactions
-
-```typescript
-// Transactions are signed using MPC - requires your passkey
-const payment = await zendfi.payments.get('pay_xyz789');
-const signature = await zendfi.wallets.signTransaction(
-  payment.transactionBuffer
-);
-// Triggers passkey prompt for signing
-```
+For operations requiring MPC signatures (refunds, withdrawals), the API handles signing through the dashboard or secure API endpoints with your registered passkey.
 
 ### Recovery Options
 
@@ -98,14 +91,7 @@ If you lose access to your device:
 | **Social Recovery** | Trusted contacts approve recovery |
 | **Time-Locked Recovery** | Request recovery, wait 48h, claim |
 
-```typescript
-// Add a recovery passkey
-await zendfi.wallets.addRecoveryMethod({
-  type: 'passkey',
-  name: 'Backup Phone'
-});
-// Register passkey on second device
-```
+Recovery is managed through the merchant dashboard at `dashboard.zendfi.tech`.
 
 ---
 
@@ -162,23 +148,19 @@ For operations that require signing (refunds, splits), you'll need to sign with 
 
 ```typescript
 import { useWallet } from '@solana/wallet-adapter-react';
+import { zendfi } from '@zendfi/sdk';
 
-const { signTransaction } = useWallet();
+const { signTransaction, publicKey } = useWallet();
 
-// Get unsigned transaction from ZendFi
-const { transaction } = await zendfi.refunds.prepare({
-  paymentId: 'pay_xyz789',
-  amount: 50
+// Create a payment that requires your signature
+const payment = await zendfi.createPayment({
+  amount: 100,
+  description: 'Order refund',
+  metadata: { refund_for: 'pay_xyz789' }
 });
 
-// Sign with your wallet
-const signed = await signTransaction(transaction);
-
-// Submit signed transaction
-await zendfi.refunds.submit({
-  paymentId: 'pay_xyz789',
-  signedTransaction: signed
-});
+// For refunds via API - the API builds the transaction
+// You sign and submit through the dashboard or API
 ```
 
 ---
@@ -187,18 +169,19 @@ await zendfi.refunds.submit({
 
 ### Embedded Wallets for Customers
 
-Create wallets for your customers without them needing to manage keys:
+Create wallets for your customers without them needing to manage keys. This is handled through the API:
 
-```typescript
-// Create embedded wallet for customer
-const customerWallet = await zendfi.wallets.createEmbedded({
-  customerId: 'cust_123',
-  email: 'customer@example.com'
-});
-
-// Customer signs with email magic link
-// No seed phrases, no wallet extensions required
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/customer-wallets \
+  -H "Authorization: Bearer $ZENDFI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cust_123",
+    "email": "customer@example.com"
+  }'
 ```
+
+Customers sign with email magic link - no seed phrases or wallet extensions required.
 
 ### Connect Customer Wallets
 
@@ -336,6 +319,6 @@ More tokens coming soon! Request tokens in our Discord.
 
 ## Next Steps
 
-- [Getting Started](/getting-started) - Initial merchant setup
+- [Getting Started](/intro) - Initial merchant setup
 - [Payments API](/api/payments) - Create your first payment
 - [SDKs](/developer-tools/sdks) - Integrate wallet features in your app

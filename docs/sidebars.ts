@@ -34,14 +34,19 @@ const sidebars: SidebarsConfig = {
         'features/wallet-management',
       ],
     },
+  ],
+
+  // Agentic Payments sidebar - separate from Payments
+  agenticSidebar: [
     {
-      type: 'category',
-      label: '🤖 Agentic Payments',
-      collapsed: false,
-      items: [
-        'agentic-payments',
-        'sdk-examples',
-      ],
+      type: 'doc',
+      id: 'agentic/index',
+      label: '🤖 Overview',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/sdk-examples',
+      label: '📝 SDK Examples',
     },
   ],
 
@@ -53,7 +58,6 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'developer-tools/sdks',
-        'sdk-examples',
       ],
     },
     {

@@ -49,8 +49,9 @@ console.log('Payment URL:', payment.payment_url);
 ```typescript
 import { ZendFiClient } from '@zendfi/sdk';
 
+// Custom configuration (rarely needed - SDK auto-configures from env)
 const zendfi = new ZendFiClient({
-  apiKey: 'zfi_live_abc123...',
+  apiKey: 'zfi_live_abc123...',  // Optional if ZENDFI_API_KEY env var is set
   
   // Optional configuration
   timeout: 30000,           // Request timeout in ms
@@ -58,6 +59,10 @@ const zendfi = new ZendFiClient({
   baseURL: 'https://...',   // Custom API URL (rare)
   debug: true,              // Enable debug logging
 });
+
+// Mode (test/live) is auto-detected from API key prefix:
+// - zfi_test_xxx → test mode (Solana devnet)
+// - zfi_live_xxx → live mode (Solana mainnet)
 ```
 
 ### Payments
@@ -172,6 +177,7 @@ zendfi.autonomy.enable(...)
 
 // Smart Payments - AI-powered routing
 zendfi.smart.execute(...)
+zendfi.smart.submitSigned(...)  // For device-bound flows
 ```
 
 ### Agent API Keys
@@ -293,7 +299,7 @@ await zendfi.autonomy.revoke(delegateId);
 
 ### Smart Payments
 
-AI-powered payments with automatic PPP:
+AI-powered payments with automatic PPP, gasless detection, and intelligent routing:
 
 ```typescript
 const payment = await zendfi.smart.execute({
@@ -309,6 +315,10 @@ console.log(`Final: $${payment.final_amount_usd}`);
 // Original: $99.99
 // Final: $64.99 (35% PPP discount applied)
 ```
+
+:::tip Alias Methods
+`zendfi.smartPayment()` is also available as an alias for `zendfi.smart.execute()`. We recommend using the namespaced `smart.execute()` for consistency with other SDK methods.
+:::
 
 ---
 
@@ -626,8 +636,8 @@ import type {
   SubscriptionPlan,
   Invoice,
   WebhookEvent,
-  CreatePaymentParams,
-  CreateSubscriptionParams
+  CreatePaymentRequest,
+  CreateSubscriptionRequest,
 } from '@zendfi/sdk';
 
 const handlePayment = (payment: Payment) => {
@@ -669,6 +679,6 @@ cd flask-webhooks && pip install -r requirements.txt && flask run
 
 ## Next Steps
 
-- [Getting Started](/getting-started) - Initial setup guide
+- [Getting Started](/intro) - Initial setup guide
 - [Payments API](/api/payments) - API reference
 - [CLI](/developer-tools/cli) - Command-line tools

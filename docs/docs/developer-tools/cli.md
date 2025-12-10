@@ -342,7 +342,7 @@ Options:
 
 - [SDKs](/developer-tools/sdks) - Integrate ZendFi in your application
 - [Webhooks](/features/webhooks) - Set up event notifications
-- [Agentic Payments](/agentic-payments) - AI agent payment capabilities
+- [Agentic Payments](/agentic) - AI agent payment capabilities
 zendfi plans list
 ```
 

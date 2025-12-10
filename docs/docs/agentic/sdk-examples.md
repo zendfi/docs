@@ -1,7 +1,7 @@
 ---
 title: SDK Examples
 description: Complete code examples for every ZendFi SDK function
-sidebar_position: 4
+sidebar_position: 2
 ---
 
 # SDK Examples
@@ -24,16 +24,16 @@ pnpm add @zendfi/sdk
 import { ZendFiClient, zendfi } from '@zendfi/sdk';
 
 // Option 1: Use singleton (reads ZENDFI_API_KEY from env)
-// Just import and use - auto-configured!
+// Zero-config: just import and use!
+// Mode (test/live) auto-detected from API key prefix (zfi_test_ vs zfi_live_)
 const payment = await zendfi.createPayment({ amount: 50 });
 
-// Option 2: Create custom instance
+// Option 2: Create custom instance (rarely needed)
 const client = new ZendFiClient({
-  apiKey: 'zfi_live_your_api_key',
-  environment: 'production',
-  debug: true,  // Enable request/response logging
-  timeout: 30000,
-  retries: 3,
+  apiKey: 'zfi_live_your_api_key',  // Optional if ZENDFI_API_KEY is set
+  debug: true,     // Enable request/response logging
+  timeout: 30000,  // Request timeout in ms
+  retries: 3,      // Auto-retry on failure
 });
 ```
 
@@ -695,10 +695,14 @@ console.log('Autonomous mode disabled');
 
 ## Smart Payments
 
+AI-powered payments with automatic PPP, gasless detection, and intelligent routing.
+
 ### Execute Smart Payment
 
+Use `zendfi.smart.execute()` for AI-powered payments:
+
 ```typescript
-const result = await zendfi.smartPayment({
+const result = await zendfi.smart.execute({
   session_token: 'zai_session_abc...',  // Optional
   agent_id: 'shopping-assistant',
   user_wallet: 'UserWallet123...',
@@ -735,9 +739,11 @@ if (result.requires_signature) {
 
 ### Submit Signed Transaction
 
+For device-bound flows where the user signs the transaction locally:
+
 ```typescript
 // After user signs the transaction (device-bound flow)
-const result = await zendfi.submitSignedPayment(
+const result = await zendfi.smart.submitSigned(
   'pay_123...',
   signedTransactionBase64
 );
@@ -745,6 +751,10 @@ const result = await zendfi.submitSignedPayment(
 console.log(`Status: ${result.status}`);  // "confirmed"
 console.log(`Transaction: ${result.transaction_signature}`);
 ```
+
+:::tip Alias Methods
+`zendfi.smartPayment()` and `zendfi.submitSignedPayment()` are also available as convenience aliases for `zendfi.smart.execute()` and `zendfi.smart.submitSigned()` respectively. We recommend using the namespaced `smart.*` methods for consistency.
+:::
 
 ---
 
@@ -871,11 +881,28 @@ window.addEventListener('beforeunload', () => {
 ### Verify Webhook (Manual)
 
 ```typescript
-const isValid = zendfi.verifyWebhook({
-  payload: req.body,  // Raw request body string
-  signature: req.headers['x-zendfi-signature'],
-  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
-});
+import { createHmac, timingSafeEqual } from 'crypto';
+
+function verifyWebhookSignature(
+  payload: string,
+  signature: string,
+  secret: string
+): boolean {
+  const expectedSignature = createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  
+  return timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
+
+const isValid = verifyWebhookSignature(
+  JSON.stringify(req.body),  // Raw request body string
+  req.headers['x-zendfi-signature'] as string,
+  process.env.ZENDFI_WEBHOOK_SECRET!,
+);
 
 if (!isValid) {
   return res.status(401).json({ error: 'Invalid signature' });

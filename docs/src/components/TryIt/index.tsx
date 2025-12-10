@@ -80,16 +80,18 @@ const TryIt: React.FC<TryItProps> = ({
       <div className={styles.codeBlock}>
         {children}
       </div>
-      <button
-        className={styles.tryItButton}
-        onClick={() => setIsOpen(true)}
-        title="Try this request in the API Playground"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polygon points="5 3 19 12 5 21 5 3" />
-        </svg>
-        Try it
-      </button>
+      <div className={styles.buttonRow}>
+        <button
+          className={styles.tryItButton}
+          onClick={() => setIsOpen(true)}
+          title="Try this request in the API Playground"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          <span>Try it</span>
+        </button>
+      </div>
       <ApiPlayground
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}

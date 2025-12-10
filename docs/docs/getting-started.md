@@ -232,18 +232,14 @@ Always verify webhook signatures in production. See the [Webhooks documentation]
 For a better developer experience, use our TypeScript SDK:
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { zendfi } from '@zendfi/sdk';
 
-const zendfi = new ZendFi({
-  apiKey: process.env.ZENDFI_API_KEY,
-  environment: 'test' // or 'production'
-});
+// Zero-config: API key auto-loaded from ZENDFI_API_KEY env var
+// Mode (test/live) auto-detected from API key prefix
 
 // Create a payment
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 25.00,
-  currency: 'USD',
-  token: 'USDC',
   description: 'Premium Subscription'
 });
 

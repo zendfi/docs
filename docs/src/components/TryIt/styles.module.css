@@ -8,60 +8,60 @@
   /* Let the MDX code block render normally */
 }
 
-/* Try It Button */
-.tryItButton {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
+/* Remove margin from code block wrapper inside TryIt */
+.codeBlock > div {
+  margin-bottom: 0 !important;
+}
+
+/* Button row below code block */
+.buttonRow {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Try It Button - now inline below code block */
+.tryItButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
   color: #635bff;
-  background: rgba(99, 91, 255, 0.1);
-  border: 1px solid rgba(99, 91, 255, 0.2);
-  border-radius: 4px;
+  background: transparent;
+  border: 1px solid rgba(99, 91, 255, 0.3);
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
-  z-index: 10;
+  font-family: var(--ifm-font-family-base);
 }
 
 .tryItButton:hover {
-  background: rgba(99, 91, 255, 0.15);
-  border-color: rgba(99, 91, 255, 0.4);
-  transform: translateY(-1px);
+  background: rgba(99, 91, 255, 0.08);
+  border-color: rgba(99, 91, 255, 0.5);
 }
 
 .tryItButton:active {
-  transform: translateY(0);
+  background: rgba(99, 91, 255, 0.12);
+}
+
+.tryItButton svg {
+  flex-shrink: 0;
 }
 
 [data-theme='dark'] .tryItButton {
   color: #a78bfa;
-  background: rgba(167, 139, 250, 0.1);
-  border-color: rgba(167, 139, 250, 0.2);
+  border-color: rgba(167, 139, 250, 0.3);
 }
 
 [data-theme='dark'] .tryItButton:hover {
-  background: rgba(167, 139, 250, 0.2);
-  border-color: rgba(167, 139, 250, 0.4);
-}
-
-/* Animation */
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(99, 91, 255, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 4px rgba(99, 91, 255, 0);
-  }
+  background: rgba(167, 139, 250, 0.12);
+  border-color: rgba(167, 139, 250, 0.5);
 }
 
 .tryItButton:focus {
-  outline: none;
-  animation: pulse 1s ease-in-out;
+  outline: 2px solid var(--ifm-color-primary, #635bff);
+  outline-offset: 2px;
 }

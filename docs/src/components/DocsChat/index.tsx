@@ -93,17 +93,34 @@ const SimpleMarkdown = ({ content }: { content: string }) => {
   return <div className={styles.markdownContent}>{processContent(content)}</div>;
 };
 
+interface DocsChatProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialMessage?: string;
+}
+
 // Main Chat Component
-export default function DocsChat({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function DocsChat({ isOpen, onClose, initialMessage = '' }: DocsChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [pendingInitialMessage, setPendingInitialMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Default API key (can be overridden by user)
   const DEFAULT_API_KEY = 'AIzaSyCHEBWkdDaOMmOVItlC4PEg2yuJQnwJQFw';
+
+  // Queue initial message to be sent once API key is loaded
+  useEffect(() => {
+    if (isOpen && initialMessage) {
+      setPendingInitialMessage(initialMessage);
+    }
+    if (!isOpen) {
+      setPendingInitialMessage(null);
+    }
+  }, [isOpen, initialMessage]);
 
   // Load messages and API key from localStorage on mount
   useEffect(() => {
@@ -626,6 +643,18 @@ Now, help this developer with their question. Be specific, provide code when hel
       handleSubmit();
     }
   };
+
+  // Auto-send initial message when API key is ready
+  useEffect(() => {
+    if (pendingInitialMessage && apiKey && isOpen && !isLoading) {
+      const messageToSend = pendingInitialMessage;
+      setPendingInitialMessage(null);
+      // Small delay to ensure the UI is ready
+      setTimeout(() => {
+        handleSubmit(messageToSend);
+      }, 100);
+    }
+  }, [pendingInitialMessage, apiKey, isOpen, isLoading]);
 
   // Suggested questions
   const suggestedQuestions = [

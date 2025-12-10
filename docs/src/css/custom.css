@@ -3,6 +3,9 @@
  * Compact, sleek, and professional
  */
 
+/* ===== Google Fonts ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 /* ===== CSS Variables ===== */
 :root {
   /* Primary colors - Purple/Indigo like ZendFi branding */
@@ -15,7 +18,8 @@
   --ifm-color-primary-lightest: #a8a3ff;
 
   /* Typography */
-  --ifm-font-family-base: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
   --ifm-font-size-base: 16px;
   --ifm-line-height-base: 1.6;
   --ifm-heading-font-weight: 600;
@@ -53,7 +57,7 @@
   /* Backgrounds */
   --ifm-background-color: #ffffff;
   --ifm-background-surface-color: #f6f8fa;
-  --ifm-footer-background-color: #0f172a;
+  --ifm-footer-background-color: #f6f8fa;
   
   /* Borders */
   --ifm-color-emphasis-200: #e5e7eb;
@@ -82,7 +86,7 @@
   
   --ifm-background-color: #0f172a;
   --ifm-background-surface-color: #1e293b;
-  --ifm-footer-background-color: #020617;
+  --ifm-footer-background-color: #0f172a;
   
   --ifm-color-emphasis-200: #334155;
   --ifm-color-emphasis-300: #475569;
@@ -452,7 +456,7 @@ p {
 
 .menu {
   font-size: 0.875rem;
-  padding: 0.5rem 0.625rem !important;
+  padding: 0.5rem 0.625rem 0.5rem 24px !important;
   font-weight: 400;
 }
 
@@ -570,10 +574,10 @@ tr:hover {
 
 /* ===== Code Blocks ===== */
 code {
-  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: var(--ifm-font-family-monospace);
   font-size: 0.875rem;
-  border-radius: 4px;
-  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  padding: 0.15rem 0.4rem;
   background: var(--ifm-background-surface-color);
   border: 1px solid var(--ifm-color-emphasis-200);
 }
@@ -581,21 +585,63 @@ code {
 pre {
   font-size: 0.875rem;
   line-height: 1.5;
-  border-radius: 6px;
+  border-radius: 12px !important;
   padding: 0.875rem 1rem;
-  margin: 0.875rem 0;
-  border: 1px solid var(--ifm-color-emphasis-200);
+  margin: 0;
+  border: none;
+  background: var(--prism-background-color, #f6f8fa) !important;
 }
 
 pre code {
-  background: transparent;
+  background: transparent !important;
   border: none;
   padding: 0;
   font-size: inherit;
+  border-radius: 0;
 }
 
 [data-theme='dark'] pre {
-  background: #1e293b;
+  background: #1e293b !important;
+}
+
+/* Code block container with curved borders */
+div[class*='codeBlockContainer'] {
+  border-radius: 12px !important;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  margin: 0.875rem 0;
+  background: var(--prism-background-color, #f6f8fa) !important;
+}
+
+[data-theme='dark'] div[class*='codeBlockContainer'] {
+  background: #1e293b !important;
+}
+
+div[class*='codeBlockContent'] {
+  border-radius: 12px !important;
+  background: transparent !important;
+}
+
+div[class*='codeBlockTitle'] {
+  border-radius: 12px 12px 0 0 !important;
+  background: var(--ifm-color-emphasis-100) !important;
+}
+
+div[class*='codeBlockTitle'] + div[class*='codeBlockContent'] {
+  border-radius: 0 0 12px 12px !important;
+}
+
+div[class*='codeBlockLines'] {
+  background: transparent !important;
+}
+
+div[class*='codeBlockTitle'] ~ div[class*='codeBlockLines'] {
+  border-radius: 0 0 12px 12px !important;
+}
+
+/* Copy button positioning for curved containers */
+button[class*='copyButton'] {
+  border-radius: 6px;
 }
 
 /* ===== Admonitions ===== */
@@ -649,6 +695,12 @@ pre code {
 .footer {
   font-size: 0.8125rem;
   padding: 2.5rem 1rem 2rem;
+  background-color: var(--ifm-footer-background-color);
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.footer--dark {
+  --ifm-footer-background-color: var(--ifm-background-surface-color);
 }
 
 .footer__title {
@@ -657,18 +709,24 @@ pre code {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 0.625rem;
-  color: #94a3b8;
+  color: var(--ifm-font-color-secondary);
 }
 
 .footer__link-item {
   font-size: 0.8125rem;
   line-height: 2;
+  color: var(--ifm-font-color-base);
+}
+
+.footer__link-item:hover {
+  color: var(--ifm-color-primary);
 }
 
 .footer__copyright {
   font-size: 0.75rem;
   margin-top: 2rem;
-  opacity: 0.6;
+  color: var(--ifm-font-color-secondary);
+  opacity: 0.8;
 }
 
 /* ===== Breadcrumbs ===== */

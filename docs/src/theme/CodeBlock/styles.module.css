@@ -1,0 +1,40 @@
+.codeBlockWrapper {
+  position: relative;
+  margin: 1rem 0;
+}
+
+/* Ensure code blocks inside wrapper don't add extra margin */
+.codeBlockWrapper > div:first-child {
+  margin: 0 !important;
+}
+
+.reportButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ifm-font-color-secondary);
+  background: transparent;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: var(--ifm-font-family-base);
+}
+
+.reportButton:hover {
+  color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  background: rgba(99, 91, 255, 0.05);
+}
+
+.reportButton svg {
+  flex-shrink: 0;
+}
+
+:global([data-theme='dark']) .reportButton:hover {
+  background: rgba(129, 140, 248, 0.1);
+}

@@ -1,83 +1,166 @@
-.chatButton {
+/* Floating text bar at bottom center */
+.chatBar {
   position: fixed;
-  top: 12px;
-  right: 24px;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000;
+  min-width: 280px;
+  max-width: 480px;
+  background: var(--ifm-background-color, #ffffff);
+  border: 1px solid var(--ifm-color-emphasis-200, #e5e7eb);
+  border-radius: 50px;
+  cursor: text;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: 
+    width 0.3s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.chatBar:hover {
+  border-color: var(--ifm-color-primary, #635bff);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.06);
+}
+
+.chatBar.expanded {
+  width: calc(100vw - 48px);
+  max-width: 560px;
+}
+
+.chatBarInner {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  background: transparent;
-  color: #525f7f;
-  border: 1px solid #e3e8ee;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 400;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  box-shadow: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-  font-family: inherit;
-}
-
-.chatButton:hover {
-  background-color: #f7f8f9;
-  border-color: #d3d9e0;
-}
-
-.chatButton:active {
-  background-color: #eef0f3;
+  gap: 10px;
+  padding: 12px 18px;
+  width: 100%;
 }
 
 .sparkleIcon {
-  width: 12px;
-  height: 12px;
-  opacity: 0.7;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--ifm-color-primary, #635bff);
 }
 
 .chatLabel {
-  display: inline;
-  letter-spacing: 0.01em;
+  color: var(--ifm-font-color-secondary, #64748b);
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.inputForm {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.chatInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.9375rem;
+  color: var(--ifm-font-color-base);
+  outline: none;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.chatInput::placeholder {
+  color: var(--ifm-font-color-secondary, #64748b);
+}
+
+.submitButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--ifm-color-primary, #635bff);
+  color: #ffffff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: var(--ifm-color-primary-dark, #5248d9);
+  transform: scale(1.05);
+}
+
+.submitButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* Dark mode */
-[data-theme='dark'] .chatButton {
-  background: transparent;
-  color: #a3acb9;
-  border-color: #3c4257;
+[data-theme='dark'] .chatBar {
+  background: var(--ifm-background-color, #1e1e1e);
+  border-color: var(--ifm-color-emphasis-300, #3c4257);
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-[data-theme='dark'] .chatButton:hover {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: #4f566b;
+[data-theme='dark'] .chatBar:hover {
+  border-color: var(--ifm-color-primary, #818cf8);
 }
 
-[data-theme='dark'] .chatButton:active {
-  background-color: rgba(255, 255, 255, 0.08);
+[data-theme='dark'] .sparkleIcon {
+  color: var(--ifm-color-primary, #818cf8);
+}
+
+[data-theme='dark'] .submitButton {
+  background: var(--ifm-color-primary, #818cf8);
+}
+
+/* Tablet adjustments */
+@media (max-width: 996px) {
+  .chatBar {
+    min-width: 240px;
+    bottom: 20px;
+  }
+
+  .chatBar.expanded {
+    width: calc(100vw - 32px);
+    max-width: 480px;
+  }
 }
 
 /* Mobile adjustments */
-@media (max-width: 996px) {
-  .chatButton {
-    padding: 5px 10px;
-    right: 70px;
-    top: 12px;
-  }
-}
-
 @media (max-width: 640px) {
-  .chatButton {
-    padding: 6px 10px;
-    top: 10px;
-    right: 60px;
+  .chatBar {
+    min-width: 200px;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    transform: none;
+    width: auto;
+  }
+
+  .chatBar.expanded {
+    width: auto;
+    max-width: none;
+  }
+
+  .chatBarInner {
+    padding: 10px 14px;
   }
 
   .chatLabel {
-    display: none;
+    font-size: 0.875rem;
   }
-  
-  .sparkleIcon {
-    width: 14px;
-    height: 14px;
+
+  .chatInput {
+    font-size: 0.875rem;
   }
 }

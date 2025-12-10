@@ -383,21 +383,19 @@ See the [Webhooks documentation](/features/webhooks) for complete details.
 ### Node.js with SDK
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { zendfi } from '@zendfi/sdk';
 
-const zendfi = new ZendFi({ apiKey: process.env.ZENDFI_API_KEY });
+// Zero-config: API key auto-loaded from ZENDFI_API_KEY env var
 
 // Create payment
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 49.99,
-  currency: 'USD',
-  token: 'USDC',
   description: 'Pro Plan',
-  customerEmail: 'customer@example.com'
+  customer_email: 'customer@example.com'
 });
 
 // Get payment status
-const status = await zendfi.payments.get(payment.payment_id);
+const status = await zendfi.getPayment(payment.payment_id);
 console.log(`Status: ${status.status}`);
 ```
 

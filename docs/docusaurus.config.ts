@@ -86,8 +86,8 @@ const config: Config = {
           label: 'Developer resources',
         },
         {
-          type: 'doc',
-          docId: 'agentic-payments',
+          type: 'docSidebar',
+          sidebarId: 'agenticSidebar',
           position: 'left',
           label: 'Agentic Payments',
         },
@@ -105,7 +105,7 @@ const config: Config = {
       ],
     },
     footer: {
-      style: 'dark',
+      style: 'light',
       links: [
         {
           title: 'Documentation',
@@ -173,7 +173,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ['bash', 'json', 'typescript', 'python'],
+      additionalLanguages: ['bash', 'json', 'typescript', 'javascript', 'python', 'rust', 'solidity', 'yaml', 'toml', 'diff', 'sql'],
     },
   } satisfies Preset.ThemeConfig,
 };

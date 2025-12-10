@@ -1,7 +1,7 @@
 ---
 title: Agentic Payments
 description: AI-powered autonomous payment capabilities with the Agentic Intent Protocol
-sidebar_position: 3
+sidebar_position: 1
 ---
 
 # Agentic Payments
@@ -205,6 +205,10 @@ console.log(`PPP Applied: ${payment.ppp_discount_applied}`);
 // Final: $64.99
 // PPP Applied: true
 ```
+
+:::tip
+`zendfi.smartPayment()` is also available as an alias for `zendfi.smart.execute()`.
+:::
 
 ---
 
