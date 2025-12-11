@@ -36,7 +36,8 @@
   /* Sidebar */
   --doc-sidebar-width: 240px;
   --ifm-menu-link-padding-vertical: 0.3rem;
-  --ifm-menu-link-padding-horizontal: 0.625rem;
+  --ifm-menu-link-padding-horizontal: 0;
+  --doc-sidebar-padding: 0;
   
   /* Code */
   --ifm-code-font-size: 13.5px;
@@ -454,19 +455,46 @@ p {
   border-right: 1px solid var(--ifm-color-emphasis-200) !important;
 }
 
+/* Align sidebar with navbar brand text - match navbar centering */
+/* Navbar uses max-width: 1400px with margin: 0 auto and padding: 0 24px */
+/* We need the sidebar to start at the same horizontal position as the brand */
+
+/* The doc page wrapper - align with centered navbar */
+.main-wrapper > div[class*="docPage"],
+.main-wrapper > div[class*="docsWrapper"] {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* Reset all sidebar padding to align with logo */
+aside.theme-doc-sidebar-container,
+.theme-doc-sidebar-container nav,
+.theme-doc-sidebar-container .menu {
+  padding-left: 0 !important;
+  margin-left: 0 !important;
+}
+
 .menu {
   font-size: 0.875rem;
-  padding: 0.5rem 0.625rem 0.5rem 24px !important;
+  padding: 0.5rem 0.625rem 0.5rem 0 !important;
   font-weight: 400;
 }
 
+/* Align menu links with navbar brand */
 .menu__list {
   margin-bottom: 0.125rem;
+  padding-left: 0 !important;
+}
+
+.menu__list .menu__list {
+  padding-left: 1rem !important; /* Nested items need indent */
 }
 
 .menu__link {
   font-size: 0.875rem;
-  padding: 0.3rem 0.625rem;
+  padding: 0.3rem 0.625rem 0.3rem 0 !important;
   border-radius: 5px;
   transition: all 0.15s ease;
   line-height: 1.4;
