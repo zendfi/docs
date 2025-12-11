@@ -614,6 +614,11 @@ Now, help this developer with their question. Be specific, provide code when hel
       const data = await response.json();
 
       if (data.error) {
+        // Check for quota/rate limit errors
+        const errorMsg = data.error.message || '';
+        if (errorMsg.includes('quota') || errorMsg.includes('rate') || errorMsg.includes('limit')) {
+          throw new Error('API quota exceeded. The free tier limit has been reached. Please try again later or add your own Gemini API key in settings (⚙️).');
+        }
         throw new Error(data.error.message);
       }
 
@@ -630,7 +635,7 @@ Now, help this developer with their question. Be specific, provide code when hel
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `Error: ${error.message || 'Failed to get response. Check your API key.'}`,
+        content: `⚠️ ${error.message || 'Failed to get response. Try adding your own Gemini API key in settings (⚙️).'}`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);

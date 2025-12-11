@@ -45,8 +45,43 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
-      id: 'agentic/sdk-examples',
-      label: '📝 SDK Examples',
+      id: 'agentic/agent-keys',
+      label: '🔑 Agent Keys',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/sessions',
+      label: '⏱️ Sessions',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/payment-intents',
+      label: '💳 Payment Intents',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/ppp-pricing',
+      label: '🌍 PPP Pricing',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/autonomous-delegation',
+      label: '🤝 Autonomous Delegation',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/smart-payments',
+      label: '⚡ Smart Payments',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/device-bound-keys',
+      label: '🔐 Device-Bound Keys',
+    },
+    {
+      type: 'doc',
+      id: 'agentic/security',
+      label: '🛡️ Security',
     },
   ],
 
@@ -58,6 +93,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'developer-tools/sdks',
+        'developer-tools/sdk-examples',
       ],
     },
     {
