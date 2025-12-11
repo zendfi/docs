@@ -278,6 +278,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 
 Prevent duplicate payments with idempotency keys.
 
+<TryIt method="POST" endpoint="/api/v1/payments" description="Create payment with idempotency key">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payments \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -286,9 +288,12 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
   -d '{
     "amount": 49.99,
     "currency": "USD",
-    "token": "USDC"
+    "token": "USDC",
+    "description": "Order #12345"
   }'
 ```
+
+</TryIt>
 
 :::tip Idempotency Best Practices
 - Use unique keys per payment intent (e.g., `order_id + timestamp`)
@@ -308,6 +313,8 @@ POST /api/v1/payments/:payment_id/build-transaction
 
 ### Request
 
+<TryIt method="POST" endpoint="/api/v1/payments/:payment_id/build-transaction" description="Build transaction for signing">
+
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payments/pay_abc123xyz789/build-transaction \
   -H "Authorization: Bearer zfi_live_abc123..." \
@@ -316,6 +323,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payments/pay_abc123xyz789/build-tran
     "payer_wallet": "CustomerWalletAddress..."
   }'
 ```
+
+</TryIt>
 
 ### Response
 
@@ -395,7 +404,7 @@ const payment = await zendfi.createPayment({
 });
 
 // Get payment status
-const status = await zendfi.getPayment(payment.payment_id);
+const status = await zendfi.getPayment(payment.id);
 console.log(`Status: ${status.status}`);
 ```
 
