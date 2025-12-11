@@ -904,3 +904,12 @@ blockquote {
     padding: 0 0.5rem;
   }
 }
+
+/* ===== Hide External Link Icons ===== */
+/* Remove the arrow/icon on links that open in new tabs */
+a[target="_blank"]::after,
+a[target="_blank"] svg,
+.footer__link-item svg,
+[class*="iconExternalLink"] {
+  display: none !important;
+}

@@ -7,7 +7,7 @@ description: Set up your ZendFi merchant account and create your first payment
 
 # Getting Started with ZendFi
 
-Welcome to ZendFi! This guide will walk you through setting up your merchant account, choosing your wallet type, generating API keys, and making your first payment. Let's get you accepting crypto payments in minutes! 🚀
+Welcome to ZendFi! This guide will walk you through setting up your merchant account, choosing your wallet type, generating API keys, and making your first payment. Let's get you accepting crypto payments in minutes!
 
 ## Quick Start
 
