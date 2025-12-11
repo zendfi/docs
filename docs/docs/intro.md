@@ -6,9 +6,9 @@ title: Introduction
 
 # ZendFi Documentation
 
-Welcome to ZendFi - the easiest way to accept crypto payments on Solana! 🚀
+Welcome to ZendFi!
 
-ZendFi provides a complete payment infrastructure for merchants who want to accept cryptocurrency payments. Whether you're building an e-commerce store, SaaS platform, or marketplace, ZendFi has you covered.
+ZendFi provides a complete payment infrastructure for merchants who want to accept cryptocurrency payments. Whether you're building an e-commerce store, SaaS platform, marketplace or AI agents that can make autonomous payments, ZendFi has you covered.
 
 ## What is ZendFi?
 
@@ -26,11 +26,11 @@ ZendFi is a **crypto payment API** built on the Solana blockchain that enables m
 
 | Resource | Description |
 |----------|-------------|
-| [🚀 Get Started](/) | Set up your merchant account and create your first payment |
-| [🔌 Payments API](/api/payments) | Complete API reference for creating payments |
-| [🔄 Subscriptions](/api/subscriptions) | Recurring billing and subscription management |
-| [🪝 Webhooks](/features/webhooks) | Real-time event notifications |
-| [📦 SDKs](/developer-tools/sdks) | TypeScript SDK documentation |
+| [Get Started](/) | Set up your merchant account and create your first payment |
+| [Payments API](/api/payments) | Complete API reference for creating payments |
+| [Subscriptions](/api/subscriptions) | Recurring billing and subscription management |
+| [Webhooks](/features/webhooks) | Real-time event notifications |
+| [SDKs](/developer-tools/sdks) | TypeScript SDK documentation |
 
 ## Features Overview
 
@@ -63,9 +63,9 @@ Real-time notifications for all payment events. 23 event types across 8 categori
 
 ## Getting Help
 
-- 📧 Email: [support@zendfi.tech](mailto:support@zendfi.tech)
-- 💬 Discord: [discord.gg/zendfi](https://discord.gg/zendfi)
-- 🐦 Twitter: [@zendfi](https://twitter.com/zendfi)
+- Email: [support@zendfi.tech](mailto:support@zendfi.tech)
+- Discord: [discord.gg/zendfi](https://discord.gg/zendfi)
+- Twitter: [@zendfi](https://twitter.com/zendfi)
 
 ---
 

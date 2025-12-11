@@ -107,20 +107,23 @@ export default function DocsChat({ isOpen, onClose, initialMessage = '' }: DocsC
   const [apiKey, setApiKey] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [pendingInitialMessage, setPendingInitialMessage] = useState<string | null>(null);
+  const [initialMessageHandled, setInitialMessageHandled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Default API key (can be overridden by user)
   const DEFAULT_API_KEY = 'AIzaSyCHEBWkdDaOMmOVItlC4PEg2yuJQnwJQFw';
 
-  // Queue initial message to be sent once API key is loaded
+  // Queue initial message to be sent once API key is loaded - only once per open
   useEffect(() => {
-    if (isOpen && initialMessage) {
+    if (isOpen && initialMessage && !initialMessageHandled) {
       setPendingInitialMessage(initialMessage);
+      setInitialMessageHandled(true);
     }
     if (!isOpen) {
       setPendingInitialMessage(null);
+      setInitialMessageHandled(false);
     }
-  }, [isOpen, initialMessage]);
+  }, [isOpen, initialMessage, initialMessageHandled]);
 
   // Load messages and API key from localStorage on mount
   useEffect(() => {
@@ -644,9 +647,15 @@ Now, help this developer with their question. Be specific, provide code when hel
     }
   };
 
-  // Auto-send initial message when API key is ready
+  // Auto-send initial message when API key is ready - use ref to prevent re-triggers
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+  
   useEffect(() => {
-    if (pendingInitialMessage && apiKey && isOpen && !isLoading) {
+    if (pendingInitialMessage && apiKey && isOpen) {
+      // Check loading state via ref to avoid dependency
+      if (isLoadingRef.current) return;
+      
       const messageToSend = pendingInitialMessage;
       setPendingInitialMessage(null);
       // Small delay to ensure the UI is ready
@@ -654,7 +663,7 @@ Now, help this developer with their question. Be specific, provide code when hel
         handleSubmit(messageToSend);
       }, 100);
     }
-  }, [pendingInitialMessage, apiKey, isOpen, isLoading]);
+  }, [pendingInitialMessage, apiKey, isOpen]);
 
   // Suggested questions
   const suggestedQuestions = [
@@ -672,7 +681,7 @@ Now, help this developer with their question. Be specific, provide code when hel
         {/* Header */}
         <div className={styles.header}>
           <div className={styles.headerTitle}>
-            <span className={styles.botIcon}>🤖</span>
+            <span className={styles.botIcon}></span>
             <span>ZendFi Docs Assistant</span>
           </div>
           <div className={styles.headerActions}>

@@ -43,7 +43,7 @@ POST /api/v1/merchants
 
 ZendFi supports two main wallet options:
 
-#### 1. MPC Passkey Wallet (Recommended) ⭐
+#### 1. MPC Passkey Wallet (Recommended)
 
 **Non-custodial** - You control your funds via biometric authentication (Face ID, Touch ID).
 
@@ -250,16 +250,16 @@ console.log(`Payment URL: ${payment.payment_url}`);
 
 Now that you have the basics down, explore more features:
 
-- [📄 Payments API](/api/payments) - Full payment API reference
-- [🔄 Subscriptions](/api/subscriptions) - Recurring billing
-- [🔗 Payment Links](/api/payment-links) - Reusable payment URLs
-- [🪝 Webhooks](/features/webhooks) - Event notifications
-- [📦 SDKs](/developer-tools/sdks) - TypeScript SDK reference
+- [Payments API](/api/payments) - Full payment API reference
+- [Subscriptions](/api/subscriptions) - Recurring billing
+- [Payment Links](/api/payment-links) - Reusable payment URLs
+- [Webhooks](/features/webhooks) - Event notifications
+- [SDKs](/developer-tools/sdks) - TypeScript SDK reference
 
 ## Need Help?
 
-- 📧 Email: [support@zendfi.tech](mailto:support@zendfi.tech)
-- 💬 Discord: [discord.gg/zendfi](https://discord.gg/zendfi)
-- 📚 API Reference: [api.zendfi.tech](https://api.zendfi.tech)
+- Email: [support@zendfi.tech](mailto:support@zendfi.tech)
+- Discord: [discord.gg/zendfi](https://discord.gg/zendfi)
+- API Reference: [api.zendfi.tech](https://api.zendfi.tech)
 
-Happy building! 🎉
+Happy building!

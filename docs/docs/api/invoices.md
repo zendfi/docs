@@ -10,12 +10,12 @@ Create professional invoices with automatic payment tracking and reminders. Perf
 
 ## Features
 
-- ✅ **Professional Invoices** - Generate branded, itemized invoices
-- ✅ **Multiple Line Items** - Products, services, discounts, taxes
-- ✅ **Payment Tracking** - Track paid, partial, and outstanding amounts
-- ✅ **Auto Reminders** - Automated payment reminders before/after due date
-- ✅ **Crypto Payments** - Accept USDC payments with on-chain tracking
-- ✅ **PDF Generation** - Downloadable invoice PDFs
+- **Professional Invoices** - Generate branded, itemized invoices
+- **Multiple Line Items** - Products, services, discounts, taxes
+- **Payment Tracking** - Track paid, partial, and outstanding amounts
+- **Auto Reminders** - Automated payment reminders before/after due date
+- **Crypto Payments** - Accept USDC payments with on-chain tracking
+- **PDF Generation** - Downloadable invoice PDFs
 
 ---
 

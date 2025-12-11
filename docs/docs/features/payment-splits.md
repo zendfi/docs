@@ -25,13 +25,13 @@ When a payment is completed, funds are automatically distributed to all split re
 
 ---
 
-## Features
+## What's Built In?
 
-- ✅ **Atomic Transfers** - All splits happen in one transaction
-- ✅ **Flexible Percentages** - Any split configuration totaling 100%
-- ✅ **Multiple Recipients** - Up to 10 recipients per payment
-- ✅ **Per-Payment or Global** - Set splits per payment or as defaults
-- ✅ **Real-Time Settlement** - Recipients receive funds immediately
+- **Atomic Transfers** - All splits happen in one transaction
+- **Flexible Percentages** - Any split configuration totaling 100%
+- **Multiple Recipients** - Up to 10 recipients per payment
+- **Per-Payment or Global** - Set splits per payment or as defaults
+- **Real-Time Settlement** - Recipients receive funds immediately
 
 ---
 
@@ -39,11 +39,11 @@ When a payment is completed, funds are automatically distributed to all split re
 
 | Use Case | Example Split |
 |----------|---------------|
-| 🏪 **Marketplace** | 85% Seller / 15% Platform |
-| 🤝 **Affiliates** | 90% Merchant / 10% Referrer |
-| 👥 **Team Revenue** | 50% Lead / 30% Dev / 20% Design |
-| 💰 **Royalties** | 80% Artist / 20% Label |
-| 🏢 **Franchises** | 70% Location / 30% Corporate |
+| **Marketplace** | 85% Seller / 15% Platform |
+| **Affiliates** | 90% Merchant / 10% Referrer |
+| **Team Revenue** | 50% Lead / 30% Dev / 20% Design |
+| **Royalties** | 80% Artist / 20% Label |
+| **Franchises** | 70% Location / 30% Corporate |
 
 ---
 
@@ -216,10 +216,10 @@ ZendFi validates all splits before processing:
 
 | Validation | Description |
 |------------|-------------|
-| ✅ **Total Check** | Percentages must total ≤ 100% |
-| ✅ **Wallet Validation** | All wallets must be valid Solana addresses |
-| ✅ **Minimum Amount** | Each split must result in at least $0.01 |
-| ✅ **Recipient Limit** | Maximum 10 recipients per payment |
+| **Total Check** | Percentages must total ≤ 100% |
+| **Wallet Validation** | All wallets must be valid Solana addresses |
+| **Minimum Amount** | Each split must result in at least $0.01 |
+| **Recipient Limit** | Maximum 10 recipients per payment |
 
 ---
 

@@ -6,7 +6,7 @@ description: Create and manage crypto payments with ZendFi
 
 # Payments API
 
-The Payments API is the core of ZendFi - it's how you accept crypto payments from your customers. This guide covers everything from creating simple payments to advanced features like pay-what-you-want pricing and payment splits.
+Our payment API is how you accept crypto payments from your customers. This guide covers everything from creating simple payments to advanced features like pay-what-you-want pricing and payment splits.
 
 ## Overview
 

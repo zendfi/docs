@@ -30,10 +30,10 @@ Create recurring payment plans with automated billing cycles. Perfect for SaaS, 
 
 | Use Case | Description |
 |----------|-------------|
-| 💼 **SaaS Platforms** | Monthly/yearly subscriptions for software access |
-| 🎓 **Online Courses** | Monthly memberships for educational content |
-| 🎮 **Gaming Services** | Premium memberships for game servers |
-| 📰 **Content Creators** | Patreon-style subscriptions for exclusive content |
+| **SaaS Platforms** | Monthly/yearly subscriptions for software access |
+| **Online Courses** | Monthly memberships for educational content |
+| **Gaming Services** | Premium memberships for game servers |
+| **Content Creators** | Patreon-style subscriptions for exclusive content |
 
 ---
 

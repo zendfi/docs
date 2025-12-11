@@ -38,11 +38,11 @@ Your Key = Share 1 (Your Device) + Share 2 (ZendFi) + Share 3 (Recovery)
 
 ### Benefits
 
-- ✅ **No Seed Phrase** - Nothing to write down or lose
-- ✅ **Phishing Resistant** - WebAuthn prevents credential theft
-- ✅ **Device-Bound** - Keys tied to your biometrics/device
-- ✅ **Recovery Possible** - Lost device? Recover with Share 3
-- ✅ **Institutional Grade** - Same tech used by major exchanges
+- **No Seed Phrase** - Nothing to write down or lose
+- **Phishing Resistant** - WebAuthn prevents credential theft
+- **Device-Bound** - Keys tied to your biometrics/device
+- **Recovery Possible** - Lost device? Recover with Share 3
+- **Institutional Grade** - Same tech used by major exchanges
 
 ### Setting Up MPC Wallet
 

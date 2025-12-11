@@ -43,11 +43,11 @@ Share `https://zendfi.tech/pay/plink_abc123` and start collecting payments! 🎉
 
 ## Features
 
-- ✅ **No-Code** - Create links from dashboard or API
-- ✅ **Shareable** - Works on any platform
-- ✅ **Customizable** - Add metadata, limits, expiration
-- ✅ **Reusable** - One link for multiple payments
-- ✅ **Analytics** - Track views, conversions, revenue
+- **No-Code** - Create links from dashboard or API
+- **Shareable** - Works on any platform
+- **Customizable** - Add metadata, limits, expiration
+- **Reusable** - One link for multiple payments
+- **Analytics** - Track views, conversions, revenue
 
 ---
 
@@ -55,11 +55,11 @@ Share `https://zendfi.tech/pay/plink_abc123` and start collecting payments! 🎉
 
 | Use Case | Description |
 |----------|-------------|
-| 💰 **Donations** | Accept tips, donations, or support payments |
-| 📦 **Quick Sales** | Sell products without a full checkout |
-| 🎫 **Event Tickets** | Sell tickets via social media |
-| 💼 **Freelance Billing** | Send payment links instead of invoices |
-| 🛒 **Pre-Orders** | Collect payments before launch |
+| **Donations** | Accept tips, donations, or support payments |
+| **Quick Sales** | Sell products without a full checkout |
+| **Event Tickets** | Sell tickets via social media |
+| **Freelance Billing** | Send payment links instead of invoices |
+| **Pre-Orders** | Collect payments before launch |
 
 ---
 

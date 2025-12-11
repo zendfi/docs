@@ -115,7 +115,7 @@ zendfi status pay_test_abc123xyz
 ```
 Payment Status: pay_test_abc123xyz
 
-Status: Confirmed ✅
+Status: Confirmed
 Amount: $50.00 USD
 Currency: USDC
 Customer: customer@example.com
@@ -250,9 +250,9 @@ zendfi ppp calculate --price 99.99 --country IN
 
 **Output:**
 ```
-🌍 PPP Factor Lookup
+PPP Factor Lookup
 
-  🇧🇷 Brazil (BR)
+  Brazil (BR)
 
   PPP Factor:       0.35
   Discount:         65%
@@ -566,83 +566,104 @@ zendfi completion fish > ~/.config/fish/completions/zendfi.fish
 zendfi [command] [options]
 
 Commands:
-  login                 Authenticate with ZendFi
-  logout                Remove stored credentials
-  whoami                Display current user info
-  init                  Create a new ZendFi project
-  
-  payments              Manage payments
-    create              Create a new payment
-    get <id>            Get payment details
-    list                List payments
-    watch <id>          Watch payment status
-    
-  plans                 Manage subscription plans
-    create              Create a subscription plan
-    list                List plans
-    get <id>            Get plan details
-    
-  subscriptions         Manage subscriptions
-    create              Create a subscription
-    list                List subscriptions
-    cancel <id>         Cancel a subscription
-    
-  webhooks              Manage webhooks
-    create              Create a webhook endpoint
-    list                List webhooks
-    test <id>           Send test event
-    logs <id>           View webhook delivery logs
-    listen              Forward webhooks locally
-    
-  keys                  Manage API keys
-    create              Create a new API key
-    list                List API keys
-    revoke <key>        Revoke an API key
-    
-  config                Configure CLI settings
-    list                List configuration
-    set <key> <value>   Set configuration value
-    
+  init [options]        Add ZendFi to an existing project
   test                  Testing utilities
-    simulate <event>    Simulate an event
-    wallets             List test wallets
-    webhook <event>     Test webhook delivery
+  status <payment-id>   Check payment status
+  webhooks              Webhook management
+  keys                  API key management
+  
+  # Agentic Intent Protocol
+  agent                 Agent API key and session management
+    keys create         Create an agent API key
+    keys list           List agent API keys
+    keys revoke <id>    Revoke an agent key
+    sessions create     Create an agent session
+    sessions list       List sessions
+    sessions revoke     Revoke a session
+    analytics           View agent metrics
+    
+  intents               Payment intent management
+    create              Create a payment intent
+    list                List intents
+    get <id>            Get intent details
+    confirm <id>        Confirm an intent
+    cancel <id>         Cancel an intent
+    
+  ppp                   Purchasing Power Parity pricing
+    check <country>     Check PPP factor for a country
+    calculate           Calculate localized price
+    factors             List all PPP factors
+    
+  autonomy              Autonomous delegation management
+    enable              Enable autonomy for a wallet
+    status <wallet>     Check autonomy status
+    delegates           List all delegates
+    revoke <id>         Revoke a delegation
+    
+  smart                 Smart payments with optimizations
+    create              Create a smart payment
+    simulate            Simulate pricing
 
 Options:
-  --version             Show version number
-  --help                Show help
-  --json                Output as JSON
-  --quiet               Minimal output
-  --verbose             Detailed output
-  --test                Use test environment
+  -V, --version         Output version number
+  -h, --help            Display help for command
 ```
 
 ---
 
 ## Troubleshooting
 
-### Reset CLI
-
-```bash
-zendfi reset
-```
-
 ### Debug Mode
 
+Enable verbose output for debugging:
+
 ```bash
-DEBUG=zendfi* zendfi payments list
+# Use verbose flag
+zendfi test payment --amount 10 --verbose
+
+# Or set DEBUG environment variable
+DEBUG=zendfi* zendfi test payment --amount 10
 ```
 
-### Check Connectivity
+### Common Issues
+
+**Authentication Error**
+```bash
+# Check if API key is set
+echo $ZENDFI_API_KEY
+
+# Set your API key
+export ZENDFI_API_KEY=zfi_test_your_key_here
+```
+
+**Command Not Found**
+```bash
+# Reinstall the CLI
+npm install -g create-zendfi-app
+
+# Verify installation
+zendfi --version
+```
+
+**Network Issues**
+```bash
+# Test with a simple command
+zendfi test payment --amount 1
+
+# Check API URL (if custom)
+echo $ZENDFI_API_URL
+```
+
+### Getting Help
 
 ```bash
-zendfi doctor
+# Show all commands
+zendfi --help
 
-# Output:
-# ✔ API reachable
-# ✔ Authentication valid
-# ✔ Webhook endpoint accessible
-# ✔ CLI up to date
+# Get help for specific command
+zendfi agent --help
+zendfi intents --help
+zendfi ppp --help
 ```
 
 ---
