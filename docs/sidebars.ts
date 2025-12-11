@@ -10,11 +10,11 @@ const sidebars: SidebarsConfig = {
     {
       type: 'doc',
       id: 'intro',
-      label: '📖 Introduction',
+      label: 'Introduction',
     },
     {
       type: 'category',
-      label: '🔌 API Reference',
+      label: 'API Reference',
       collapsed: false,
       items: [
         'api/payments',
@@ -26,7 +26,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '✨ Features',
+      label: 'Features',
       collapsed: false,
       items: [
         'features/payment-splits',
@@ -36,60 +36,58 @@ const sidebars: SidebarsConfig = {
     },
   ],
 
-  // Agentic Payments sidebar - separate from Payments
   agenticSidebar: [
     {
       type: 'doc',
       id: 'agentic/index',
-      label: '🤖 Overview',
+      label: 'Overview',
     },
     {
       type: 'doc',
       id: 'agentic/agent-keys',
-      label: '🔑 Agent Keys',
+      label: 'Agent Keys',
     },
     {
       type: 'doc',
       id: 'agentic/sessions',
-      label: '⏱️ Sessions',
+      label: 'Sessions',
     },
     {
       type: 'doc',
       id: 'agentic/payment-intents',
-      label: '💳 Payment Intents',
+      label: 'Payment Intents',
     },
     {
       type: 'doc',
       id: 'agentic/ppp-pricing',
-      label: '🌍 PPP Pricing',
+      label: 'PPP Pricing',
     },
     {
       type: 'doc',
       id: 'agentic/autonomous-delegation',
-      label: '🤝 Autonomous Delegation',
+      label: 'Autonomous Delegation',
     },
     {
       type: 'doc',
       id: 'agentic/smart-payments',
-      label: '⚡ Smart Payments',
+      label: 'Smart Payments',
     },
     {
       type: 'doc',
       id: 'agentic/device-bound-keys',
-      label: '🔐 Device-Bound Keys',
+      label: 'Device-Bound Keys',
     },
     {
       type: 'doc',
       id: 'agentic/security',
-      label: '🛡️ Security',
+      label: 'Security',
     },
   ],
 
-  // Developer Resources sidebar - SDKs, CLI, etc.
   developerResourcesSidebar: [
     {
       type: 'category',
-      label: '🛠️ SDKs & Libraries',
+      label: 'SDKs & Libraries',
       collapsed: false,
       items: [
         'developer-tools/sdks',
@@ -98,7 +96,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '💻 CLI',
+      label: 'CLI',
       collapsed: false,
       items: [
         'developer-tools/cli',

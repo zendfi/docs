@@ -452,7 +452,7 @@ p {
 
 /* ===== Sidebar ===== */
 .theme-doc-sidebar-container {
-  border-right: 1px solid var(--ifm-color-emphasis-200) !important;
+  border-right: none !important;
 }
 
 /* Align sidebar with navbar brand text - match navbar centering */
@@ -716,7 +716,7 @@ button[class*='copyButton'] {
 }
 
 .table-of-contents__left-border {
-  border-left: 1px solid var(--ifm-color-emphasis-200);
+  border-left: none;
 }
 
 /* ===== Footer ===== */
@@ -775,13 +775,13 @@ button[class*='copyButton'] {
 .pagination-nav__link {
   padding: 0.875rem 1rem;
   border-radius: 6px;
-  border: 1px solid var(--ifm-color-emphasis-200);
+  border: none;
   transition: all 0.2s ease;
+  background: var(--ifm-background-surface-color);
 }
 
 .pagination-nav__link:hover {
-  border-color: var(--ifm-color-primary);
-  background: rgba(99, 91, 255, 0.04);
+  background: rgba(99, 91, 255, 0.08);
 }
 
 .pagination-nav__label {
@@ -799,6 +799,23 @@ button[class*='copyButton'] {
 }
 
 /* ===== Scrollbar ===== */
+/* Hide scrollbars in sidebar and TOC */
+.theme-doc-sidebar-container ::-webkit-scrollbar,
+.table-of-contents ::-webkit-scrollbar,
+.menu ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.theme-doc-sidebar-container,
+.table-of-contents,
+.menu {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* Keep scrollbars visible for main content */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
