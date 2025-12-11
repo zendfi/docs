@@ -30,13 +30,12 @@ const session = await zendfi.agent.createSession({
     max_per_month: 3000,        // $3000 monthly limit
     require_approval_above: 25, // Manual approval above $25
   },
-  allowed_merchants: ['merchant_123'], // Optional whitelist
   duration_hours: 24,
   mint_pkp: true,  // Optional: create on-chain session identity
 });
 
 console.log(`Session ID: ${session.id}`);
-console.log(`Token: ${session.token}`);
+console.log(`Token: ${session.session_token}`);
 console.log(`Expires: ${session.expires_at}`);
 console.log(`Remaining today: $${session.remaining_today}`);
 ```
@@ -64,15 +63,19 @@ const session = await zendfi.agent.createSession({
   duration_hours: 24,
 });
 
-// First payment: $50 ✅
-await makePayment(50);  // Remaining: $150
+// Check remaining budget before each payment
+console.log(`Remaining today: $${session.remaining_today}`); // $200
 
-// Second payment: $100 ✅
-await makePayment(100); // Remaining: $50
+// After a $50 payment, check again:
+const updated = await zendfi.agent.getSession(session.id);
+console.log(`Remaining today: $${updated.remaining_today}`); // $150
 
-// Third payment: $75 ❌ Exceeds limit
-await makePayment(75);  // Error: LIMIT_EXCEEDED
+// If next payment would exceed limit, it will fail with LIMIT_EXCEEDED
 ```
+
+:::note
+The SDK doesn't include a `makePayment()` helper. Use `zendfi.payments.create()` with the session token, or create a Payment Intent for the full flow.
+:::
 
 ### Checking Remaining Limits
 
@@ -80,9 +83,10 @@ await makePayment(75);  // Error: LIMIT_EXCEEDED
 const session = await zendfi.agent.getSession(sessionId);
 
 console.log(`Remaining today: $${session.remaining_today}`);
-console.log(`Remaining this week: $${session.remaining_week}`);
-console.log(`Remaining this month: $${session.remaining_month}`);
-console.log(`Total spent: $${session.total_spent}`);
+console.log(`Remaining this week: $${session.remaining_this_week}`);
+console.log(`Remaining this month: $${session.remaining_this_month}`);
+console.log(`Active: ${session.is_active}`);
+console.log(`Expires: ${session.expires_at}`);
 ```
 
 ## Merchant Whitelists
