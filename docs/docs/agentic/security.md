@@ -117,46 +117,39 @@ const session = await zendfi.agent.createSession({
     max_per_day: 500,            // Daily limit
     max_per_week: 2000,          // Weekly limit
     max_per_month: 5000,         // Monthly limit
-    max_total: 10000,            // Lifetime limit
-    max_transactions: 100,       // Transaction count limit
+    require_approval_above: 200, // Require approval for large tx
   },
+  duration_hours: 24,
+  mint_pkp: true, // Enable on-chain enforcement
 });
 ```
 
-### Delegation Controls
+### Session Configuration
 
 ```typescript
-const delegation = await zendfi.agent.createDelegation({
+const session = await zendfi.agent.createSession({
+  agent_id: 'shopping-agent',
   user_wallet: wallet,
-  agent_id: 'agent',
   
-  // Spending limits
+  // Spending limits enforced by ZendFi
   limits: {
     max_per_transaction: 50,
     max_per_day: 200,
+    max_per_week: 1000,
+    max_per_month: 3000,
   },
   
-  // Merchant restrictions
-  allowed_merchants: ['merch_trusted1', 'merch_trusted2'],
+  // Session expiration
+  duration_hours: 24,
   
-  // Category restrictions
-  allowed_categories: ['groceries', 'utilities'],
-  
-  // Time restrictions
-  time_restrictions: {
-    days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-    hours: { start: '09:00', end: '17:00' },
-    timezone: 'America/New_York',
-  },
-  
-  // Velocity controls
-  velocity_controls: {
-    max_transactions_per_minute: 3,
-    cooldown_after_large_tx: 300, // 5 min after $100+ tx
-  },
-  
-  signature: userSignature,
+  // On-chain identity (Lit Protocol)
+  mint_pkp: true,
 });
+
+// Check remaining budget
+const status = await zendfi.agent.getSession(session.id);
+console.log(`Remaining today: $${status.remaining_today}`);
+console.log(`Remaining this week: $${status.remaining_this_week}`);
 ```
 
 ## Key Security
