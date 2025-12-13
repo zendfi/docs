@@ -54,6 +54,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'doc',
+      id: 'agentic/session-keys',
+      label: 'Session Keys',
+    },
+    {
+      type: 'doc',
       id: 'agentic/payment-intents',
       label: 'Payment Intents',
     },

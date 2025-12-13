@@ -25,16 +25,19 @@ The Agentic Intent Protocol (AIP) is ZendFi's framework for enabling AI agents t
 ```typescript
 import { zendfi } from '@zendfi/sdk';
 
-// 1. Create an agent key
+// 1. Create an agent key (requires agent_id)
 const agentKey = await zendfi.agent.createKey({
   name: 'Shopping Assistant',
-  scopes: ['create_payments', 'manage_sessions'],
+  agent_id: 'shopping-assistant-v1',
+  scopes: ['create_payments'],
 });
+
+console.log('Save this key:', agentKey.full_key); // zai_test_...
 
 // 2. Create a session with spending limits
 const session = await zendfi.agent.createSession({
-  agent_id: 'shopping-assistant',
-  user_wallet: userWallet,
+  agent_id: 'shopping-assistant-v1',
+  user_wallet: 'Hx7B...abc',
   limits: {
     max_per_transaction: 50,
     max_per_day: 200,
@@ -43,9 +46,24 @@ const session = await zendfi.agent.createSession({
 });
 
 // 3. Make payments within limits
-const payment = await zendfi.payments.create({
+const payment = await zendfi.agent.pay({
+  session_token: session.session_token,
   amount: 25.00,
-  session_token: session.token,
+  description: 'Widget purchase',
+});
+
+console.log('Payment confirmed:', payment.transaction_signature);
+
+// Or use Payment Intents for two-phase flow
+const intent = await zendfi.intents.create({
+  amount: 25.00,
+  description: 'Coffee purchase',
+});
+
+// 4. Confirm when customer is ready to pay
+const confirmed = await zendfi.intents.confirm(intent.id, {
+  client_secret: intent.client_secret,
+  customer_wallet: 'Hx7B...abc',
 });
 ```
 
@@ -55,6 +73,7 @@ const payment = await zendfi.payments.create({
 |---------|-------------|------------|
 | **Agent Keys** | Scoped API keys for AI agents | [Agent Keys →](./agent-keys) |
 | **Sessions** | Time-bound spending limits | [Sessions →](./sessions) |
+| **Session Keys** | Pre-funded wallets for autonomous agents | [Session Keys →](./session-keys) |
 | **Payment Intents** | Two-phase commit for reliable payments | [Payment Intents →](./payment-intents) |
 | **PPP Pricing** | Purchasing power parity for global markets | [PPP Pricing →](./ppp-pricing) |
 | **Autonomous Delegation** | User-granted spending authority | [Delegation →](./autonomous-delegation) |
@@ -69,10 +88,10 @@ const payment = await zendfi.payments.create({
 │                      Your AI Agent                          │
 ├─────────────────────────────────────────────────────────────┤
 │                       ZendFi SDK                            │
-├───────────────┬─────────────────────────┬───────────────────┤
-│  Agent Keys   │       Sessions          │   Smart Payments  │
-│  (Scoped)     │   (Spending Limits)     │   (Optimized)     │
-├───────────────┴─────────────────────────┴───────────────────┤
+├───────────────┬───────────────┬───────────────┬─────────────┤
+│  Agent Keys   │   Sessions    │  Session Keys │   Smart     │
+│  (Scoped)     │   (Limits)    │  (Pre-funded) │  Payments   │
+├───────────────┴───────────────┴───────────────┴─────────────┤
 │                    ZendFi Platform                          │
 ├─────────────────────────────────────────────────────────────┤
 │   Solana   │   Lit Protocol   │   Webhooks   │   Analytics  │

@@ -161,9 +161,10 @@ Enable AI agents to make payments autonomously with scoped permissions and spend
 ```typescript
 import { zendfi } from '@zendfi/sdk';
 
-// Agent API - Manage agent keys and sessions
+// Agent API - Manage agent keys, sessions, and payments
 zendfi.agent.createKey(...)
 zendfi.agent.createSession(...)
+zendfi.agent.pay(...)           // Make payments via sessions
 
 // Payment Intents - Two-phase payment flow
 zendfi.intents.create(...)
@@ -178,6 +179,13 @@ zendfi.autonomy.enable(...)
 // Smart Payments - AI-powered routing
 zendfi.smart.execute(...)
 zendfi.smart.submitSigned(...)  // For device-bound flows
+
+// Session Keys - Pre-funded wallets with PKP identity
+zendfi.sessionKeys.create(...)
+zendfi.sessionKeys.submitApproval(...)
+zendfi.sessionKeys.getStatus(...)
+zendfi.sessionKeys.topUp(...)
+zendfi.sessionKeys.revoke(...)
 ```
 
 ### Agent API Keys
@@ -219,11 +227,58 @@ const session = await zendfi.agent.createSession({
   duration_hours: 24,
 });
 
+// Make payments within session limits
+const payment = await zendfi.agent.pay({
+  session_token: session.session_token,
+  amount: 29.99,
+  description: 'Premium widget',
+  auto_gasless: true,
+});
+
+if (payment.requires_signature) {
+  console.log('User must sign:', payment.unsigned_transaction);
+} else {
+  console.log('Payment confirmed:', payment.transaction_signature);
+}
+
 // List active sessions
 const sessions = await zendfi.agent.listSessions();
 
 // Revoke session
 await zendfi.agent.revokeSession(sessionId);
+```
+
+### Session Keys
+
+Pre-funded wallets with PKP identity for fully autonomous agents:
+
+```typescript
+// Create a session key
+const key = await zendfi.sessionKeys.create({
+  agent_id: 'shopping-assistant',
+  user_wallet: 'Hx7B...abc',
+  max_amount: 100,       // $100 spending limit
+  expiry_hours: 24,
+  token: 'USDC',
+});
+
+// User signs the approval transaction (one-time)
+const signedTx = await wallet.signTransaction(key.approval_transaction);
+await zendfi.sessionKeys.submitApproval(key.session_key_id, {
+  signed_transaction: signedTx,
+});
+
+// Check status
+const status = await zendfi.sessionKeys.getStatus(key.session_key_id);
+console.log(`Remaining: $${status.remaining_amount}`);
+
+// Top up if needed
+const topUp = await zendfi.sessionKeys.topUp(key.session_key_id, {
+  amount: 50,
+});
+
+// Revoke when done
+await zendfi.sessionKeys.revoke(key.session_key_id);
 ```
 
 ### Payment Intents

@@ -370,7 +370,7 @@ const agentKey = await zendfi.agent.createKey({
   name: 'Shopping Assistant',
   agent_id: 'shopping-assistant-v1',
   agent_name: 'Smart Shopping Bot',
-  scopes: ['create_payments', 'read_payments', 'read_analytics'],
+  scopes: ['create_payments', 'read_analytics'],
   rate_limit_per_hour: 500,
   metadata: {
     version: '1.0.0',

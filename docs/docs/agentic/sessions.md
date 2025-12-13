@@ -73,8 +73,32 @@ console.log(`Remaining today: $${updated.remaining_today}`); // $150
 // If next payment would exceed limit, it will fail with LIMIT_EXCEEDED
 ```
 
-:::note
-The SDK doesn't include a `makePayment()` helper. Use `zendfi.payments.create()` with the session token, or create a Payment Intent for the full flow.
+## Making Payments with Sessions
+
+Use `agent.pay()` to make payments within session limits:
+
+```typescript
+// Make a payment using the session
+const payment = await zendfi.agent.pay({
+  session_token: session.session_token,
+  amount: 29.99,
+  description: 'Premium widget',
+  auto_gasless: true,  // Optional: subsidize gas for user
+});
+
+if (payment.requires_signature) {
+  // Device-bound flow: user must sign
+  console.log('Sign transaction:', payment.unsigned_transaction);
+  console.log('Submit to:', payment.submit_url);
+} else {
+  // Auto-signed: payment complete
+  console.log('Payment confirmed:', payment.transaction_signature);
+  console.log('Receipt:', payment.receipt_url);
+}
+```
+
+:::tip
+`agent.pay()` automatically enforces spending limits. If the payment would exceed any limit, it will fail with `LIMIT_EXCEEDED`.
 :::
 
 ### Checking Remaining Limits

@@ -40,10 +40,13 @@ The `full_key` is only shown once at creation time. Store it securely - you cann
 
 | Scope | Description | Use Case |
 |-------|-------------|----------|
+| `full` | Full access to all APIs | Admin agents (use with caution) |
+| `read_only` | Read-only access | Monitoring, dashboards |
 | `create_payments` | Create new payments | Shopping agents, checkout bots |
-| `read_payments` | View payment status | Order tracking, receipts |
+| `create_subscriptions` | Create subscriptions | Subscription management |
+| `manage_escrow` | Manage escrow transactions | Marketplace agents |
+| `manage_installments` | Manage installment plans | BNPL agents |
 | `read_analytics` | Access analytics data | Reporting dashboards |
-| `manage_sessions` | Create/revoke sessions | Session management agents |
 
 ### Scope Examples
 
@@ -54,7 +57,9 @@ scopes: ['create_payments']
 
 **Full access for an admin agent:**
 ```typescript
-scopes: ['create_payments', 'read_payments', 'read_analytics', 'manage_sessions']
+scopes: ['full']
+// Or specific scopes:
+scopes: ['create_payments', 'create_subscriptions', 'manage_escrow', 'read_analytics']
 ```
 
 ## Rate Limiting
@@ -102,7 +107,7 @@ Revoking a key takes effect immediately. Any in-flight requests using the key wi
 
 ```bash
 # Create a new agent key
-zendfi agent keys create --name "My Agent" --scopes create_payments,read_payments
+zendfi agent keys create --name "My Agent" --scopes create_payments
 
 # List all agent keys
 zendfi agent keys list
