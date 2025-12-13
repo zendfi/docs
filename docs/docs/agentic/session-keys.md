@@ -18,6 +18,11 @@ Session Keys differ from Agent Sessions in a key way:
 | **User Signature** | Required per payment | One-time approval only |
 | **On-Chain Identity** | Optional PKP | Always has PKP address |
 | **Best For** | Interactive flows | Fully autonomous agents |
+| **Can Link Together** | Yes | Yes |
+
+:::tip Defense in Depth
+For maximum security, **link a session key to a session**. The session key provides signing capability while the session enforces granular spending policies. See [Linking Session Keys to Sessions](#linking-session-keys-to-sessions).
+:::
 
 ## The Session Key Flow
 
@@ -194,6 +199,100 @@ result.session_keys.forEach(key => {
   console.log(`  Expires: ${key.expires_at}`);
 });
 ```
+
+## Linking Session Keys to Sessions
+
+For **defense in depth**, you can link a session key to an AI session. This provides two layers of protection:
+
+1. **Session Key Balance** - Hard cap on total spending (what's funded)
+2. **Session Policy Limits** - Granular limits (per-tx, daily, weekly, monthly)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    LINKED SESSION KEY + SESSION                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│   Session Key (Execution Layer)     Session (Policy Layer)                  │
+│   ─────────────────────────────     ──────────────────────                  │
+│   • Pre-funded wallet: $500         • max_per_transaction: $25              │
+│   • Signing capability              • max_per_day: $100                     │
+│   • Hard spending cap               • max_per_month: $1000                  │
+│                                                                             │
+│   When linked, BOTH limits are checked before each payment.                 │
+│   Payment succeeds only if it satisfies BOTH constraints.                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Linking a Session Key to a Session
+
+```typescript
+// 1. Create a session with granular limits
+const session = await zendfi.agent.createSession({
+  agent_id: 'shopping-bot',
+  user_wallet: userWallet,
+  limits: {
+    max_per_transaction: 25,   // $25 max per payment
+    max_per_day: 100,          // $100 daily limit
+    max_per_month: 1000,       // $1000 monthly limit
+  },
+  duration_hours: 168,  // 7 days
+});
+
+// 2. Create and fund a session key
+const key = await zendfi.sessionKeys.create({
+  user_wallet: userWallet,
+  limit_usdc: 500,  // Fund with $500
+  duration_days: 7,
+  device_fingerprint: fp,
+});
+
+// User approves...
+await zendfi.sessionKeys.submitApproval(key.session_key_id, { signed_transaction: signedTx });
+
+// 3. Link them together
+await zendfi.sessionKeys.linkSession(key.session_key_id, session.id);
+
+// Now payments will check BOTH:
+// - Session key balance ($500 funded)
+// - Session limits ($25 per tx, $100 per day)
+```
+
+### Pre-Checking Payment Affordability
+
+Before making a payment, check if it's allowed:
+
+```typescript
+const check = await zendfi.sessionKeys.canAfford(key.session_key_id, 50);
+
+if (check.allowed) {
+  console.log(`Payment allowed. Effective limit: $${check.effective_limit}`);
+  // Proceed with payment...
+} else {
+  console.log(`Payment blocked: ${check.reason}`);
+  console.log(`Session key remaining: $${check.session_key_remaining}`);
+  console.log(`Session remaining today: $${check.session_remaining_today}`);
+}
+```
+
+### Unlinking a Session
+
+If you need to remove the policy layer:
+
+```typescript
+await zendfi.sessionKeys.unlinkSession(key.session_key_id);
+// Now only session key balance limits apply
+```
+
+### Why Link Them?
+
+| Scenario | Session Key Only | Linked |
+|----------|------------------|--------|
+| Agent tries $500 payment | ✅ Allowed (has balance) | ❌ Blocked (exceeds $25 per-tx limit) |
+| Agent makes 5x $50 payments/day | ✅ Allowed ($250 total) | ❌ Blocked after 2nd (exceeds $100/day) |
+| Compromised agent tries to drain | Can spend full $500 | Capped at policy limits |
+
+**Recommendation:** Always link session keys to sessions for production AI agents.
 
 ## CLI Commands
 
