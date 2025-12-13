@@ -19,12 +19,12 @@ Create recurring payment plans with automated billing cycles. Perfect for SaaS, 
 
 ## Features
 
-- ✅ **Flexible Billing Intervals** - Daily, weekly, monthly, or yearly
-- ✅ **Free Trials** - Offer trial periods before billing starts
-- ✅ **Automatic Billing** - Background worker handles all recurring charges
-- ✅ **Cycle Limits** - Set maximum billing cycles or unlimited
-- ✅ **Customer Tracking** - View all subscriptions per customer wallet
-- ✅ **Webhook Events** - Real-time notifications for all lifecycle events
+- **Flexible Billing Intervals** - Daily, weekly, monthly, or yearly
+- **Free Trials** - Offer trial periods before billing starts
+- **Automatic Billing** - Background worker handles all recurring charges
+- **Cycle Limits** - Set maximum billing cycles or unlimited
+- **Customer Tracking** - View all subscriptions per customer wallet
+- **Webhook Events** - Real-time notifications for all lifecycle events
 
 ## Common Use Cases
 
@@ -35,7 +35,6 @@ Create recurring payment plans with automated billing cycles. Perfect for SaaS, 
 | **Gaming Services** | Premium memberships for game servers |
 | **Content Creators** | Patreon-style subscriptions for exclusive content |
 
----
 
 ## Create Subscription Plan
 
@@ -137,7 +136,6 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
 
 </TryIt>
 
----
 
 ## List Subscription Plans
 
@@ -160,7 +158,6 @@ curl -X GET https://api.zendfi.tech/api/v1/subscription-plans \
 
 </TryIt>
 
----
 
 ## Get Subscription Plan
 
@@ -178,7 +175,6 @@ GET /api/v1/subscription-plans/:plan_id
 curl -X GET https://api.zendfi.tech/api/v1/subscription-plans/plan_abc123def456
 ```
 
----
 
 ## Subscribe Customer to Plan
 
@@ -242,7 +238,6 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions \
 If the plan has `trial_days > 0`, the subscription status will be `"trialing"` and `payment_url` will be `null`. The first payment happens automatically after the trial ends!
 :::
 
----
 
 ## Get Subscription
 
@@ -279,7 +274,6 @@ curl -X GET https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123
 }
 ```
 
----
 
 ## Cancel Subscription
 
@@ -324,7 +318,6 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
   }'
 ```
 
----
 
 ## Subscription Statuses
 
@@ -337,7 +330,6 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
 | `cancelled` | Cancelled by customer/merchant | Revoke access, offer win-back incentives |
 | `expired` | Reached max_cycles or natural end | Revoke access, offer renewal |
 
----
 
 ## Automatic Billing
 
@@ -354,7 +346,6 @@ ZendFi handles all subscription billing automatically. Our background worker:
 You just create subscriptions and we handle everything else!
 :::
 
----
 
 ## Webhook Events
 
@@ -387,7 +378,6 @@ You just create subscriptions and we handle everything else!
 }
 ```
 
----
 
 ## Next Steps
 

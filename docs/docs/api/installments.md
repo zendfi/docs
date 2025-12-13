@@ -25,13 +25,12 @@ Offering installment plans can increase conversion rates by 20-30% for high-tick
 
 ## Features
 
-- ✅ **Flexible Schedules** - Weekly, bi-weekly, or monthly payments
-- ✅ **Down Payments** - Require larger first payment if needed
-- ✅ **Automatic Billing** - ZendFi handles recurring collection
-- ✅ **Grace Periods** - Configurable late payment handling
-- ✅ **Early Payoff** - Customers can pay remaining balance anytime
+- **Flexible Schedules** - Weekly, bi-weekly, or monthly payments
+- **Down Payments** - Require larger first payment if needed
+- **Automatic Billing** - ZendFi handles recurring collection
+- **Grace Periods** - Configurable late payment handling
+- **Early Payoff** - Customers can pay remaining balance anytime
 
----
 
 ## Create Installment Plan
 
@@ -163,8 +162,6 @@ This creates:
 - Down payment: $500 (due immediately)
 - Remaining 5 payments: $500 each ($2,500 ÷ 5)
 
----
-
 ## Get Installment Plan
 
 Retrieve details of an installment plan including payment schedule.
@@ -186,7 +183,6 @@ curl -X GET https://api.zendfi.tech/api/v1/installments/inst_abc123def456 \
 
 </TryIt>
 
----
 
 ## List Customer Installments
 
@@ -209,7 +205,6 @@ curl -X GET "https://api.zendfi.tech/api/v1/installments?customer_wallet=7xKXtg2
 
 </TryIt>
 
----
 
 ## Pay Current Installment
 
@@ -245,7 +240,6 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/pay \
 }
 ```
 
----
 
 ## Pay Off Early
 
@@ -296,7 +290,6 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/payof
 Offering a small discount for early payoff (3-5%) can improve your cash flow and reduce collection overhead!
 :::
 
----
 
 ## Cancel Installment Plan
 
@@ -331,8 +324,6 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/cance
 
 </TryIt>
 
----
-
 ## Installment Plan Statuses
 
 | Status | Description |
@@ -346,7 +337,6 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/cance
 | `cancelled` | Cancelled by merchant |
 | `defaulted` | Customer defaulted on payments |
 
----
 
 ## Installment Statuses
 
@@ -359,7 +349,6 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/cance
 | `failed` | Payment attempt failed |
 | `waived` | Waived by merchant |
 
----
 
 ## Automatic Payment Collection
 
@@ -374,7 +363,6 @@ ZendFi automatically handles installment collection:
 You can also generate payment links manually using the `/pay` endpoint for customers who prefer to pay early or outside of automated emails.
 :::
 
----
 
 ## Webhook Events
 
@@ -408,7 +396,6 @@ You can also generate payment links manually using the `/pay` endpoint for custo
 }
 ```
 
----
 
 ## Best Practices
 
@@ -426,7 +413,6 @@ You can also generate payment links manually using the `/pay` endpoint for custo
 3. **Document everything** - Keep records of all communications
 4. **Know your options** - Refund and cancel vs pursue collection
 
----
 
 ## Next Steps
 

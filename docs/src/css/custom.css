@@ -103,10 +103,13 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-y: scroll;
+  overflow-x: hidden;
 }
 
 body {
   font-feature-settings: 'kern', 'liga', 'calt';
+  overflow-x: hidden;
 }
 
 h1 {
@@ -453,6 +456,10 @@ p {
 /* ===== Sidebar ===== */
 .theme-doc-sidebar-container {
   border-right: none !important;
+  width: var(--doc-sidebar-width) !important;
+  min-width: var(--doc-sidebar-width) !important;
+  max-width: var(--doc-sidebar-width) !important;
+  flex: 0 0 var(--doc-sidebar-width) !important;
 }
 
 /* Align sidebar with navbar brand text - match navbar centering */
@@ -466,6 +473,24 @@ p {
   margin: 0 auto;
   padding-left: 24px;
   padding-right: 24px;
+  width: 100%;
+}
+
+/* Doc layout row - fixed widths to prevent shift */
+[class*="docRoot"],
+[class*="docItemRow"],
+div[class*="docPage"] > div {
+  display: flex;
+  width: 100%;
+}
+
+/* Prevent layout shift from scrollbar */
+.theme-doc-sidebar-container + main,
+.theme-doc-sidebar-container + div,
+[class*="docMainContainer"] {
+  flex: 1 1 0%;
+  min-width: 0;
+  width: calc(100% - var(--doc-sidebar-width));
 }
 
 /* Reset all sidebar padding to align with logo */
@@ -494,7 +519,7 @@ aside.theme-doc-sidebar-container,
 
 .menu__link {
   font-size: 0.875rem;
-  padding: 0.3rem 0.625rem 0.3rem 0 !important;
+  padding: 0.4rem 0.625rem !important;
   border-radius: 5px;
   transition: all 0.15s ease;
   line-height: 1.4;
@@ -537,7 +562,7 @@ aside.theme-doc-sidebar-container,
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ifm-font-color-secondary);
-  padding-left: 0.625rem;
+  padding: 0.4rem 0.625rem !important;
   margin-top: 0.75rem;
 }
 
@@ -575,21 +600,45 @@ table {
   width: 100%;
   margin: 1rem 0;
   display: table;
+  border: none;
+  border-top: none;
+}
+
+thead, thead tr, thead th {
+  border-top: none !important;
 }
 
 th, td {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--ifm-color-emphasis-200);
+  padding: 0.75rem 1rem;
+  border: none;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
   text-align: left;
 }
 
 th {
-  background: var(--ifm-background-surface-color);
+  background: #ffffff !important;
   font-weight: 600;
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ifm-font-color-secondary);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+thead tr {
+  background: #ffffff !important;
+}
+
+[data-theme='dark'] th {
+  background: var(--ifm-background-color) !important;
+}
+
+[data-theme='dark'] thead tr {
+  background: var(--ifm-background-color) !important;
+}
+
+tr:last-child td {
+  border-bottom: none;
 }
 
 tr:nth-child(even) {
@@ -598,6 +647,10 @@ tr:nth-child(even) {
 
 tr:hover {
   background: var(--ifm-background-surface-color);
+}
+
+thead tr:hover {
+  background: transparent !important;
 }
 
 /* ===== Code Blocks ===== */
@@ -802,17 +855,33 @@ button[class*='copyButton'] {
 /* Hide scrollbars in sidebar and TOC */
 .theme-doc-sidebar-container ::-webkit-scrollbar,
 .table-of-contents ::-webkit-scrollbar,
-.menu ::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+.menu ::-webkit-scrollbar,
+[class*="tocCollapsible"] ::-webkit-scrollbar,
+[class*="tableOfContents"] ::-webkit-scrollbar,
+[class*="docItemCol"] ::-webkit-scrollbar,
+[class*="col--3"] ::-webkit-scrollbar,
+.theme-doc-toc-desktop ::-webkit-scrollbar,
+.theme-doc-toc-mobile ::-webkit-scrollbar,
+nav.toc ::-webkit-scrollbar,
+ul.table-of-contents ::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 .theme-doc-sidebar-container,
 .table-of-contents,
-.menu {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+.menu,
+[class*="tocCollapsible"],
+[class*="tableOfContents"],
+[class*="docItemCol"],
+[class*="col--3"],
+.theme-doc-toc-desktop,
+.theme-doc-toc-mobile,
+nav.toc,
+ul.table-of-contents {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE/Edge */
 }
 
 /* Keep scrollbars visible for main content */

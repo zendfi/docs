@@ -39,7 +39,6 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links \
 
 Share `https://zendfi.tech/pay/plink_abc123` and start collecting payments! 🎉
 
----
 
 ## Features
 
@@ -49,7 +48,6 @@ Share `https://zendfi.tech/pay/plink_abc123` and start collecting payments! 🎉
 - **Reusable** - One link for multiple payments
 - **Analytics** - Track views, conversions, revenue
 
----
 
 ## Use Cases
 
@@ -61,7 +59,6 @@ Share `https://zendfi.tech/pay/plink_abc123` and start collecting payments! 🎉
 | **Freelance Billing** | Send payment links instead of invoices |
 | **Pre-Orders** | Collect payments before launch |
 
----
 
 ## Create Payment Link
 
@@ -202,7 +199,6 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links \
 
 </TryIt>
 
----
 
 ## Get Payment Link
 
@@ -253,7 +249,6 @@ curl -X GET https://api.zendfi.tech/api/v1/payment-links/plink_abc123 \
 }
 ```
 
----
 
 ## List Payment Links
 
@@ -284,7 +279,6 @@ curl -X GET "https://api.zendfi.tech/api/v1/payment-links?active=true&limit=10" 
 
 </TryIt>
 
----
 
 ## Update Payment Link
 
@@ -312,8 +306,6 @@ curl -X PATCH https://api.zendfi.tech/api/v1/payment-links/plink_abc123 \
 
 </TryIt>
 
----
-
 ## Deactivate Payment Link
 
 Deactivate a payment link so it can no longer accept payments.
@@ -335,7 +327,6 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links/plink_abc123/deactivat
 
 </TryIt>
 
----
 
 ## Reactivate Payment Link
 
@@ -358,7 +349,6 @@ curl -X POST https://api.zendfi.tech/api/v1/payment-links/plink_abc123/activate 
 
 </TryIt>
 
----
 
 ## Payment Link Analytics
 
@@ -400,7 +390,6 @@ curl -X GET https://api.zendfi.tech/api/v1/payment-links/plink_abc123/analytics 
 }
 ```
 
----
 
 ## Embedding Payment Links
 
@@ -434,7 +423,6 @@ Or use the built-in QR endpoint:
 GET /api/v1/payment-links/:id/qr
 ```
 
----
 
 ## Webhook Events
 
@@ -469,7 +457,6 @@ GET /api/v1/payment-links/:id/qr
 }
 ```
 
----
 
 ## Best Practices
 
@@ -487,7 +474,6 @@ GET /api/v1/payment-links/:id/qr
 3. **Expiration** - Set `expires_at` for time-sensitive offers
 4. **Monitor Analytics** - Track conversion rates and optimize
 
----
 
 ## Next Steps
 

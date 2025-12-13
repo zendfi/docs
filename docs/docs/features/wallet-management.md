@@ -16,7 +16,6 @@ ZendFi provides flexible wallet solutions for both merchants and customers. Choo
 | **Own Wallet** | Full control, existing wallets | Self-custody | User-managed |
 | **Custodial (Coming)** | Simplest UX, onboarding | ZendFi-managed | High |
 
----
 
 ## MPC Passkey Wallets
 
@@ -93,7 +92,6 @@ If you lose access to your device:
 
 Recovery is managed through the merchant dashboard at `dashboard.zendfi.tech`.
 
----
 
 ## Own Wallet
 
@@ -163,8 +161,6 @@ const payment = await zendfi.createPayment({
 // You sign and submit through the dashboard or API
 ```
 
----
-
 ## Customer Wallets
 
 ### Embedded Wallets for Customers
@@ -205,7 +201,6 @@ function PaymentPage() {
 }
 ```
 
----
 
 ## Wallet Security Best Practices
 
@@ -233,7 +228,6 @@ function PaymentPage() {
 | **API Key Rotation** | Rotate keys quarterly |
 | **Audit Logs** | Review all account activity |
 
----
 
 ## Wallet Balances & Activity
 
@@ -301,8 +295,6 @@ curl -X GET https://api.zendfi.tech/api/v1/wallets/activity?limit=20 \
 }
 ```
 
----
-
 ## Token Support
 
 ZendFi supports the following tokens on Solana:
@@ -314,8 +306,6 @@ ZendFi supports the following tokens on Solana:
 | **SOL** | Native | 9 |
 
 More tokens coming soon! Request tokens in our Discord.
-
----
 
 ## Next Steps
 

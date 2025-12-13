@@ -19,7 +19,6 @@ Payment Event → ZendFi → POST to Your URL → Your Server Processes
 3. Your server receives and processes the event
 4. Respond with 200 OK to acknowledge receipt
 
----
 
 ## Quick Setup
 
@@ -105,7 +104,6 @@ The webhook secret is only shown once. Save it securely - you'll need it to veri
 
 Once registered, ZendFi will send events to your URL immediately when they occur.
 
----
 
 ## Webhook Events
 
@@ -164,8 +162,6 @@ Once registered, ZendFi will send events to your URL immediately when they occur
 | `payment_link.expired` | Link expired | Expiration reached |
 | `payment_link.limit_reached` | Usage limit hit | max_uses reached |
 
----
-
 ## Webhook Payload Structure
 
 All webhooks follow this structure:
@@ -216,8 +212,6 @@ All webhooks follow this structure:
   }
 }
 ```
-
----
 
 ## Verifying Webhooks
 
@@ -287,7 +281,6 @@ is_valid = verify_webhook(
 )
 ```
 
----
 
 ## Managing Webhooks
 
@@ -324,7 +317,6 @@ curl -X POST https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/rotate-secr
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
----
 
 ## Testing Webhooks
 
@@ -358,7 +350,6 @@ curl -X POST https://api.zendfi.tech/api/v1/webhooks \
   }'
 ```
 
----
 
 ## Retry Policy
 
@@ -383,8 +374,6 @@ Retry attempts include additional headers:
 |--------|-------------|
 | `X-ZendFi-Retry-Count` | Number of retry attempt (1-6) |
 | `X-ZendFi-Original-Timestamp` | When the event originally occurred |
-
----
 
 ## Best Practices
 
@@ -432,7 +421,6 @@ ZendFi webhook IPs (for allowlisting):
 - `34.102.136.181`
 - `34.102.136.182`
 
----
 
 ## Webhook Logs
 
@@ -474,7 +462,6 @@ curl -X GET https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/logs \
 }
 ```
 
----
 
 ## Next Steps
 

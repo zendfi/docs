@@ -67,6 +67,5 @@ Real-time notifications for all payment events. 23 event types across 8 categori
 - Discord: [discord.gg/zendfi](https://discord.gg/zendfi)
 - Twitter: [@zendfi](https://twitter.com/zendfi)
 
----
 
 Ready to get started? Head over to the [Get Started](/) guide!

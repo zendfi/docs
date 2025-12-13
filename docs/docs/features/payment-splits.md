@@ -23,7 +23,6 @@ Customer Payment ($100)
 
 When a payment is completed, funds are automatically distributed to all split recipients in a single atomic transaction.
 
----
 
 ## What's Built In?
 
@@ -33,7 +32,6 @@ When a payment is completed, funds are automatically distributed to all split re
 - **Per-Payment or Global** - Set splits per payment or as defaults
 - **Real-Time Settlement** - Recipients receive funds immediately
 
----
 
 ## Use Cases
 
@@ -45,7 +43,6 @@ When a payment is completed, funds are automatically distributed to all split re
 | **Royalties** | 80% Artist / 20% Label |
 | **Franchises** | 70% Location / 30% Corporate |
 
----
 
 ## Create Payment with Splits
 
@@ -166,7 +163,6 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 - Developer: $300
 - Designer: $200
 
----
 
 ## Default Splits
 
@@ -208,7 +204,6 @@ Pass `splits` in your payment request to override defaults:
 }
 ```
 
----
 
 ## Split Verification
 
@@ -221,7 +216,6 @@ ZendFi validates all splits before processing:
 | **Minimum Amount** | Each split must result in at least $0.01 |
 | **Recipient Limit** | Maximum 10 recipients per payment |
 
----
 
 ## Split Settlement
 
@@ -239,7 +233,6 @@ All splits settle in a single Solana transaction:
 | **Standard Payment** | Immediate (same block as payment) |
 | **Subscription Renewal** | Splits applied each billing cycle |
 
----
 
 ## Webhook Data
 
@@ -276,7 +269,6 @@ Payment webhooks include split details:
 }
 ```
 
----
 
 ## Reporting
 
@@ -321,7 +313,6 @@ curl -X GET "https://api.zendfi.tech/api/v1/splits/summary?from=2025-10-01&to=20
 }
 ```
 
----
 
 ## Edge Cases
 
@@ -348,7 +339,6 @@ If percentages total less than 100%, the remainder goes to your merchant wallet:
 // 50% remainder → Your merchant wallet
 ```
 
----
 
 ## Best Practices
 
@@ -366,7 +356,6 @@ If percentages total less than 100%, the remainder goes to your merchant wallet:
 3. **Attribution Windows** - Track referral sources in metadata
 4. **Payout Reports** - Generate reports for affiliate reconciliation
 
----
 
 ## Next Steps
 

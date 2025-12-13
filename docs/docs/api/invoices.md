@@ -17,7 +17,6 @@ Create professional invoices with automatic payment tracking and reminders. Perf
 - **Crypto Payments** - Accept USDC payments with on-chain tracking
 - **PDF Generation** - Downloadable invoice PDFs
 
----
 
 ## Create Invoice
 
@@ -169,7 +168,6 @@ curl -X POST https://api.zendfi.tech/api/v1/invoices \
 }
 ```
 
----
 
 ## Get Invoice
 
@@ -188,7 +186,6 @@ curl -X GET https://api.zendfi.tech/api/v1/invoices/inv_abc123def456 \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
----
 
 ## List Invoices
 
@@ -221,7 +218,6 @@ curl -X GET "https://api.zendfi.tech/api/v1/invoices?status=sent&overdue=true" \
 
 </TryIt>
 
----
 
 ## Update Invoice
 
@@ -268,7 +264,6 @@ curl -X PATCH https://api.zendfi.tech/api/v1/invoices/inv_abc123def456 \
   }'
 ```
 
----
 
 ## Send Invoice
 
@@ -299,7 +294,6 @@ curl -X POST https://api.zendfi.tech/api/v1/invoices/inv_abc123def456/send \
   }'
 ```
 
----
 
 ## Send Payment Reminder
 
@@ -322,7 +316,6 @@ curl -X POST https://api.zendfi.tech/api/v1/invoices/inv_abc123def456/remind \
   }'
 ```
 
----
 
 ## Record Payment
 
@@ -377,7 +370,6 @@ curl -X POST https://api.zendfi.tech/api/v1/invoices/inv_abc123def456/payments \
 }
 ```
 
----
 
 ## Mark as Void
 
@@ -400,7 +392,6 @@ curl -X POST https://api.zendfi.tech/api/v1/invoices/inv_abc123def456/void \
   }'
 ```
 
----
 
 ## Invoice Statuses
 
@@ -414,7 +405,6 @@ curl -X POST https://api.zendfi.tech/api/v1/invoices/inv_abc123def456/void \
 | `overdue` | Past due date, unpaid |
 | `void` | Cancelled/voided |
 
----
 
 ## Automatic Reminders
 
@@ -431,7 +421,6 @@ ZendFi can automatically send payment reminders:
 
 Configure automatic reminders in your merchant settings.
 
----
 
 ## Webhook Events
 
@@ -464,7 +453,6 @@ Configure automatic reminders in your merchant settings.
 }
 ```
 
----
 
 ## Invoice PDF
 
@@ -484,8 +472,6 @@ The PDF includes:
 - Payment instructions and QR code
 - Terms and notes
 
----
-
 ## Best Practices
 
 ### Creating Invoices
@@ -502,7 +488,6 @@ The PDF includes:
 3. **Reconcile Regularly** - Match payments to invoices promptly
 4. **Keep Records** - Store payment references for accounting
 
----
 
 ## Next Steps
 
