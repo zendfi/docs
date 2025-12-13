@@ -4,11 +4,9 @@ slug: /intro
 title: Introduction
 ---
 
-# ZendFi Documentation
+# Welcome to ZendFi Payments Section!
 
-Welcome to ZendFi!
-
-ZendFi provides a complete payment infrastructure for merchants who want to accept cryptocurrency payments. Whether you're building an e-commerce store, SaaS platform, marketplace or AI agents that can make autonomous payments, ZendFi has you covered.
+Here, we'll be dishing out everything you need to setup your own complete payment infrastructure. Whether you're building an e-commerce store, SaaS platform, marketplace or AI agents that can make autonomous payments, ZendFi has you covered.
 
 ## What is ZendFi?
 
