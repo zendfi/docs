@@ -310,6 +310,108 @@ logs.forEach(log => {
 });
 ```
 
+## Cryptographic Attestations
+
+For autonomous delegation, ZendFi creates cryptographically signed attestations for every payment. These provide an immutable audit trail proving spending limits were enforced correctly.
+
+### How Attestations Work
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ATTESTATION FLOW                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. Agent requests payment                                      │
+│  2. ZendFi checks spending limits (programmatic)                │
+│  3. ZendFi signs attestation: { spent, limit, requested }       │
+│  4. Attestation stored in immutable audit log                   │
+│  5. Transaction signed and submitted                            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Each attestation contains:
+
+| Field | Description |
+|-------|-------------|
+| `spent_usd` | Amount already spent before this payment |
+| `limit_usd` | User-defined maximum spending limit |
+| `requested_usd` | Amount requested in this payment |
+| `remaining_after_usd` | Remaining budget after payment |
+| `timestamp_ms` | Attestation creation time |
+| `nonce` | Unique ID preventing replay attacks |
+| `signature` | Ed25519 signature from ZendFi |
+
+### Fetching Attestations
+
+```typescript
+const audit = await zendfi.autonomy.getAttestations(delegateId);
+
+console.log(`ZendFi public key: ${audit.zendfi_attestation_public_key}`);
+
+for (const signed of audit.attestations) {
+  const { attestation, signature, signer_public_key } = signed;
+  
+  console.log(`Payment ${attestation.payment_id}:`);
+  console.log(`  Limit: $${attestation.limit_usd}`);
+  console.log(`  Spent before: $${attestation.spent_usd}`);
+  console.log(`  Requested: $${attestation.requested_usd}`);
+  console.log(`  Remaining after: $${attestation.remaining_after_usd}`);
+}
+```
+
+### Independent Verification
+
+Verify attestation signatures using ZendFi's public key:
+
+```typescript
+import nacl from 'tweetnacl';
+import bs58 from 'bs58';
+
+function verifyAttestation(signed, zendfiPublicKey) {
+  // Decode public key from Base58
+  const publicKeyBytes = bs58.decode(zendfiPublicKey);
+  
+  // Decode signature from Base64
+  const signatureBytes = Buffer.from(signed.signature, 'base64');
+  
+  // Reconstruct signed message (canonical JSON)
+  const message = JSON.stringify(signed.attestation);
+  const messageBytes = new TextEncoder().encode(message);
+  
+  // Verify Ed25519 signature
+  return nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+}
+
+// Verify all attestations
+const audit = await zendfi.autonomy.getAttestations(delegateId);
+const pubkey = audit.zendfi_attestation_public_key;
+
+for (const signed of audit.attestations) {
+  const valid = verifyAttestation(signed, pubkey);
+  console.log(`Payment ${signed.attestation.payment_id}: ${valid ? '✓' : '✗'}`);
+}
+```
+
+### Security Properties
+
+| Property | Guarantee |
+|----------|-----------|
+| **Non-repudiation** | ZendFi cannot deny creating the attestation |
+| **Tamper-evident** | Any modification invalidates the signature |
+| **Replay protection** | Unique nonce per attestation |
+| **Time-bound** | Timestamp for chronological ordering |
+| **Auditable** | Third parties can verify independently |
+
+### Regulatory Benefits
+
+Attestations strengthen ZendFi's non-MSB (Money Services Business) position:
+
+- **Cryptographic accountability** - Every spending decision is signed
+- **User control evidence** - Attestations prove user-defined limits
+- **Non-custodial proof** - Demonstrates ZendFi doesn't hold funds
+- **Third-party verifiable** - Anyone can audit with the public key
+
 ## Fraud Detection
 
 ### Velocity Checks

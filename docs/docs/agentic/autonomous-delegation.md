@@ -185,6 +185,32 @@ const delegate = await zendfi.autonomy.enable(sessionKey.id, {
 console.log(`Autonomous mode enabled until ${delegate.expires_at}`);
 ```
 
+### Auditing Spending Attestations
+
+Every autonomous payment generates a cryptographically signed attestation that ZendFi stores as an immutable audit trail. These attestations prove spending limits were enforced correctly:
+
+```typescript
+// Get all attestations for a delegate
+const audit = await zendfi.autonomy.getAttestations(delegate.id);
+
+console.log(`Found ${audit.attestation_count} attestations`);
+console.log(`ZendFi public key: ${audit.zendfi_attestation_public_key}`);
+
+// Each attestation contains:
+for (const signed of audit.attestations) {
+  console.log(`Payment: ${signed.attestation.payment_id}`);
+  console.log(`  Spent before: $${signed.attestation.spent_usd}`);
+  console.log(`  Requested: $${signed.attestation.requested_usd}`);
+  console.log(`  Remaining after: $${signed.attestation.remaining_after_usd}`);
+  console.log(`  Timestamp: ${new Date(signed.attestation.timestamp_ms)}`);
+  
+  // Verify signature independently with nacl.sign.detached.verify()
+  // using ZendFi's published public key
+}
+```
+
+See [Cryptographic Attestations](/agentic/security#cryptographic-attestations) for verification details.
+
 ## PKP (Programmable Key Pair)
 
 When `mint_pkp: true`, ZendFi creates an on-chain identity via Lit Protocol:

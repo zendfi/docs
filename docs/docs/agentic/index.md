@@ -15,6 +15,7 @@ The Agentic Intent Protocol (AIP) is ZendFi's framework for enabling AI agents t
 - **Time-bound sessions** that auto-expire
 - **Device-bound session keys** for non-custodial signing
 - **Autonomous delegates** for hands-free operation
+- **Cryptographic attestations** for verifiable spending limit enforcement
 - **PKP session identity** (optional on-chain audit trail via Lit Protocol)
 - **PPP pricing** for global reach
 - **Complete audit trails** for compliance
