@@ -67,7 +67,34 @@ Authorization: Bearer YOUR_API_KEY
 
 ### Example: Simple USDC Payment
 
-<TryIt method="POST" endpoint="/api/v1/payments" description="Create a new USDC payment">
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+import { zendfi } from '@zendfi/sdk';
+
+const payment = await zendfi.payments.create({
+  amount: 49.99,
+  currency: 'USD',
+  token: 'USDC',
+  description: 'Pro Plan - Monthly Subscription',
+  customerEmail: 'customer@example.com',
+  metadata: {
+    order_id: 'ORD-12345',
+    plan: 'pro_monthly',
+  },
+});
+
+console.log('Payment ID:', payment.id);
+console.log('Checkout URL:', payment.paymentUrl);
+console.log('Status:', payment.status); // "pending"
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payments \
@@ -86,7 +113,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 **Response:**
 
@@ -111,7 +139,23 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 
 ### Example: SOL Payment
 
-<TryIt method="POST" endpoint="/api/v1/payments" description="Create a payment in SOL">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const payment = await zendfi.payments.create({
+  amount: 100.00,
+  currency: 'USD',
+  token: 'SOL',
+  description: 'NFT Minting Fee',
+});
+
+console.log('Payment URL:', payment.paymentUrl);
+console.log('SOL Amount:', payment.amountToken); // 0.5263
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payments \
@@ -125,7 +169,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 **Response:**
 
@@ -158,14 +203,31 @@ GET /api/v1/payments/:payment_id
 
 ### Example
 
-<TryIt method="GET" endpoint="/api/v1/payments/pay_abc123xyz789" description="Retrieve payment details">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const payment = await zendfi.payments.retrieve('pay_abc123xyz789');
+
+console.log('Status:', payment.status);
+console.log('Amount:', payment.amountUsd);
+
+if (payment.status === 'confirmed') {
+  console.log('Transaction:', payment.transactionSignature);
+  console.log('Confirmed at:', payment.confirmedAt);
+}
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl https://api.zendfi.tech/api/v1/payments/pay_abc123xyz789 \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 **Response:**
 
@@ -207,7 +269,26 @@ Enable flexible pricing for donations, tips, or suggested pricing.
 
 ### Example
 
-<TryIt method="POST" endpoint="/api/v1/payments" description="Create a pay-what-you-want payment">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const payment = await zendfi.payments.create({
+  currency: 'USD',
+  token: 'USDC',
+  description: 'Support our project! ☕',
+  allowCustomAmount: true,
+  minimumAmount: 1.00,
+  maximumAmount: 1000.00,
+  suggestedAmount: 5.00,
+});
+
+// Customer can choose any amount between $1-$1000
+// Default suggestion is $5
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payments \
@@ -224,7 +305,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 ## Payment Splits
 
@@ -246,7 +328,34 @@ Split payments between multiple recipients automatically.
 
 ### Example: 80/20 Split
 
-<TryIt method="POST" endpoint="/api/v1/payments" description="Create a payment with revenue splitting">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const payment = await zendfi.payments.create({
+  amount: 100.00,
+  currency: 'USD',
+  token: 'USDC',
+  description: 'Marketplace Purchase',
+  splits: [
+    {
+      recipientWallet: 'SellerWallet123...',
+      percentage: 80,
+      description: 'Seller',
+    },
+    {
+      recipientWallet: 'PlatformWallet456...',
+      percentage: 20,
+      description: 'Platform Fee',
+    },
+  ],
+});
+
+// Seller gets $80, Platform gets $20 automatically
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payments \
@@ -272,13 +381,31 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 ## Idempotency
 
 Prevent duplicate payments with idempotency keys.
 
-<TryIt method="POST" endpoint="/api/v1/payments" description="Create payment with idempotency key">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+// SDK automatically handles idempotency
+const payment = await zendfi.payments.create({
+  amount: 49.99,
+  currency: 'USD',
+  description: 'Order #12345',
+}, {
+  idempotencyKey: 'order_12345_attempt_1', // Optional
+});
+
+// Retrying with the same key returns the original payment
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/payments \
@@ -293,7 +420,8 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 :::tip Idempotency Best Practices
 - Use unique keys per payment intent (e.g., `order_id + timestamp`)
@@ -437,7 +565,17 @@ print(f"Payment URL: {payment['payment_url']}")
 
 ## Next Steps
 
-- [Subscriptions](/api/subscriptions) - Set up recurring billing
-- [Payment Links](/api/payment-links) - Create reusable payment URLs
-- [Payment Splits](/features/payment-splits) - Configure revenue sharing
-- [Webhooks](/features/webhooks) - Handle payment notifications
+**Ready to integrate payments?**
+- [Next.js Integration](../developer-tools/nextjs-integration) - Complete Next.js guide
+- [Express Integration](../developer-tools/express-integration) - REST API guide
+- [E-commerce Integration Guide](../use-cases/ecommerce-store) - Complete tutorial
+- [Set up Webhooks](../features/webhooks) - Handle payment events
+
+**Explore more features:**
+- [Subscriptions API](./subscriptions) - Recurring billing
+- [Payment Links API](./payment-links) - Reusable URLs
+- [Invoices API](./invoices) - Send invoices
+
+**Need help?**
+- [Join Discord](https://discord.gg/zendfi)
+- [Email support](mailto:support@zendfi.tech)

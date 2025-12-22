@@ -1,86 +1,170 @@
 ---
 title: Overview
-description: AI-powered autonomous payment capabilities with the Agentic Intent Protocol
+description: Let AI agents make payments autonomously with spending limits and cryptographic security
 sidebar_position: 1
 ---
 
-# Agentic Payments
+# AI-Ready Payments
 
-Enable AI agents to make payments autonomously with scoped permissions, spending limits, and complete audit trails.
+**Enable AI agents to make payments autonomously—safely and securely.**
 
-:::tip What is the Agentic Intent Protocol?
-The Agentic Intent Protocol (AIP) is ZendFi's framework for enabling AI agents to handle payments on behalf of users. It provides:
-- **Scoped API keys** with limited permissions
-- **Spending limits** per transaction, per day, per week, and per month
-- **Time-bound sessions** that auto-expire
-- **Device-bound session keys** for non-custodial signing
-- **Autonomous delegates** for hands-free operation
-- **Cryptographic attestations** for verifiable spending limit enforcement
-- **PKP session identity** (optional on-chain audit trail via Lit Protocol)
-- **PPP pricing** for global reach
-- **Complete audit trails** for compliance
+Traditional payments require a human to click "Pay" for every transaction. AI agents need autonomy with guardrails.
+
+:::tip Not Sure If You Need This?
+**Use traditional payments if:** User clicks "Pay" for each purchase (e-commerce, SaaS checkout)
+
+**Use AI features if:** Building AI agents that make purchases autonomously (shopping bots, auto-subscriptions, gaming agents)
+
+**[Learn more: Why AI Payments? →](./why-ai-payments)**
 :::
+
 
 ## Quick Start
 
 ```typescript
 import { zendfi } from '@zendfi/sdk';
 
-// 1. Create an agent key (requires agent_id)
+// 1. Create agent key with limited permissions
 const agentKey = await zendfi.agent.createKey({
   name: 'Shopping Assistant',
   agent_id: 'shopping-assistant-v1',
-  scopes: ['create_payments'],
+  scopes: ['create_payments'], // Can't withdraw or full access
 });
 
-console.log('Save this key:', agentKey.full_key); // zai_test_...
-
-// 2. Create a session with spending limits
+// 2. User approves spending session (one-time)
 const session = await zendfi.agent.createSession({
   agent_id: 'shopping-assistant-v1',
   user_wallet: 'Hx7B...abc',
   limits: {
-    max_per_transaction: 50,
-    max_per_day: 200,
+    max_per_transaction: 50,  // $50 max per payment
+    max_per_day: 200,         // $200 daily cap
   },
-  duration_hours: 24,
+  duration_hours: 24,          // Auto-expires
 });
 
-// 3. Make payments within limits
+// 3. AI agent makes payments autonomously (within limits)
 const payment = await zendfi.agent.pay({
   session_token: session.session_token,
   amount: 25.00,
-  description: 'Widget purchase',
+  description: 'Coffee order',
 });
 
 console.log('Payment confirmed:', payment.transaction_signature);
+// ✅ User approved once, AI paid within limits
+```
 
-// Or use Payment Intents for two-phase flow
-const intent = await zendfi.intents.create({
-  amount: 25.00,
-  description: 'Coffee purchase',
-});
+**That's it.** No manual approval for each transaction. Limits enforced cryptographically.
 
-// 4. Confirm when customer is ready to pay
-const confirmed = await zendfi.intents.confirm(intent.id, {
-  client_secret: intent.client_secret,
-  customer_wallet: 'Hx7B...abc',
+
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. USER APPROVES ONCE                                       │
+│    ├─ Creates session with spending limits                  │
+│    ├─ Sets duration (24h, 1 week, etc.)                    │
+│    └─ Gets session token                                    │
+├─────────────────────────────────────────────────────────────┤
+│ 2. AI AGENT PAYS AUTONOMOUSLY                               │
+│    ├─ Uses session token                                    │
+│    ├─ ZendFi checks limits (cryptographic attestation)     │
+│    ├─ Signs transaction (session key or delegation)        │
+│    └─ Payment confirmed (if within limits)                 │
+├─────────────────────────────────────────────────────────────┤
+│ 3. SESSION EXPIRES AUTOMATICALLY                            │
+│    └─ No more payments after duration/limits hit           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+
+## Core Features
+
+| Feature | Description | Learn More |
+|---------|-------------|------------|
+| **Agent Keys** | Scoped API keys with limited permissions | [Agent Keys →](./agent-keys) |
+| **Sessions** | Time-bound spending limits | [Sessions →](./sessions) |
+| **Session Keys** | Pre-funded wallets for agents (advanced) | [Session Keys →](./session-keys) |
+| **Payment Intents** | Two-phase commit for reliable payments | [Payment Intents →](./payment-intents) |
+| **PPP Pricing** | Auto-adjust prices for 27+ countries | [PPP Pricing →](./ppp-pricing) |
+| **Autonomous Delegation** | User-granted spending authority | [Delegation →](./autonomous-delegation) |
+| **Smart Payments** | AI-optimized payment execution | [Smart Payments →](./smart-payments) |
+| **Security** | Cryptographic attestations & audit trails | [Security →](./security) |
+
+
+## Security Model
+
+### Scoped Permissions
+
+```typescript
+// Agent can ONLY create payments (not withdraw or access wallet)
+const key = await zendfi.agent.createKey({
+  scopes: ['create_payments'], // Limited scope
+  rate_limit_per_hour: 100,
 });
 ```
 
-## Core Concepts
+### Spending Limits
 
-| Concept | Description | Learn More |
-|---------|-------------|------------|
-| **Agent Keys** | Scoped API keys for AI agents | [Agent Keys →](./agent-keys) |
-| **Sessions** | Time-bound spending limits | [Sessions →](./sessions) |
-| **Session Keys** | Pre-funded wallets for autonomous agents | [Session Keys →](./session-keys) |
-| **Payment Intents** | Two-phase commit for reliable payments | [Payment Intents →](./payment-intents) |
-| **PPP Pricing** | Purchasing power parity for global markets | [PPP Pricing →](./ppp-pricing) |
-| **Autonomous Delegation** | User-granted spending authority | [Delegation →](./autonomous-delegation) |
-| **Smart Payments** | AI-optimized payment execution | [Smart Payments →](./smart-payments) |
-| **Device-Bound Keys** | Hardware-secured signing keys | [Device Keys →](./device-bound-keys) |
-| **Security** | Best practices and controls | [Security →](./security) |
+```typescript
+// Enforced cryptographically
+const session = await zendfi.agent.createSession({
+  limits: {
+    max_per_transaction: 50,   // Per-payment cap
+    max_per_day: 200,          // Daily total
+    max_per_week: 500,         // Weekly total (optional)
+    max_per_month: 1000,       // Monthly total (optional)
+  },
+});
+```
+
+### Time Bounds
+
+```typescript
+// Sessions auto-expire
+const session = await zendfi.agent.createSession({
+  duration_hours: 24, // Expires in 24 hours
+});
+```
+
+### Audit Trail
+
+- Every transaction logged
+- Cryptographic attestations
+- Optional on-chain audit (Lit Protocol PKP)
+- Compliance-ready
+
+
+## Real-World Examples
+
+### Shopping Bot
+
+```typescript
+// "Order coffee every morning"
+const session = await zendfi.agent.createSession({
+  limits: { max_per_transaction: 10, max_per_day: 50 },
+  allowed_merchants: ['cafe_merchant_id'],
+  duration_hours: 168, // 1 week
+});
+```
+
+### Gaming Agent
+
+```typescript
+// "Buy power-ups when needed"
+const session = await zendfi.agent.createSession({
+  limits: { max_per_transaction: 5, max_per_month: 50 },
+});
+```
+
+### Auto-Upgrade
+
+```typescript
+// "Upgrade my SaaS plan when usage hits 80%"
+const session = await zendfi.agent.createSession({
+  limits: { max_per_transaction: 100, max_per_year: 1200 },
+});
+```
+
 
 ## Architecture
 
@@ -171,7 +255,6 @@ const delegation = await zendfi.agent.createDelegation({
 
 </div>
 
----
 
 ## CLI Quick Reference
 
@@ -197,12 +280,11 @@ zendfi ppp calculate --price 99.99 --country IN
 zendfi smart pay --to <wallet> --amount 99.99
 ```
 
----
 
 ## Resources
 
-- [SDK Examples](/developer-tools/sdk-examples) - Complete code examples
-- [SDK Reference](/developer-tools/sdks) - SDK documentation
+- [Getting Started](/) - Quick start guide with SDK setup
+- [TypeScript Guide](/developer-tools/typescript-guide) - Type-safe SDK patterns
 - [CLI Reference](/developer-tools/cli) - CLI command reference
 - [Webhooks](/features/webhooks) - Handle payment events
 - [API Reference](/api/payments) - REST API documentation

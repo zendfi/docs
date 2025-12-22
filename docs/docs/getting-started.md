@@ -2,50 +2,91 @@
 sidebar_position: 1
 slug: /
 title: Get started
-description: Set up your ZendFi merchant account and create your first payment
+description: Create your first crypto payment in 5 minutes
 ---
 
-# Getting Started with ZendFi
+# Get Started with ZendFi
 
-Welcome to ZendFi! This guide will walk you through setting up your merchant account, choosing your wallet type, generating API keys, and making your first payment. Let's get you accepting crypto payments in minutes!
+Accept SOL, USDC, and USDT payments in 5 minutes. No blockchain knowledge required.
 
-## Quick Start
+
+## Quick Start (Using SDK)
+
+The fastest way to integrate ZendFi:
+
+### 1. Install the SDK
 
 ```bash
-# Install the ZendFi SDK
 npm install @zendfi/sdk
-
-# Or use our CLI to scaffold a new project
-npx create-zendfi-app my-payment-app
 ```
 
-## Step 1: Create Your Merchant Account
+### 2. Get your API key
 
-To get started with ZendFi, you'll need to create a merchant account. This gives you access to the dashboard, API keys, and all ZendFi features.
+[Sign up at zendfi.tech](https://zendfi.tech) to get your test API key.
 
-### Endpoint
+### 3. Create a payment
 
+```typescript
+import { zendfi } from '@zendfi/sdk';
+
+// Set your API key (environment variable recommended)
+// ZENDFI_API_KEY=zfi_test_your_key_here
+
+const payment = await zendfi.createPayment({
+  amount: 50,
+  description: 'Premium subscription',
+  customer_email: 'customer@example.com',
+});
+
+console.log('Payment URL:', payment.payment_url);
+// Send customer to: payment.payment_url
 ```
-POST /api/v1/merchants
+
+**Done!** Customer scans QR code or clicks link. Funds arrive in your wallet instantly.
+
+
+## Detailed Setup (API)
+
+Prefer to use the REST API directly? Here's the complete flow.
+
+### Step 1: Create Your Merchant Account
+
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/merchants \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Store",
+    "email": "merchant@example.com",
+    "business_address": "123 Main St, San Francisco, CA",
+    "wallet_generation_method": "mpc_passkey"
+  }'
 ```
 
-### Request Parameters
+**Response:**
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `name` | string | **Yes** | Your business name |
-| `email` | string | **Yes** | Business email address |
-| `business_address` | string | **Yes** | Physical business address |
-| `webhook_url` | string | No | URL to receive payment notifications |
-| `wallet_generation_method` | string | No | Wallet type (see below) |
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "name": "My Store",
+  "email": "merchant@example.com",
+  "api_key": "zfi_test_abc123...",
+  "passkey_setup_url": "https://api.zendfi.tech/merchants/550e.../setup-passkey",
+  "created_at": "2025-10-26T12:00:00Z"
+}
+```
 
-### Wallet Types
+:::warning Save Your API Key
+Your `api_key` is shown only once! Store it securely in environment variables.
+:::
 
-ZendFi supports two main wallet options:
+### Wallet Options
 
-#### 1. MPC Passkey Wallet (Recommended)
+| Option | Description | Best For |
+|--------|-------------|----------|
+| **MPC Passkey** | Non-custodial wallet with biometric auth | Most users (recommended) |
+| **External Wallet** | Use your existing Solana wallet | Advanced users with existing setup |
 
-**Non-custodial** - You control your funds via biometric authentication (Face ID, Touch ID).
+**MPC Passkey** (No seed phrases!):
 
 - No seed phrases to manage
 - Export private keys anytime
@@ -58,13 +99,7 @@ ZendFi supports two main wallet options:
 }
 ```
 
-#### 2. Bring Your Own Wallet
-
-Use your existing Solana wallet (Phantom, Solflare, Ledger).
-
-- Full control - you manage the wallet
-- Use existing infrastructure
-- No key management by ZendFi
+**External Wallet:**
 
 ```json
 {
@@ -73,89 +108,144 @@ Use your existing Solana wallet (Phantom, Solflare, Ledger).
 }
 ```
 
-### Example: Create Merchant with MPC Wallet
+### Step 2: Set Up Passkey (MPC Only)
 
-```bash
-curl -X POST https://api.zendfi.tech/api/v1/merchants \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My Awesome Store",
-    "email": "merchant@example.com",
-    "business_address": "123 Main St, San Francisco, CA",
-    "webhook_url": "https://mystore.com/webhooks/zendfi",
-    "wallet_generation_method": "mpc_passkey"
-  }'
-```
+If you chose MPC passkey:
 
-### Response
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "My Awesome Store",
-  "email": "merchant@example.com",
-  "api_key": "zfi_live_abc123xyz789...",
-  "passkey_setup_url": "https://api.zendfi.tech/merchants/550e.../setup-passkey",
-  "wallet_address": null,
-  "created_at": "2025-10-26T12:00:00Z"
-}
-```
-
-:::tip Save Your API Key
-Your `api_key` is shown only once! Store it securely in environment variables. Never commit it to version control.
-:::
-
-## Step 2: Set Up Your Passkey (MPC Wallets Only)
-
-If you chose the MPC passkey wallet, you need to complete the passkey setup:
-
-1. Open the `passkey_setup_url` in your browser
+1. Open the `passkey_setup_url` from the response
 2. Click **"Register Passkey"**
-3. Complete Face ID / Touch ID authentication
-4. Wait 5-10 seconds for wallet creation
-5. Your wallet address will be generated automatically!
+3. Complete biometric authentication (Face ID/Touch ID)
+4. Wait 5-10 seconds for wallet generation
 
-After setup, check your wallet:
+**Done!** Your wallet is ready.
+
+### Step 3: Test Your API Key
 
 ```bash
-curl https://api.zendfi.tech/api/v1/merchants/me/wallet \
+curl https://api.zendfi.tech/api/v1/merchants/me \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
-## Step 3: Generate API Keys
-
-Your API key was provided when creating the merchant account. You can generate additional keys from the dashboard or API:
+### Step 4: Create Your First Payment
 
 ```bash
-curl -X POST https://api.zendfi.tech/api/v1/api-keys \
+curl -X POST https://api.zendfi.tech/api/v1/payments \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Production Key",
-    "mode": "live"
+    "amount": 50,
+    "currency": "USD",
+    "description": "Premium subscription",
+    "customer_email": "customer@example.com"
   }'
 ```
 
-### API Key Modes
+**Response:**
 
-| Mode | Prefix | Description |
-|------|--------|-------------|
-| `test` | `zfi_test_` | Devnet testing - no real funds |
-| `live` | `zfi_live_` | Mainnet production - real transactions |
-
-:::warning Test Mode First
-Always test your integration on devnet before going live. Use `zfi_test_` keys for development.
-:::
-
-## Step 4: Create Your First Payment
-
-Now you're ready to accept payments! Here's a simple example:
-
-### Endpoint
-
+```json
+{
+  "payment_id": "pay_abc123",
+  "amount_usd": 50,
+  "status": "Pending",
+  "payment_url": "https://pay.zendfi.tech/abc123",
+  "qr_code": "data:image/png;base64,...",
+  "expires_at": "2025-12-22T12:15:00Z"
+}
 ```
-POST /api/v1/payments
+
+Send your customer to `payment_url` or show them the `qr_code`. Done!
+
+
+## API Key Modes
+
+ZendFi uses **smart API keys** that auto-route to the correct network:
+
+| Mode | Prefix | Network | Purpose |
+|------|--------|---------|---------|
+| **Test** | `zfi_test_` | Solana Devnet | Development (free) |
+| **Live** | `zfi_live_` | Solana Mainnet | Production (real money) |
+
+**No configuration needed.** The SDK/API detects the mode from your key prefix.
+
+
+## Next Steps
+
+### Set Up Webhooks
+
+Get notified when payments are confirmed:
+
+```typescript
+// Next.js example
+import { createWebhookHandler } from '@zendfi/sdk/nextjs';
+
+export const POST = createWebhookHandler({
+  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  handlers: {
+    'payment.confirmed': async (payment) => {
+      // Payment received! Fulfill order
+      await fulfillOrder(payment.metadata.orderId);
+    },
+  },
+});
 ```
+
+**[Full Webhook Guide →](/features/webhooks)**
+
+### Add Subscriptions
+
+Recurring billing with trials and webhooks:
+
+```typescript
+const subscription = await zendfi.createSubscription({
+  plan_id: 'plan_xyz',
+  customer_wallet: '7xKXtg...',
+  customer_email: 'customer@example.com',
+});
+```
+
+**[Subscriptions Guide →](/api/subscriptions)**
+
+### Try AI Features
+
+Building AI agents? Enable autonomous payments:
+
+```typescript
+const session = await zendfi.agent.createSession({
+  agent_id: 'shopping-bot-v1',
+  user_wallet: 'Hx7B...abc',
+  limits: { max_per_day: 200 },
+});
+```
+
+**[AI Payments Guide →](/agentic)**
+
+
+## Test vs Live Mode
+
+### Test Mode (Free)
+
+- Uses Solana **devnet** (test network)
+- Get free SOL from [sol-faucet.com](https://www.sol-faucet.com/)
+- All tokens are worthless (for testing only)
+- Perfect for development
+
+### Live Mode (Production)
+
+- Uses Solana **mainnet** (real network)
+- Real crypto transactions
+- ~$0.0001 network fees (we cover it with 0.6% platform fee)
+- Ready for customers
+
+**Switch between modes by changing your API key.** That's it!
+
+
+## Getting Help
+
+- **Discord:** [discord.gg/zendfi](https://discord.gg/zendfi)
+- **Email:** [support@zendfi.tech](mailto:support@zendfi.tech)
+- **Docs:** [Full API Reference →](/api/payments)
+
+**Ready to scale?** Check out [Payment Links](/api/payment-links), [Subscriptions](/api/subscriptions), and [AI Features](/agentic).
 
 ### Example Request
 
@@ -254,7 +344,7 @@ Now that you have the basics down, explore more features:
 - [Subscriptions](/api/subscriptions) - Recurring billing
 - [Payment Links](/api/payment-links) - Reusable payment URLs
 - [Webhooks](/features/webhooks) - Event notifications
-- [SDKs](/developer-tools/sdks) - TypeScript SDK reference
+- [API Reference](/api/payments) - Complete API documentation with SDK examples
 
 ## Need Help?
 

@@ -4,6 +4,9 @@ title: Subscriptions API
 description: Create recurring payment plans with automated billing
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Subscriptions API
 
 Create recurring payment plans with automated billing cycles. Perfect for SaaS, memberships, and subscription services.
@@ -68,7 +71,32 @@ Authorization: Bearer YOUR_API_KEY
 
 ### Example: Monthly SaaS Plan with Trial
 
-<TryIt method="POST" endpoint="/api/v1/subscription-plans" description="Create a monthly subscription plan with 14-day trial">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+import { zendfi } from '@zendfi/sdk';
+
+const plan = await zendfi.subscriptions.createPlan({
+  name: 'Pro Plan - Monthly',
+  description: 'Full access to all pro features',
+  amount: 29.99,
+  currency: 'USD',
+  billingInterval: 'monthly',
+  intervalCount: 1,
+  trialDays: 14,
+  metadata: {
+    features: ['unlimited_api_calls', 'priority_support', 'advanced_analytics'],
+    tier: 'pro',
+  },
+});
+
+console.log('Plan ID:', plan.id);
+console.log('Subscription URL:', plan.subscriptionUrl);
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
@@ -89,7 +117,8 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 **Response:**
 
@@ -113,7 +142,27 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
 
 ### Example: Annual Plan with Discount
 
-<TryIt method="POST" endpoint="/api/v1/subscription-plans" description="Create an annual subscription plan">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const annualPlan = await zendfi.subscriptions.createPlan({
+  name: 'Pro Plan - Annual',
+  description: 'Save 20% with annual billing!',
+  amount: 287.90,
+  currency: 'USD',
+  billingInterval: 'yearly',
+  metadata: {
+    annual_discount: '20%',
+    monthly_equivalent: 23.99,
+  },
+});
+
+// Annual plan saves customers 20%
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
@@ -134,7 +183,8 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 
 ## List Subscription Plans
@@ -149,14 +199,27 @@ GET /api/v1/subscription-plans
 
 ### Example
 
-<TryIt method="GET" endpoint="/api/v1/subscription-plans" description="List all subscription plans">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const plans = await zendfi.subscriptions.listPlans();
+
+plans.forEach(plan => {
+  console.log(`${plan.name}: $${plan.amount}/${plan.billingInterval}`);
+});
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/subscription-plans \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 
 ## Get Subscription Plan
@@ -197,7 +260,29 @@ POST /api/v1/subscriptions
 
 ### Example
 
-<TryIt method="POST" endpoint="/api/v1/subscriptions" description="Subscribe a customer to a plan">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const subscription = await zendfi.subscriptions.create({
+  planId: 'plan_abc123def456',
+  customerWallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+  customerEmail: 'customer@example.com',
+  metadata: {
+    user_id: 'user_12345',
+    signup_source: 'landing_page',
+  },
+});
+
+console.log('Subscription ID:', subscription.id);
+console.log('Status:', subscription.status); // "trialing" or "active"
+if (subscription.trialEnd) {
+  console.log('Trial ends:', subscription.trialEnd);
+}
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/subscriptions \
@@ -213,7 +298,8 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 **Response:**
 
@@ -251,9 +337,26 @@ GET /api/v1/subscriptions/:id
 
 ### Example
 
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const subscription = await zendfi.subscriptions.retrieve('sub_xyz789abc123');
+
+console.log('Status:', subscription.status);
+console.log('Next payment:', subscription.nextPaymentAttempt);
+console.log('Cycles completed:', subscription.cyclesCompleted);
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
+
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123
 ```
+
+</TabItem>
+</Tabs>
 
 **Response:**
 
@@ -294,7 +397,21 @@ POST /api/v1/subscriptions/:id/cancel
 
 ### Example: Cancel Immediately
 
-<TryIt method="POST" endpoint="/api/v1/subscriptions/sub_xyz789abc123/cancel" description="Cancel a subscription immediately">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+// Cancel immediately
+const subscription = await zendfi.subscriptions.cancel('sub_xyz789abc123', {
+  cancelAtPeriodEnd: false,
+  reason: 'Customer requested cancellation',
+});
+
+console.log('Cancelled:', subscription.status); // "cancelled"
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cancel \
@@ -305,9 +422,27 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 ### Example: Cancel at Period End
+
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+// Let customer finish the current billing period
+const subscription = await zendfi.subscriptions.cancel('sub_xyz789abc123', {
+  cancelAtPeriodEnd: true,
+  reason: 'Switching to annual plan',
+});
+
+// Status remains "active" until period ends
+console.log('Will cancel at:', subscription.currentPeriodEnd);
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cancel \
@@ -317,6 +452,9 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
     "reason": "Switching to annual plan"
   }'
 ```
+
+</TabItem>
+</Tabs>
 
 
 ## Subscription Statuses
@@ -381,8 +519,17 @@ You just create subscriptions and we handle everything else!
 
 ## Next Steps
 
-1. **Set up your webhook URL** - Configure webhooks to receive subscription events
-2. **Create your subscription plans** - Use the Create Plan endpoint to set up pricing tiers
-3. **Let ZendFi handle the rest** - Automatic billing, payment collection, and renewal management
+**Ready to integrate subscriptions?**
+- [SaaS Subscription Guide](../use-cases/saas-subscriptions) - Complete tutorial
+- [Next.js Integration](../developer-tools/nextjs-integration) - Framework guide
+- [Express Integration](../developer-tools/express-integration) - REST API guide
+- [Set up Webhooks](../features/webhooks) - Handle subscription events
 
-See the [Webhooks documentation](/features/webhooks) for setup details.
+**Explore more features:**
+- [Payments API](./payments) - One-time payments
+- [Payment Links API](./payment-links) - Reusable URLs
+- [Invoices API](./invoices) - Send invoices
+
+**Need help?**
+- [Join Discord](https://discord.gg/zendfi)
+- [Email support](mailto:support@zendfi.tech)

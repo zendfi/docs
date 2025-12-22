@@ -4,6 +4,9 @@ title: Installment Plans
 description: Split purchases into multiple payments over time
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # Installment Plans
 
 Let customers split purchases into manageable payments over time. Perfect for high-ticket items and services.
@@ -60,7 +63,38 @@ POST /api/v1/installments
 
 ### Example: 4-Month Plan
 
-<TryIt method="POST" endpoint="/api/v1/installments" description="Create an installment plan">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+import { ZendFi } from '@zendfi/sdk';
+
+const zendfi = new ZendFi();
+
+const plan = await zendfi.installments.create({
+  title: 'MacBook Pro M3 Purchase',
+  description: '14-inch MacBook Pro with M3 Pro chip',
+  totalAmount: 1999,
+  currency: 'USD',
+  numInstallments: 4,
+  installmentInterval: 'monthly',
+  customerWallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+  customerEmail: 'customer@example.com',
+  gracePeriodDays: 5,
+  metadata: {
+    product_sku: 'MBPM3PRO14',
+    order_id: 'order_12345'
+  }
+});
+
+console.log('Plan created:', plan.id);
+console.log('Payment schedule:', plan.schedule);
+console.log('First payment:', plan.installmentAmount);
+console.log('Payment URL:', plan.paymentUrl);
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments \
@@ -82,6 +116,9 @@ curl -X POST https://api.zendfi.tech/api/v1/installments \
     }
   }'
 ```
+
+</TabItem>
+</Tabs>
 
 **Response:**
 
@@ -135,11 +172,28 @@ curl -X POST https://api.zendfi.tech/api/v1/installments \
 }
 ```
 
-</TryIt>
-
 ### Example: Custom Down Payment
 
-<TryIt method="POST" endpoint="/api/v1/installments" description="Create installment plan with custom down payment">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const plan = await zendfi.installments.create({
+  title: 'Home Gym Equipment',
+  totalAmount: 3000,
+  currency: 'USD',
+  numInstallments: 6,
+  installmentInterval: 'monthly',
+  downPaymentAmount: 500, // Custom down payment
+  customerWallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU'
+});
+
+console.log('Down payment:', plan.downPaymentAmount); // 500
+console.log('Remaining payments:', plan.installmentAmount); // 500 each
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments \
@@ -156,7 +210,8 @@ curl -X POST https://api.zendfi.tech/api/v1/installments \
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 This creates:
 - Down payment: $500 (due immediately)
@@ -174,14 +229,32 @@ GET /api/v1/installments/:id
 
 ### Example
 
-<TryIt method="GET" endpoint="/api/v1/installments/inst_abc123def456" description="Get installment plan details">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const plan = await zendfi.installments.retrieve('inst_abc123def456');
+
+console.log('Plan:', plan.title);
+console.log('Status:', plan.status);
+console.log('Paid:', plan.paidAmount, 'of', plan.totalAmount);
+console.log('Remaining:', plan.remainingAmount);
+console.log('\nPayment Schedule:');
+plan.schedule.forEach(payment => {
+  console.log(`${payment.number}: $${payment.amount} - ${payment.status}`);
+});
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/installments/inst_abc123def456 \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 
 ## List Customer Installments
@@ -196,14 +269,30 @@ GET /api/v1/installments?customer_wallet=:wallet
 
 ### Example
 
-<TryIt method="GET" endpoint="/api/v1/installments?customer_wallet=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" description="List installment plans for a customer">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const plans = await zendfi.installments.list({
+  customerWallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU'
+});
+
+plans.forEach(plan => {
+  console.log(`${plan.title}: ${plan.status}`);
+  console.log(`Progress: ${plan.installmentsPaid}/${plan.numInstallments}`);
+});
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X GET "https://api.zendfi.tech/api/v1/installments?customer_wallet=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 
 ## Pay Current Installment
@@ -218,14 +307,17 @@ POST /api/v1/installments/:id/pay
 
 ### Example
 
-<TryIt method="POST" endpoint="/api/v1/installments/inst_abc123def456/pay" description="Pay the current due installment">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
 
-```bash
-curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/pay \
-  -H "Authorization: Bearer zfi_live_abc123..."
+```typescript
+const payment = await zendfi.installments.pay('inst_abc123def456');
+
+console.log('Payment created:', payment.paymentId);
+console.log('Amount:', payment.amount);
+console.log('Installment number:', payment.installmentNumber);
+console.log('Payment URL:', payment.paymentUrl);
 ```
-
-</TryIt>
 
 **Response:**
 
@@ -239,6 +331,30 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/pay \
   "due_date": "2025-11-26T14:00:00Z"
 }
 ```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
+
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/pay \
+  -H "Authorization: Bearer zfi_live_abc123..."
+```
+
+**Response:**
+
+```json
+{
+  "installment_id": "inst_abc123def456",
+  "payment_id": "pay_inst_xyz789",
+  "payment_url": "https://zendfi.tech/pay/pay_inst_xyz789",
+  "amount": 499.75,
+  "installment_number": 2,
+  "due_date": "2025-11-26T14:00:00Z"
+}
+```
+
+</TabItem>
+</Tabs>
 
 
 ## Pay Off Early
@@ -259,7 +375,36 @@ POST /api/v1/installments/:id/payoff
 
 ### Example: Early Payoff with Discount
 
-<TryIt method="POST" endpoint="/api/v1/installments/inst_abc123def456/payoff" description="Pay off remaining balance early">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const payoff = await zendfi.installments.payoff('inst_abc123def456', {
+  discountPercent: 5 // 5% discount for early payoff
+});
+
+console.log('Original remaining:', payoff.originalRemaining);
+console.log('Discount:', payoff.discountAmount);
+console.log('Payoff amount:', payoff.payoffAmount);
+console.log('Payment URL:', payoff.paymentUrl);
+```
+
+**Response:**
+
+```json
+{
+  "installment_id": "inst_abc123def456",
+  "original_remaining": 1499.25,
+  "discount_percent": 5,
+  "discount_amount": 74.96,
+  "payoff_amount": 1424.29,
+  "payment_id": "pay_payoff_xyz789",
+  "payment_url": "https://zendfi.tech/pay/pay_payoff_xyz789"
+}
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/payoff \
@@ -284,7 +429,8 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/payof
 }
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 :::tip Early Payoff Incentives
 Offering a small discount for early payoff (3-5%) can improve your cash flow and reduce collection overhead!
@@ -310,7 +456,20 @@ POST /api/v1/installments/:id/cancel
 
 ### Example
 
-<TryIt method="POST" endpoint="/api/v1/installments/inst_abc123def456/cancel" description="Cancel an installment plan">
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+await zendfi.installments.cancel('inst_abc123def456', {
+  reason: 'Customer cancelled order',
+  refundPaid: true
+});
+
+console.log('Installment plan cancelled');
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/cancel \
@@ -322,7 +481,8 @@ curl -X POST https://api.zendfi.tech/api/v1/installments/inst_abc123def456/cance
   }'
 ```
 
-</TryIt>
+</TabItem>
+</Tabs>
 
 ## Installment Plan Statuses
 
@@ -416,5 +576,15 @@ You can also generate payment links manually using the `/pay` endpoint for custo
 
 ## Next Steps
 
-- [Webhooks](/features/webhooks) - Set up notifications for installment events
-- [Payments API](/api/payments) - Learn about one-time payments
+**Integration Guides:**
+- [Next.js Integration](/developer-tools/nextjs-integration) - Complete setup for Next.js projects
+- [Express Integration](/developer-tools/express-integration) - REST API server guide
+
+**Related APIs:**
+- [Payments API](/api/payments) - One-time payment creation
+- [Subscriptions API](/api/subscriptions) - Recurring billing
+- [Webhooks](/features/webhooks) - Installment event notifications
+
+**Need Help?**
+- [Discord Community](https://discord.gg/zendfi)
+- [Email Support](mailto:support@zendfi.tech)

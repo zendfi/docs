@@ -92,19 +92,34 @@ const sidebars: SidebarsConfig = {
   developerResourcesSidebar: [
     {
       type: 'category',
-      label: 'SDKs & Libraries',
+      label: 'Use Cases',
       collapsed: false,
       items: [
-        'developer-tools/sdks',
-        'developer-tools/sdk-examples',
+        'use-cases/index',
+        'use-cases/ecommerce-store',
+        'use-cases/saas-subscriptions',
+        'use-cases/creator-tips',
+        'use-cases/ai-shopping-bot',
       ],
     },
     {
       type: 'category',
-      label: 'CLI',
+      label: 'Framework Guides',
+      collapsed: false,
+      items: [
+        'developer-tools/nextjs-integration',
+        'developer-tools/express-integration',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Development',
       collapsed: false,
       items: [
         'developer-tools/cli',
+        'developer-tools/testing-and-debugging',
+        'developer-tools/typescript-guide',
+        'developer-tools/best-practices',
       ],
     },
   ],

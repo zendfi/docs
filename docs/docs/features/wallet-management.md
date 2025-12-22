@@ -311,4 +311,4 @@ More tokens coming soon! Request tokens in our Discord.
 
 - [Getting Started](/intro) - Initial merchant setup
 - [Payments API](/api/payments) - Create your first payment
-- [SDKs](/developer-tools/sdks) - Integrate wallet features in your app
+- [API Reference](/api/payments) - Complete API documentation with SDK examples

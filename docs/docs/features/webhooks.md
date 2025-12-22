@@ -467,4 +467,4 @@ curl -X GET https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/logs \
 
 - [Payments API](/api/payments) - Create payments that trigger webhooks
 - [Subscriptions](/api/subscriptions) - Set up recurring billing with webhook events
-- [SDKs](/developer-tools/sdks) - Use our SDKs for easier webhook handling
+- [TypeScript Guide](/developer-tools/typescript-guide) - Type-safe webhook handlers

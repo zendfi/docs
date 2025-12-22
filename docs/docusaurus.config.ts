@@ -68,8 +68,7 @@ const config: Config = {
       items: [
         // Left side - main navigation tabs
         {
-          type: 'doc',
-          docId: 'getting-started',
+          to: '/',
           position: 'left',
           label: 'Get started',
         },
@@ -128,12 +127,16 @@ const config: Config = {
           title: 'Developer Tools',
           items: [
             {
-              label: 'TypeScript SDK',
-              to: '/developer-tools/sdks',
+              label: 'Getting Started',
+              to: '/',
             },
             {
               label: 'CLI',
               to: '/developer-tools/cli',
+            },
+            {
+              label: 'TypeScript Guide',
+              to: '/developer-tools/typescript-guide',
             },
           ],
         },
