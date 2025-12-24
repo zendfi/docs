@@ -163,7 +163,7 @@ export const POST = createNextWebhookHandler({
     
     'payment.failed': async (payment) => {
       // Payment failed - notify user
-      console.log(`❌ Payment failed: ${payment.id}`);
+      console.log(`Payment failed: ${payment.id}`);
     },
   },
 });

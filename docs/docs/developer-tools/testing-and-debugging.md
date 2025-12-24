@@ -83,11 +83,11 @@ ZENDFI_API_KEY=zfi_test_abc123...
 </Tabs>
 
 Debug mode logs:
-- ✅ Request URL, method, headers
-- ✅ Request body (sanitized)
-- ✅ Response status, headers
-- ✅ Response body
-- ✅ Request timing
+-  Request URL, method, headers
+-  Request body (sanitized)
+-  Response status, headers
+-  Response body
+-  Request timing
 
 
 ## Testing Payments Locally
@@ -277,13 +277,13 @@ Status: 401 Unauthorized
 ```
 
 **Solutions:**
-1. ✅ Check API key is correct (no extra spaces)
-2. ✅ Verify environment variable is loaded:
+1.  Check API key is correct (no extra spaces)
+2.  Verify environment variable is loaded:
    ```typescript
    console.log('API Key:', process.env.ZENDFI_API_KEY?.substring(0, 15) + '...');
    ```
-3. ✅ Restart dev server after changing `.env` file
-4. ✅ Use `zfi_test_` prefix for test mode
+3.  Restart dev server after changing `.env` file
+4.  Use `zfi_test_` prefix for test mode
 
 ### Issue: "Payment URL not working"
 
@@ -292,10 +292,10 @@ Status: 401 Unauthorized
 - Cannot complete payment
 
 **Solutions:**
-1. ✅ Verify payment was created successfully (check `payment.id`)
-2. ✅ Use `payment.payment_url` field (snake_case, not camelCase)
-3. ✅ Check payment hasn't expired
-4. ✅ Test mode payments require test wallet
+1.  Verify payment was created successfully (check `payment.id`)
+2.  Use `payment.payment_url` field (snake_case, not camelCase)
+3.  Check payment hasn't expired
+4.  Test mode payments require test wallet
 
 ### Issue: "Webhooks not received"
 
@@ -304,12 +304,12 @@ Status: 401 Unauthorized
 - No events logged
 
 **Solutions:**
-1. ✅ Verify webhook endpoint is configured in dashboard
-2. ✅ Endpoint must be **publicly accessible** (use CLI webhook forwarding or ngrok for localhost)
-3. ✅ Endpoint must return **200 status code**
-4. ✅ Check webhook logs in dashboard for delivery errors
-5. ✅ Verify signature is being validated correctly using `zendfi.verifyWebhook()`
-6. ✅ Check firewall isn't blocking ZendFi IPs
+1.  Verify webhook endpoint is configured in dashboard
+2.  Endpoint must be **publicly accessible** (use CLI webhook forwarding or ngrok for localhost)
+3.  Endpoint must return **200 status code**
+4.  Check webhook logs in dashboard for delivery errors
+5.  Verify signature is being validated correctly using `zendfi.verifyWebhook()`
+6.  Check firewall isn't blocking ZendFi IPs
 
 ### Issue: "Module not found: @zendfi/sdk"
 
@@ -319,9 +319,9 @@ Error: Cannot find module '@zendfi/sdk'
 ```
 
 **Solutions:**
-1. ✅ Install package: `npm install @zendfi/sdk`
-2. ✅ Restart TypeScript server (VS Code: Cmd+Shift+P → "Restart TS Server")
-3. ✅ Delete `node_modules` and reinstall:
+1.  Install package: `npm install @zendfi/sdk`
+2.  Restart TypeScript server (VS Code: Cmd+Shift+P → "Restart TS Server")
+3.  Delete `node_modules` and reinstall:
    ```bash
    rm -rf node_modules package-lock.json
    npm install
@@ -336,16 +336,16 @@ const url = payment.paymentUrl;
 ```
 
 **Solutions:**
-1. ✅ Use snake_case field names: `payment.payment_url` (not `payment.paymentUrl`)
-2. ✅ Update to latest SDK version:
+1.  Use snake_case field names: `payment.payment_url` (not `payment.paymentUrl`)
+2.  Update to latest SDK version:
    ```bash
    npm install @zendfi/sdk@latest
    ```
-3. ✅ Check TypeScript version (requires 4.5+):
+3.  Check TypeScript version (requires 4.5+):
    ```bash
    npx tsc --version
    ```
-4. ✅ Add proper imports:
+4.  Add proper imports:
    ```typescript
    import { ZendFiClient } from '@zendfi/sdk';
    import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
@@ -360,9 +360,9 @@ Access to fetch blocked by CORS policy
 
 **Solutions:**
 
-❌ **Don't call API directly from browser** - API keys would be exposed!
+**Don't call API directly from browser** - API keys would be exposed!
 
-✅ **Create API route on your server:**
+ **Create API route on your server:**
 
 <Tabs groupId="framework">
 <TabItem value="nextjs" label="Next.js" default>
@@ -424,7 +424,7 @@ Retry-After: 60
 ```
 
 **Solutions:**
-1. ✅ Implement exponential backoff:
+1.  Implement exponential backoff:
    ```typescript
    import { ZendFiClient } from '@zendfi/sdk';
    
@@ -433,9 +433,9 @@ Retry-After: 60
      retries: 3, // Auto-retry with backoff
    });
    ```
-2. ✅ Cache responses when possible
-3. ✅ Batch requests instead of making individual calls
-4. ✅ Contact support for higher limits if needed
+2.  Cache responses when possible
+3.  Batch requests instead of making individual calls
+4.  Contact support for higher limits if needed
 
 ### Issue: "Connection timeout"
 
@@ -445,15 +445,15 @@ Error: Request timeout after 30000ms
 ```
 
 **Solutions:**
-1. ✅ Increase timeout:
+1.  Increase timeout:
    ```typescript
    const zendfi = new ZendFiClient({
      apiKey: process.env.ZENDFI_API_KEY,
      timeout: 60000 // 60 seconds
    });
    ```
-2. ✅ Check network connectivity
-3. ✅ Check ZendFi status page for outages
+2.  Check network connectivity
+3.  Check ZendFi status page for outages
 
 
 ## Debugging Checklist

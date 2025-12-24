@@ -135,7 +135,7 @@ const signature = await connection.sendRawTransaction(
 ### Subsequent Payments (Auto-Signing)
 
 ```typescript
-// Cached keypair - no PIN needed! ✨
+// Cached keypair - no PIN needed!
 const signedTx = await sessionKey.signTransaction(
   transaction
   // No PIN needed - uses cached keypair
@@ -260,7 +260,7 @@ const result = await manager.createSessionKey({
   generateRecoveryQR: true,
 });
 
-console.log('✅ Session created:', result.sessionKeyId);
+console.log('Session created:', result.sessionKeyId);
 
 // 2. Save recovery QR
 if (result.recoveryQR) {
@@ -299,7 +299,7 @@ await manager.submitSignedTransaction({
   signedTransaction: Buffer.from(signedTx.serialize()).toString('base64'),
 });
 
-console.log('✅ Payment submitted!');
+console.log('Payment submitted!');
 
 // 7. Subsequent payments - no PIN needed!
 const payment2 = await manager.createPayment({
@@ -308,7 +308,7 @@ const payment2 = await manager.createPayment({
   description: 'Snack',
 });
 
-// Auto-signing with cached keypair ✨
+// Auto-signing with cached keypair 
 const signedTx2 = await sessionKey.signTransaction(payment2.transaction);
 ```
 
@@ -344,7 +344,7 @@ const signedTx2 = await sessionKey.signTransaction(payment2.transaction);
 | Feature | Custodial | Device-Bound |
 |---------|-----------|--------------|
 | Private key location | Backend server | User's device only |
-| Backend can access | ✅ Yes | ❌ No |
+| Backend can access | Yes | No |
 | Requires user action | No | PIN on first use |
 | Recovery method | Backend restore | Recovery QR |
 | Security model | Trust backend | Zero-trust |

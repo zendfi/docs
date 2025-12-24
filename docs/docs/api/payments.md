@@ -349,7 +349,7 @@ curl https://api.zendfi.tech/api/v1/payments/550e8400-e29b-41d4-a716-44665544000
 | Status | Description |
 |--------|-------------|
 | `Pending` | Payment created, waiting for customer |
-| `Confirmed` | Payment successful! ✅ |
+| `Confirmed` | Payment successful! |
 | `Failed` | Payment failed or rejected |
 | `Expired` | 15-minute window expired |
 

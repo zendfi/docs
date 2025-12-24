@@ -139,7 +139,7 @@ router.post(
     secret: process.env.ZENDFI_WEBHOOK_SECRET!,
     handlers: {
       'payment.confirmed': async (payment) => {
-        console.log(`✅ Payment confirmed: ${payment.id}`);
+        console.log(`Payment confirmed: ${payment.id}`);
         
         // Fulfill order
         await fulfillOrder({

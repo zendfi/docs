@@ -27,21 +27,37 @@ Accept crypto tips and donations for content creators, streamers, and open sourc
 
 ## Quick Start: Embed a Tip Button
 
-The fastest way to accept tips - just 3 lines of code:
+The fastest way to accept tips is to create a payment link and share it:
 
-```html
-<!-- Add to your website, Twitch panel, or Linktree -->
-<script src="https://cdn.zendfi.tech/widget.js"></script>
-<button 
-  data-zendfi-tip
-  data-amount="5"
-  data-creator="your_username"
->
-  ☕ Buy me a coffee ($5)
-</button>
+```typescript
+import { ZendFi } from '@zendfi/sdk';
+
+const zendfi = new ZendFi({
+  apiKey: process.env.ZENDFI_API_KEY!,
+  mode: 'live',
+});
+
+// Create a shareable tip link
+const tipLink = await zendfi.createPaymentLink({
+  amount: 5,
+  currency: 'USD',
+  token: 'USDC',
+  description: 'Buy me a coffee!',
+  metadata: {
+    type: 'tip',
+  },
+});
+
+// Share this URL:
+console.log(tipLink.url); // https://checkout.zendfi.tech/checkout/ABC123
 ```
 
-That's it! Clicking the button opens a payment page.
+Add the link to:
+- Twitch panel
+- YouTube description
+- Twitter bio
+- Linktree
+- Email signature
 
 
 ## Step 1: Create Payment Link
@@ -52,23 +68,26 @@ The simplest approach - no code required:
 // lib/zendfi.ts
 import { ZendFi } from '@zendfi/sdk';
 
-export const zendfi = new ZendFi();
+export const zendfi = new ZendFi({
+  apiKey: process.env.ZENDFI_API_KEY!,
+  mode: 'test', // or 'live'
+});
 
 // Create a reusable payment link
-const tipLink = await zendfi.paymentLinks.create({
+const tipLink = await zendfi.createPaymentLink({
   amount: 5, // Fixed $5 tip
+  currency: 'USD',
+  token: 'USDC', // Accept USDC stablecoin
   description: 'Tip for awesome content!',
-  allowCustomAmount: true, // Let supporters choose amount
-  minAmount: 1,
-  maxAmount: 100,
-  successMessage: 'Thank you for your support! 🙏',
   metadata: {
     creator: 'your_username',
     type: 'tip',
   },
 });
 
-console.log(tipLink.url); // Share this URL anywhere
+// Share this URL anywhere
+console.log(tipLink.url); // hosted_page_url
+console.log(tipLink.link_code); // Use to track this link
 ```
 
 **Share your link:**
@@ -129,9 +148,12 @@ export function TipForm({ creator }: { creator: string }) {
       });
       
       const { paymentUrl } = await res.json();
+      
+      // Redirect to ZendFi checkout
       window.location.href = paymentUrl;
     } catch (error) {
       alert('Failed to create tip');
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -196,48 +218,52 @@ import { zendfi } from '@/lib/zendfi';
 export async function POST(request: Request) {
   const { creator, amount, message } = await request.json();
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount: parseFloat(amount),
+    currency: 'USD',
+    token: 'USDC',
     description: `Tip for ${creator}`,
     metadata: {
       creator,
       message,
       type: 'tip',
     },
-    successUrl: `${process.env.NEXT_PUBLIC_URL}/tip/success`,
+    redirect_url: `${process.env.NEXT_PUBLIC_URL}/tip/success`,
   });
   
-  return Response.json({ paymentUrl: payment.paymentUrl });
+  return Response.json({ 
+    paymentUrl: payment.checkout_url || payment.payment_url 
+  });
 }
 ```
 
 ```typescript
 // app/api/webhooks/zendfi/route.ts
-import { createNextWebhookHandler } from '@zendfi/sdk/nextjs';
+import { createNextWebhookHandler } from '@zendfi/sdk/next';
 import { recordTip, sendThankYouEmail, notifyCreator } from '@/lib/tips';
 
 export const POST = createNextWebhookHandler({
   secret: process.env.ZENDFI_WEBHOOK_SECRET!,
   handlers: {
-    'payment.confirmed': async (payment) => {
-      if (payment.metadata.type !== 'tip') return;
+    'PaymentConfirmed': async (payment) => {
+      if (payment.metadata?.type !== 'tip') return;
       
       // Record tip in database
       const tip = await recordTip({
         creator: payment.metadata.creator,
-        amount: payment.amount,
+        amount: payment.amount_usd || payment.amount,
         message: payment.metadata.message,
-        currency: payment.currency,
-        transactionHash: payment.transactionHash,
-        tipper: payment.email || 'Anonymous',
+        currency: payment.currency || 'USD',
+        transaction_signature: payment.transaction_signature,
+        tipper: payment.customer_email || 'Anonymous',
       });
       
       // Send thank you to tipper
-      if (payment.email) {
+      if (payment.customer_email) {
         await sendThankYouEmail({
-          to: payment.email,
+          to: payment.customer_email,
           creator: payment.metadata.creator,
-          amount: payment.amount,
+          amount: payment.amount_usd || payment.amount,
           message: payment.metadata.message,
         });
       }
@@ -245,9 +271,9 @@ export const POST = createNextWebhookHandler({
       // Notify creator
       await notifyCreator({
         creator: payment.metadata.creator,
-        amount: payment.amount,
+        amount: payment.amount_usd || payment.amount,
         message: payment.metadata.message,
-        tipper: payment.email || 'Anonymous',
+        tipper: payment.customer_email || 'Anonymous',
       });
     },
   },
@@ -291,13 +317,36 @@ export default async function SupportersPage({ params }) {
 
 Let supporters set up monthly donations:
 
+First, create a subscription plan:
+
+```typescript
+// Create subscription plan (run once)
+const subscriptionPlan = await zendfi.createSubscriptionPlan({
+  name: 'Monthly Supporter',
+  description: 'Support this creator monthly',
+  amount: 10,
+  currency: 'USD',
+  interval: 'monthly', // or 'daily', 'weekly', 'yearly'
+  interval_count: 1,
+  trial_days: 0,
+  metadata: {
+    creator: 'your_username',
+  },
+});
+
+// Store plan_id for later use
+console.log(subscriptionPlan.id);
+```
+
+Then let users subscribe:
+
 ```typescript
 // components/RecurringDonation.tsx
 'use client';
 
 import { useState } from 'react';
 
-export function RecurringDonation({ creator }) {
+export function RecurringDonation({ creator, planId }) {
   const [amount, setAmount] = useState(10);
   const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly');
   
@@ -305,11 +354,15 @@ export function RecurringDonation({ creator }) {
     const res = await fetch('/api/create-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ creator, amount, interval }),
+      body: JSON.stringify({ 
+        creator, 
+        plan_id: planId,
+        customer_email: 'supporter@example.com',
+      }),
     });
     
-    const { subscriptionUrl } = await res.json();
-    window.location.href = subscriptionUrl;
+    const { subscription_url } = await res.json();
+    window.location.href = subscription_url;
   }
   
   return (
@@ -346,6 +399,30 @@ export function RecurringDonation({ creator }) {
       </button>
     </div>
   );
+}
+```
+
+Backend API route:
+
+```typescript
+// app/api/create-subscription/route.ts
+import { zendfi } from '@/lib/zendfi';
+
+export async function POST(request: Request) {
+  const { creator, plan_id, customer_email } = await request.json();
+  
+  const subscription = await zendfi.createSubscription({
+    plan_id,
+    customer_email,
+    metadata: {
+      creator,
+    },
+  });
+  
+  return Response.json({ 
+    subscription_url: subscription.payment_url,
+    subscription_id: subscription.id,
+  });
 }
 ```
 
@@ -487,36 +564,76 @@ export async function ThankYouWall({ creator }) {
 
 ## Testing
 
-```bash
-# Create test tip
-zendfi payment create --amount 5 --description "Test tip" --open
+### Create Test Payment Link
 
-# Listen for tip webhooks
-zendfi webhooks listen
+```typescript
+import { ZendFi } from '@zendfi/sdk';
+
+const zendfi = new ZendFi({
+  apiKey: process.env.ZENDFI_API_KEY!,
+  mode: 'test', // Use test mode
+});
+
+// Create tip link
+const tipLink = await zendfi.createPaymentLink({
+  amount: 5,
+  currency: 'USD',
+  token: 'USDC',
+  description: 'Test tip',
+  metadata: {
+    creator: 'test_creator',
+    type: 'tip',
+  },
+});
+
+console.log('Tip URL:', tipLink.url);
+console.log('Link code:', tipLink.link_code);
+```
+
+### Test Webhook Handler
+
+```bash
+# Use webhook tester or ngrok
+ngrok http 3000
+
+# Update webhook URL in ZendFi dashboard
+# Make a test payment and check your logs
+```
+
+### Verify Payment
+
+```typescript
+// Get payment by ID
+const payment = await zendfi.getPayment('payment_id');
+console.log('Payment status:', payment.status);
+console.log('Amount:', payment.amount_usd);
 ```
 
 
 ## Production Tips
 
-- Add social sharing ("I just tipped @creator!")
-- Send thank you emails automatically
-- Create supporter tiers (Bronze, Silver, Gold)
-- Offer perks for recurring supporters
-- Display top supporters prominently
-- Set up stream alerts for live notifications
-- Add "Thank you" videos for large tips
+- **Accept multiple tokens**: USDC, USDT, SOL
+- **Add social sharing**: "I just tipped @creator!"
+- **Send thank you emails**: Use the webhook to trigger emails
+- **Create supporter tiers**: Bronze ($10+), Silver ($50+), Gold ($100+)
+- **Offer perks**: Shoutouts, exclusive content, early access
+- **Display top supporters**: Public leaderboard
+- **Set up stream alerts**: Show live notifications during streams
+- **Add "Thank you" videos**: For large tips ($50+)
+- **Monitor metrics**: Track tip frequency and amounts
+- **Tax compliance**: Keep records for tax reporting
 
 
-## Complete Example
+## Learn More
 
-```bash
-npx create-zendfi-app tip-page --template nextjs-ecommerce
-# Customize for tips
-```
+- [Payment Links API](../api/payment-links.md)
+- [Payments API](../api/payments.md)
+- [Subscriptions API](../api/subscriptions.md)
+- [Webhooks](../features/webhooks.md)
 
 
 ## Need Help?
 
 - [Join Discord](https://discord.gg/zendfi)
 - [Email support](mailto:support@zendfi.tech)
-- [View Payment Links API](https://docs.zendfi.tech/api/payment-links)
+- [Book a demo](https://zendfi.tech/demo)

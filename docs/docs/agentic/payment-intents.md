@@ -46,7 +46,7 @@ console.log(`Status: ${confirmed.status}`); // "succeeded"
 |--------|-------------|--------------|
 | `requires_payment` | Waiting for confirmation | Confirm or Cancel |
 | `processing` | Payment in progress | Wait for completion |
-| `succeeded` | Payment complete | Done ✅ |
+| `succeeded` | Payment complete | Done  |
 | `canceled` | Canceled by user/merchant | Create new intent |
 | `failed` | Payment failed | Retry or cancel |
 

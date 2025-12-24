@@ -317,12 +317,12 @@ Attestations strengthen ZendFi's non-MSB (Money Services Business) position:
 ### Secret Management
 
 ```typescript
-// ✅ Good: Use environment variables or secret managers
+//  Good: Use environment variables or secret managers
 const client = new ZendFiClient({
   api_key: process.env.ZENDFI_API_KEY,
 });
 
-// ✅ Better: Use a secret manager
+//  Better: Use a secret manager
 import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
 const secretClient = new SecretManagerServiceClient();

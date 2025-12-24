@@ -276,7 +276,7 @@ const delegate = await zendfi.autonomy.enable(sessionKey.session_key_id, {
   delegation_signature: signature,
 });
 
-console.log(`✅ Autonomous mode enabled!`);
+console.log(` Autonomous mode enabled!`);
 console.log(`   Agent can now spend up to $${delegate.max_amount_usd}`);
 
 // 6. Agent makes payments automatically (no user interaction)

@@ -3,7 +3,7 @@ sidebar_position: 1
 slug: /use-cases
 ---
 
-# Use Cases Overview
+# Overview
 
 Real-world examples of how to integrate ZendFi into your application.
 
@@ -61,38 +61,38 @@ Build an AI agent that makes autonomous purchases on behalf of users.
 
 ## Quick Comparison
 
-| Use Case | Complexity | Time to Build | Best Template |
+| Use Case | Complexity | Time to Build | Setup Method |
 |----------|-----------|---------------|---------------|
-| E-commerce | ⭐⭐ Medium | 2-4 hours | `nextjs-ecommerce` |
-| SaaS | ⭐⭐⭐ High | 4-8 hours | `nextjs-saas` |
-| Tips/Donations | ⭐ Easy | 1-2 hours | Payment Links |
-| AI Shopping Bot | ⭐⭐⭐⭐ Advanced | 1-2 days | Custom |
+| Creator Tips | ⭐ Easy | 1-2 hours | Payment Links |
+| E-commerce | ⭐⭐ Medium | 2-4 hours | SDK Integration |
+| SaaS | ⭐⭐⭐ High | 4-8 hours | SDK + Subscriptions |
+| AI Shopping Bot | ⭐⭐⭐⭐ Advanced | 1-2 days | SDK + Session Keys |
 
 ## Not Sure Which to Choose?
 
-### Start with E-commerce if you're:
+### Start with Creator Tips if you're:
+- A content creator or streamer
+- Running an open source project
+- Accepting donations or support
+- Need the simplest integration (no coding required)
+
+### Choose E-commerce if you're:
 - Selling physical or digital products
 - Building a marketplace
 - Creating an NFT store
 - Need shopping cart functionality
 
-### Choose SaaS if you're:
+### Pick SaaS if you're:
 - Offering a subscription service
 - Building a platform with usage limits
 - Need recurring billing
 - Want tiered pricing plans
 
-### Pick Tips/Donations if you're:
-- A content creator or streamer
-- Running an open source project
-- Accepting donations or support
-- Need the simplest integration
-
 ### Try AI Shopping Bot if you're:
 - Building AI-powered applications
 - Creating autonomous agents
 - Implementing smart automation
-- Need programmable payments
+- Need programmable payments with spending controls
 
 ## Need More Examples?
 

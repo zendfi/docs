@@ -53,7 +53,7 @@ const payment = await zendfi.agent.pay({
   amount: 25.00,
   description: 'Coffee order',
 });
-// ✅ Payment confirmed (within limits)
+//  Payment confirmed (within limits)
 
 const payment2 = await zendfi.agent.pay({
   session_token: session.session_token,

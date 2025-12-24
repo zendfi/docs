@@ -36,9 +36,9 @@ For maximum security, **link a session key to a session**. The session key provi
    requests →        approval    →        payments     →      Add more
    session key       transaction          autonomously        funds
 
-     ┌────┐          ┌────────┐          ┌────────┐          ┌────────┐
-     │ 🤖 │   ───▶   │ ✍️ User │   ───▶   │ 💸 Pay │   ───▶   │ 💰 +$$ │
-     └────┘          └────────┘          └────────┘          └────────┘
+     ┌──────┐          ┌────────┐          ┌────────┐          ┌────────┐
+     │ Agent│   ───▶   │   User │   ───▶   │ Pay    │   ───▶   │ +$$    │
+     └──────┘          └────────┘          └────────┘          └────────┘
        │                 │                   │                   │
        ▼                 ▼                   ▼                   ▼
    pending_approval   active              active              active
@@ -293,8 +293,8 @@ await zendfi.sessionKeys.unlinkSession(key.session_key_id);
 
 | Scenario | Session Key Only | Linked |
 |----------|------------------|--------|
-| Agent tries $500 payment | ✅ Allowed (has balance) | ❌ Blocked (exceeds $25 per-tx limit) |
-| Agent makes 5x $50 payments/day | ✅ Allowed ($250 total) | ❌ Blocked after 2nd (exceeds $100/day) |
+| Agent tries $500 payment |  Allowed (has balance) | Blocked (exceeds $25 per-tx limit) |
+| Agent makes 5x $50 payments/day |  Allowed ($250 total) | Blocked after 2nd (exceeds $100/day) |
 | Compromised agent tries to drain | Can spend full $500 | Capped at policy limits |
 
 **Recommendation:** Always link session keys to sessions for production AI agents.

@@ -128,13 +128,50 @@ export default function PricingPage() {
 ```
 
 
-## Step 3: Create Subscription
+## Step 3: Create Subscription Plans & Subscriptions
+
+First, create subscription plans for each tier:
+
+```typescript
+// lib/setup-plans.ts
+import { zendfi } from '@/lib/zendfi';
+import { PRICING_TIERS } from '@/lib/pricing';
+
+// Run this once to create your subscription plans
+export async function setupSubscriptionPlans() {
+  const plans = [];
+  
+  for (const [key, tier] of Object.entries(PRICING_TIERS)) {
+    if (tier.price === 0) continue; // Skip free tier
+    
+    const plan = await zendfi.createSubscriptionPlan({
+      name: `${tier.name} Plan`,
+      description: `${tier.features.join(', ')}`,
+      amount: tier.price,
+      currency: 'USD',
+      billing_interval: 'monthly',
+      interval_count: 1,
+      trial_days: 0,
+      metadata: {
+        tier_id: tier.id,
+        tier_name: tier.name,
+      },
+    });
+    
+    plans.push({ tierId: key, planId: plan.id });
+  }
+  
+  return plans;
+}
+```
+
+Then create subscriptions for users:
 
 ```typescript
 // app/api/subscribe/route.ts
 import { zendfi } from '@/lib/zendfi';
 import { getServerSession } from 'next-auth';
-import { PRICING_TIERS } from '@/lib/pricing';
+import { getSubscriptionPlanId } from '@/lib/plans';
 
 export async function POST(request: Request) {
   const session = await getServerSession();
@@ -142,29 +179,29 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
   
-  const { tierId } = await request.json();
-  const tier = PRICING_TIERS[tierId];
+  const { tierId, walletAddress } = await request.json();
   
-  if (!tier || tier.price === 0) {
+  // Get the plan ID for this tier
+  const planId = await getSubscriptionPlanId(tierId);
+  
+  if (!planId) {
     return Response.json({ error: 'Invalid tier' }, { status: 400 });
   }
   
   // Create subscription
-  const subscription = await zendfi.subscriptions.create({
-    amount: tier.price,
-    interval: tier.interval,
-    description: `${tier.name} Plan Subscription`,
+  const subscription = await zendfi.createSubscription({
+    plan_id: planId,
+    customer_wallet: walletAddress,
+    customer_email: session.user.email,
     metadata: {
       user_id: session.user.id,
-      tier_id: tier.id,
-      tier_name: tier.name,
+      tier_id: tierId,
     },
-    successUrl: `${process.env.NEXT_PUBLIC_URL}/dashboard?subscription=success`,
-    cancelUrl: `${process.env.NEXT_PUBLIC_URL}/pricing`,
   });
   
   return Response.json({ 
-    subscriptionUrl: subscription.paymentUrl 
+    subscriptionUrl: subscription.payment_url,
+    subscriptionId: subscription.id,
   });
 }
 ```
@@ -175,14 +212,21 @@ export async function POST(request: Request) {
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 export function SubscribeButton({ tier }) {
   const { data: session } = useSession();
+  const { publicKey } = useWallet();
   const [loading, setLoading] = useState(false);
   
   async function handleSubscribe() {
     if (!session) {
       window.location.href = '/login?redirect=/pricing';
+      return;
+    }
+    
+    if (!publicKey) {
+      alert('Please connect your wallet first');
       return;
     }
     
@@ -192,7 +236,10 @@ export function SubscribeButton({ tier }) {
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tierId: tier.id }),
+        body: JSON.stringify({ 
+          tierId: tier.id,
+          walletAddress: publicKey.toBase58(),
+        }),
       });
       
       const { subscriptionUrl } = await res.json();
@@ -222,45 +269,50 @@ export function SubscribeButton({ tier }) {
 
 ```typescript
 // app/api/webhooks/zendfi/route.ts
-import { createNextWebhookHandler } from '@zendfi/sdk/nextjs';
-import { updateUserSubscription, suspendUser, reactivateUser } from '@/lib/users';
+import { createNextWebhookHandler } from '@zendfi/sdk/next';
+import { updateUserSubscription, suspendUser } from '@/lib/users';
 
 export const POST = createNextWebhookHandler({
   secret: process.env.ZENDFI_WEBHOOK_SECRET!,
   handlers: {
     // New subscription activated
-    'subscription.created': async (subscription) => {
+    SubscriptionCreated: async (event) => {
+      const subscription = event.data;
+      
       await updateUserSubscription({
         userId: subscription.metadata.user_id,
         tierId: subscription.metadata.tier_id,
-        status: 'active',
+        status: subscription.status,
         subscriptionId: subscription.id,
-        currentPeriodEnd: subscription.currentPeriodEnd,
+        currentPeriodEnd: new Date(subscription.current_period_end),
       });
       
       await sendWelcomeEmail({
         userId: subscription.metadata.user_id,
-        tierName: subscription.metadata.tier_name,
+        tierName: subscription.plan_name,
       });
     },
     
-    // Subscription payment successful
-    'subscription.payment_succeeded': async (subscription) => {
+    // Subscription renewed successfully
+    SubscriptionRenewed: async (event) => {
+      const subscription = event.data;
+      
       await updateUserSubscription({
         userId: subscription.metadata.user_id,
-        status: 'active',
-        currentPeriodEnd: subscription.currentPeriodEnd,
+        status: subscription.status,
+        currentPeriodEnd: new Date(subscription.current_period_end),
       });
       
       await sendReceiptEmail({
         userId: subscription.metadata.user_id,
-        amount: subscription.amount,
-        nextBillingDate: subscription.currentPeriodEnd,
+        nextBillingDate: subscription.current_period_end,
       });
     },
     
     // Subscription payment failed
-    'subscription.payment_failed': async (subscription) => {
+    SubscriptionPaymentFailed: async (event) => {
+      const subscription = event.data;
+      
       await updateUserSubscription({
         userId: subscription.metadata.user_id,
         status: 'past_due',
@@ -268,12 +320,14 @@ export const POST = createNextWebhookHandler({
       
       await sendPaymentFailedEmail({
         userId: subscription.metadata.user_id,
-        retryDate: subscription.nextPaymentAttempt,
+        retryDate: subscription.next_payment_attempt,
       });
     },
     
     // Subscription cancelled
-    'subscription.cancelled': async (subscription) => {
+    SubscriptionCancelled: async (event) => {
+      const subscription = event.data;
+      
       await updateUserSubscription({
         userId: subscription.metadata.user_id,
         status: 'cancelled',
@@ -283,18 +337,14 @@ export const POST = createNextWebhookHandler({
       // Don't suspend immediately - let them use until period end
       await sendCancellationConfirmationEmail({
         userId: subscription.metadata.user_id,
-        accessUntil: subscription.currentPeriodEnd,
-      });
-    },
-    
-    // Subscription expired (period ended after cancellation)
-    'subscription.expired': async (subscription) => {
-      await updateUserSubscription({
-        userId: subscription.metadata.user_id,
-        status: 'expired',
+        accessUntil: subscription.current_period_end,
       });
       
-      await suspendUser(subscription.metadata.user_id);
+      // Schedule suspension for period end
+      const periodEnd = new Date(subscription.current_period_end);
+      if (periodEnd < new Date()) {
+        await suspendUser(subscription.metadata.user_id);
+      }
     },
   },
 });
@@ -323,10 +373,10 @@ export default async function DashboardPage() {
       <div className="current-plan">
         <h2>Current Plan: {tier.name}</h2>
         {subscription.status === 'active' && (
-          <p>Next billing: {subscription.currentPeriodEnd.toLocaleDateString()}</p>
+          <p>Next billing: {new Date(subscription.current_period_end).toLocaleDateString()}</p>
         )}
         {subscription.status === 'cancelled' && (
-          <p>Access until: {subscription.currentPeriodEnd.toLocaleDateString()}</p>
+          <p>Access until: {new Date(subscription.current_period_end).toLocaleDateString()}</p>
         )}
         <ManageSubscriptionButton />
       </div>
@@ -423,7 +473,7 @@ export async function POST(request: Request) {
   }
   
   // Cancel subscription (user keeps access until period ends)
-  await zendfi.subscriptions.cancel(subscription.subscriptionId);
+  await zendfi.cancelSubscription(subscription.subscriptionId);
   
   return Response.json({ success: true });
 }

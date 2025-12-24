@@ -15,7 +15,7 @@ Production-ready patterns for building secure, performant, and scalable ZendFi i
 
 ### Never Expose API Keys
 
-❌ **Don't do this:**
+**Don't do this:**
 
 ```typescript
 // NEVER expose API keys in client-side code
@@ -24,7 +24,7 @@ const zendfi = new ZendFiClient({
 });
 ```
 
-✅ **Do this instead:**
+ **Do this instead:**
 
 <Tabs groupId="framework">
 <TabItem value="nextjs" label="Next.js" default>
@@ -168,19 +168,19 @@ export async function POST(request: Request) {
 
 Don't store sensitive data in metadata - it may be logged or visible in dashboard:
 
-❌ **Don't do this:**
+**Don't do this:**
 ```typescript
 const payment = await zendfi.createPayment({
   amount: 100,
   metadata: {
-    credit_card: '4242-4242-4242-4242', // ❌ Never!
-    ssn: '123-45-6789', // ❌ Never!
-    password: 'secret123' // ❌ Never!
+    credit_card: '4242-4242-4242-4242', // Never!
+    ssn: '123-45-6789', // Never!
+    password: 'secret123' // Never!
   }
 });
 ```
 
-✅ **Do this instead:**
+ **Do this instead:**
 ```typescript
 const payment = await zendfi.createPayment({
   amount: 100,
@@ -393,10 +393,10 @@ async function getSubscriptionPlan(planId: string) {
 For large datasets, always use pagination:
 
 ```typescript
-// ❌ Don't fetch everything at once
+// Don't fetch everything at once
 const allPayments = await zendfi.listPayments({ limit: 10000 });
 
-// ✅ Paginate through results
+// Paginate through results
 async function getAllPayments() {
   const payments = [];
   let page = 1;
@@ -422,12 +422,12 @@ async function getAllPayments() {
 Group operations when possible:
 
 ```typescript
-// ❌ Slow: Individual requests
+// Slow: Individual requests
 for (const order of orders) {
   await zendfi.createPayment({ amount: order.total });
 }
 
-// ✅ Fast: Create payment links in batch
+//  Fast: Create payment links in batch
 const links = await Promise.all(
   orders.map(order =>
     zendfi.createPaymentLink({

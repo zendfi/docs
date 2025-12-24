@@ -124,7 +124,7 @@ zendfi payment status pay_test_abc123xyz
 ```
 Payment Status: pay_test_abc123xyz
 
-Status: Confirmed ✅
+Status: Confirmed
 Amount: $50.00 USD
 Currency: USDC
 Customer: customer@example.com

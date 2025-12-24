@@ -50,7 +50,7 @@ const payment = await zendfi.agent.pay({
 });
 
 console.log('Payment confirmed:', payment.transaction_signature);
-// ✅ User approved once, AI paid within limits
+// ser approved once, AI paid within limits
 ```
 
 **That's it.** No manual approval for each transaction. Limits enforced cryptographically.

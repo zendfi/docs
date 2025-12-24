@@ -15,11 +15,11 @@ Complete guide to using ZendFi with TypeScript for maximum type safety and devel
 
 The ZendFi SDK is built with TypeScript and provides:
 
-✅ **Full type coverage** - Every method, parameter, and response is typed  
-✅ **Autocomplete** - IntelliSense shows available methods and parameters  
-✅ **Compile-time errors** - Catch mistakes before runtime  
-✅ **Better refactoring** - Rename and update with confidence  
-✅ **Documentation** - Types serve as inline documentation
+ **Full type coverage** - Every method, parameter, and response is typed  
+ **Autocomplete** - IntelliSense shows available methods and parameters  
+ **Compile-time errors** - Catch mistakes before runtime  
+ **Better refactoring** - Rename and update with confidence  
+ **Documentation** - Types serve as inline documentation
 
 ## Installation
 
@@ -632,11 +632,11 @@ type PaymentStatusUnion = Payment['status']; // 'pending' | 'confirmed' | 'faile
 ### 1. Always Import Types
 
 ```typescript
-// ✅ Good: Import types separately
+//  Good: Import types separately
 import { ZendFiClient } from '@zendfi/sdk';
 import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
 
-// ❌ Avoid: Importing everything without type keyword
+// Avoid: Importing everything without type keyword
 import { ZendFiClient, Payment, CreatePaymentRequest } from '@zendfi/sdk';
 ```
 
@@ -657,12 +657,12 @@ import { ZendFiClient, Payment, CreatePaymentRequest } from '@zendfi/sdk';
 ### 3. Define Return Types
 
 ```typescript
-// ✅ Good: Explicit return type
+//  Good: Explicit return type
 async function getPayment(id: string): Promise<Payment> {
   return await zendfi.getPayment(id);
 }
 
-// ❌ Avoid: Implicit return type
+// Avoid: Implicit return type
 async function getPayment(id: string) {
   return await zendfi.getPayment(id);
 }
@@ -697,12 +697,12 @@ function processPayment(payment: Payment): void {
 ```typescript
 import type { Payment } from '@zendfi/sdk';
 
-// ✅ Correct: snake_case
+//  Correct: snake_case
 const url = payment.payment_url;
 const merchant = payment.merchant_id;
 const createdAt = payment.created_at;
 
-// ❌ Wrong: camelCase (TypeScript error)
+// Wrong: camelCase (TypeScript error)
 const url = payment.paymentUrl;
 const merchant = payment.merchantId;
 const createdAt = payment.createdAt;

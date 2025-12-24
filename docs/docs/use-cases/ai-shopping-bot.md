@@ -62,42 +62,46 @@ export async function POST(request: Request) {
   }
   
   const { 
-    agentId,
-    maxPerTransaction, 
-    maxPerDay,
-    maxPerMonth,
-    duration, // hours
+    agent_id,
+    max_per_transaction, 
+    max_per_day,
+    max_per_month,
+    duration_hours,
   } = await request.json();
   
   // Create AI agent session with spending limits
-  const agentSession = await zendfi.agent.sessions.create({
-    userId: session.user.id,
-    walletAddress: session.user.walletAddress,
-    agentId,
+  const agentSession = await zendfi.agent.createSession({
+    agent_id,
+    agent_name: 'Shopping Bot',
+    user_wallet: session.user.walletAddress, // REQUIRED
     limits: {
-      maxPerTransaction,
-      maxPerDay,
-      maxPerMonth,
+      max_per_transaction,
+      max_per_day,
+      max_per_month,
+      require_approval_above: max_per_transaction * 0.8, // Optional: require approval for large purchases
     },
-    duration, // Session expires after this many hours
+    duration_hours,
     metadata: {
+      user_id: session.user.id,
       user_email: session.user.email,
       created_via: 'shopping-bot-ui',
     },
   });
   
-  // Store session ID in database for the AI to use
+  // Store session in your database for the AI to use
   await saveAgentSession({
-    userId: session.user.id,
-    sessionId: agentSession.id,
-    agentId,
+    user_id: session.user.id,
+    session_id: agentSession.id,
+    session_token: agentSession.session_token, // Use this for API calls
+    agent_id,
     limits: agentSession.limits,
-    expiresAt: agentSession.expiresAt,
+    expires_at: agentSession.expires_at,
   });
   
   return Response.json({ 
-    sessionId: agentSession.id,
-    expiresAt: agentSession.expiresAt,
+    session_id: agentSession.id,
+    session_token: agentSession.session_token,
+    expires_at: agentSession.expires_at,
   });
 }
 ```
@@ -115,23 +119,23 @@ export function AIShoppingSetup() {
   const [maxPerTransaction, setMaxPerTransaction] = useState(15);
   const [maxPerDay, setMaxPerDay] = useState(50);
   const [maxPerMonth, setMaxPerMonth] = useState(200);
-  const [duration, setDuration] = useState(720); // 30 days
+  const [durationHours, setDurationHours] = useState(720); // 30 days in hours
   
   async function handleEnable() {
     const res = await fetch('/api/ai/create-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        agentId: 'shopping-bot-v1',
-        maxPerTransaction,
-        maxPerDay,
-        maxPerMonth,
-        duration,
+        agent_id: 'shopping-bot-v1',
+        max_per_transaction: maxPerTransaction,
+        max_per_day: maxPerDay,
+        max_per_month: maxPerMonth,
+        duration_hours: durationHours,
       }),
     });
     
-    const { sessionId, expiresAt } = await res.json();
-    alert(`AI shopping enabled! Session expires: ${new Date(expiresAt).toLocaleDateString()}`);
+    const { session_id, expires_at } = await res.json();
+    alert(`AI shopping enabled! Session expires: ${new Date(expires_at).toLocaleDateString()}`);
   }
   
   return (
@@ -171,8 +175,8 @@ export function AIShoppingSetup() {
           Session duration (days):
           <input
             type="number"
-            value={duration / 24}
-            onChange={(e) => setDuration(Number(e.target.value) * 24)}
+            value={durationHours / 24}
+            onChange={(e) => setDurationHours(Number(e.target.value) * 24)}
           />
         </label>
       </div>
@@ -202,8 +206,10 @@ The AI agent can now make purchases without asking for approval each time:
 // AI agent code (runs on your server or AI platform)
 import { ZendFi } from '@zendfi/sdk';
 
+// Use agent API key (created via /api/v1/agent-keys)
 const zendfi = new ZendFi({
-  apiKey: process.env.ZENDFI_AGENT_API_KEY, // Special agent API key
+  apiKey: process.env.ZENDFI_AGENT_API_KEY, // Agent key starts with "zai_"
+  mode: 'test', // or 'live'
 });
 
 async function checkAndRestock(userId: string, productId: string) {
@@ -214,14 +220,18 @@ async function checkAndRestock(userId: string, productId: string) {
     // 2. Get product details
     const product = await getProduct(productId);
     
-    // 3. Get user's AI session
+    // 3. Get user's AI session from your database
     const session = await getUserAgentSession(userId);
     
-    // 4. Create autonomous payment using session
+    // 4. Create smart payment using session token
     try {
-      const payment = await zendfi.agent.payments.create({
-        sessionId: session.id, // Uses session spending limits
-        amount: product.price,
+      const payment = await zendfi.smart.execute({
+        session_token: session.session_token, // Session validates spending limits
+        agent_id: 'shopping-bot-v1',
+        user_wallet: session.user_wallet,
+        amount_usd: product.price,
+        auto_detect_gasless: true, // ZendFi covers gas fees if needed
+        instant_settlement: true,
         description: `Auto-restock: ${product.name}`,
         metadata: {
           user_id: userId,
@@ -232,27 +242,39 @@ async function checkAndRestock(userId: string, productId: string) {
         },
       });
       
-      console.log(`✅ Autonomous purchase: ${payment.id}`);
+      console.log(`✅ Autonomous purchase: ${payment.payment_id}`);
+      console.log(`Receipt: ${payment.receipt_url}`);
       
       // 5. Notify user
       await notifyUser({
         userId,
         title: 'AI Purchase Complete',
         message: `Your AI assistant restocked ${product.name} for $${product.price}`,
-        paymentId: payment.id,
+        paymentId: payment.payment_id,
       });
       
       return payment;
     } catch (error) {
-      // Handle limit exceeded, expired session, etc.
+      // Handle errors: limit exceeded, expired session, insufficient balance, etc.
       console.error('Autonomous payment failed:', error);
       
-      // Ask user to renew session
-      await notifyUser({
-        userId,
-        title: 'AI Session Expired',
-        message: 'Please renew your AI shopping session to continue auto-restocking.',
-      });
+      if (error.message.includes('limit exceeded')) {
+        // User hit spending limit
+        await notifyUser({
+          userId,
+          title: '⚠️ AI Spending Limit Reached',
+          message: 'Please increase your AI shopping limits to continue auto-restocking.',
+        });
+      } else if (error.message.includes('expired')) {
+        // Session expired
+        await notifyUser({
+          userId,
+          title: 'AI Session Expired',
+          message: 'Please renew your AI shopping session to continue auto-restocking.',
+        });
+      }
+      
+      throw error;
     }
   }
 }
@@ -261,9 +283,11 @@ async function checkAndRestock(userId: string, productId: string) {
 setInterval(async () => {
   const users = await getUsersWithAIEnabled();
   for (const user of users) {
-    await checkAndRestock(user.id, user.favoriteProducts);
+    for (const productId of user.favoriteProducts) {
+      await checkAndRestock(user.id, productId);
+    }
   }
-}, 24 * 60 * 60 * 1000); // Daily
+}, 24 * 60 * 60 * 1000); // Daily check
 ```
 
 
@@ -271,57 +295,64 @@ setInterval(async () => {
 
 ```typescript
 // app/api/webhooks/zendfi/route.ts
-import { createNextWebhookHandler } from '@zendfi/sdk/nextjs';
+import { createNextWebhookHandler } from '@zendfi/sdk/next';
 
 export const POST = createNextWebhookHandler({
   secret: process.env.ZENDFI_WEBHOOK_SECRET!,
   handlers: {
-    'agent.payment.confirmed': async (payment) => {
-      // AI agent purchase confirmed
-      console.log('AI autonomous purchase:', payment.id);
+    // Regular payment confirmed (includes AI payments)
+    'PaymentConfirmed': async (payment) => {
+      console.log('Payment confirmed:', payment.id);
       
-      // Fulfill order automatically
-      await fulfillOrder({
-        userId: payment.metadata.user_id,
-        productId: payment.metadata.product_id,
-        paymentId: payment.id,
-        autonomous: true,
-      });
-      
-      // Send notification to user
-      await sendPushNotification({
-        userId: payment.metadata.user_id,
-        title: '🤖 AI Purchase Complete',
-        body: `${payment.metadata.product_name} ordered for $${payment.amount}`,
-        link: `/orders/${payment.id}`,
-      });
-      
-      // Send email receipt
-      await sendEmailReceipt({
-        to: payment.metadata.user_email,
-        orderDetails: {
-          product: payment.metadata.product_name,
-          amount: payment.amount,
+      // Check if this was an autonomous AI purchase
+      if (payment.metadata?.autonomous === 'true') {
+        console.log('AI autonomous purchase confirmed');
+        
+        // Fulfill order automatically
+        await fulfillOrder({
+          user_id: payment.metadata.user_id,
+          product_id: payment.metadata.product_id,
+          payment_id: payment.id,
           autonomous: true,
-        },
-      });
+        });
+        
+        // Send notification to user
+        await sendPushNotification({
+          userId: payment.metadata.user_id,
+          title: '🤖 AI Purchase Complete',
+          body: `${payment.metadata.product_name} ordered for $${payment.amount_usd}`,
+          link: `/orders/${payment.id}`,
+        });
+        
+        // Send email receipt
+        await sendEmailReceipt({
+          to: payment.customer_email,
+          orderDetails: {
+            product: payment.metadata.product_name,
+            amount: payment.amount_usd,
+            autonomous: true,
+          },
+        });
+      }
     },
     
-    'agent.session.limit_exceeded': async (session) => {
-      // AI tried to spend beyond limits
+    'PaymentFailed': async (payment) => {
+      // AI payment failed
+      if (payment.metadata?.autonomous === 'true') {
+        await notifyUser({
+          userId: payment.metadata.user_id,
+          title: '⚠️ AI Purchase Failed',
+          message: `Failed to restock ${payment.metadata.product_name}. Please check your balance.`,
+        });
+      }
+    },
+    
+    // Autonomous delegate limit exceeded (when using session keys with autonomy)
+    'AutonomousDelegateLimitExceeded': async (delegate) => {
       await notifyUser({
-        userId: session.metadata.user_id,
+        userId: delegate.metadata?.user_id,
         title: '⚠️ AI Spending Limit Reached',
-        message: `Your AI assistant hit the ${session.limitType} spending limit. Increase limits or wait for reset.`,
-      });
-    },
-    
-    'agent.session.expired': async (session) => {
-      // Session expired
-      await notifyUser({
-        userId: session.metadata.user_id,
-        title: '🔒 AI Session Expired',
-        message: 'Your AI shopping session expired. Enable it again to continue auto-restocking.',
+        message: 'Your AI assistant hit the spending limit. Increase limits or wait for reset.',
       });
     },
   },
@@ -351,11 +382,11 @@ export default async function AISpendingPage() {
         {session ? (
           <>
             <p>Status: ✅ Active</p>
-            <p>Expires: {new Date(session.expiresAt).toLocaleDateString()}</p>
+            <p>Expires: {new Date(session.expires_at).toLocaleDateString()}</p>
             <div className="limits">
-              <div>Per Transaction: ${session.limits.maxPerTransaction}</div>
-              <div>Daily: ${session.spent.today} / ${session.limits.maxPerDay}</div>
-              <div>Monthly: ${session.spent.thisMonth} / ${session.limits.maxPerMonth}</div>
+              <div>Per Transaction: ${session.limits.max_per_transaction}</div>
+              <div>Daily: ${session.remaining.today} / ${session.limits.max_per_day}</div>
+              <div>Monthly: ${session.remaining.this_month} / ${session.limits.max_per_month}</div>
             </div>
             <button onClick={revokeSession}>Revoke Access</button>
           </>
@@ -376,9 +407,9 @@ export default async function AISpendingPage() {
           <div key={purchase.id} className="purchase-card">
             <span className="icon">🤖</span>
             <div className="details">
-              <strong>{purchase.productName}</strong>
+              <strong>{purchase.product_name}</strong>
               <span>${purchase.amount}</span>
-              <span>{new Date(purchase.createdAt).toLocaleDateString()}</span>
+              <span>{new Date(purchase.created_at).toLocaleDateString()}</span>
               <span className="autonomous-badge">Autonomous</span>
             </div>
             <a href={`/orders/${purchase.id}`}>View Order</a>
@@ -401,16 +432,15 @@ async function createPurchaseIntent(userId: string, product: any) {
   const session = await getUserAgentSession(userId);
   
   // If over threshold, require approval
-  if (product.price > session.limits.maxPerTransaction) {
-    // Create payment intent (not auto-confirmed)
-    const intent = await zendfi.agent.intents.create({
-      sessionId: session.id,
-      amount: product.price,
+  if (product.price > session.limits.max_per_transaction) {
+    // Create payment intent (requires confirmation)
+    const intent = await zendfi.intents.create({
+      amount_usd: product.price,
       description: `Approval needed: ${product.name}`,
-      requiresApproval: true,
       metadata: {
         user_id: userId,
         product_id: product.id,
+        requires_approval: true,
       },
     });
     
@@ -463,25 +493,74 @@ async function createPurchaseIntent(userId: string, product: any) {
 
 ## Testing
 
+### Step 1: Create Agent API Key
+
+First, create an agent API key (starts with `zai_`) for your AI agent:
+
+```typescript
+// Create agent key programmatically
+const agentKey = await zendfi.agent.createKey({
+  name: 'Shopping Bot',
+  agent_id: 'shopping-bot-v1',
+  agent_name: 'Shopping Bot',
+  scopes: ['create_payments'], // Limited permissions
+  rate_limit_per_hour: 1000,
+});
+
+// IMPORTANT: Save the full_key - it's only shown once!
+console.log('Agent API Key:', agentKey.full_key); // zai_test_...
+```
+
+### Step 2: Test Session Creation
+
 ```bash
-# Create AI agent API key
-zendfi ai keys create --name "Shopping Bot"
+# Using the SDK
+import { ZendFi } from '@zendfi/sdk';
 
-# Create test session
-zendfi ai sessions create \
-  --wallet <address> \
-  --max-per-day 50 \
-  --max-per-transaction 15 \
-  --duration 24
+const zendfi = new ZendFi({
+  apiKey: process.env.ZENDFI_AGENT_API_KEY, // Use agent key
+  mode: 'test',
+});
 
-# Test autonomous payment
-zendfi ai payment create \
-  --session <session-id> \
-  --amount 14.99 \
-  --description "AI test purchase"
+const session = await zendfi.agent.createSession({
+  agent_id: 'shopping-bot-v1',
+  user_wallet: 'YOUR_WALLET_ADDRESS',
+  limits: {
+    max_per_transaction: 15,
+    max_per_day: 50,
+  },
+  duration_hours: 24,
+});
 
-# Check session status
-zendfi ai sessions status <session-id>
+console.log('Session Token:', session.session_token); // zai_session_...
+```
+
+### Step 3: Test Smart Payment
+
+```typescript
+// Make a test autonomous payment
+const payment = await zendfi.smart.execute({
+  session_token: session.session_token,
+  agent_id: 'shopping-bot-v1',
+  user_wallet: session.user_wallet,
+  amount_usd: 14.99,
+  auto_detect_gasless: true,
+  description: 'Test AI purchase',
+});
+
+console.log('Payment ID:', payment.payment_id);
+console.log('Receipt:', payment.receipt_url);
+```
+
+### Step 4: Check Session Status
+
+```typescript
+// Get updated session info
+const sessions = await zendfi.agent.listSessions();
+const activeSession = sessions.find(s => s.is_active);
+
+console.log('Remaining today:', activeSession.remaining.today);
+console.log('Remaining this week:', activeSession.remaining.this_week);
 ```
 
 
@@ -500,11 +579,11 @@ zendfi ai sessions status <session-id>
 
 ## Learn More
 
-- [AI Payments Overview](../agentic/index.md)
-- [Why AI Payments?](../agentic/why-ai-payments.md)
-- [Agent Keys](../agentic/agent-keys.md)
-- [Payment Intents](../agentic/payment-intents.md)
-- [Security Best Practices](../agentic/security.md)
+- [Payments API](../api/payments.md) - Core payment functionality
+- [Payment Links](../api/payment-links.md) - Shareable payment links
+- [Subscriptions](../api/subscriptions.md) - Recurring payments
+- [Invoices](../api/invoices.md) - Professional invoicing
+- [Webhooks](../features/webhooks.md) - Process payment events
 
 
 ## Need Help?

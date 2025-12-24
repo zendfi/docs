@@ -41,6 +41,19 @@ Create `.env.local`:
 ```env
 ZENDFI_API_KEY=zfi_test_your_key_here
 ZENDFI_WEBHOOK_SECRET=your_webhook_secret
+NEXT_PUBLIC_URL=http://localhost:3000
+```
+
+Initialize the SDK:
+
+```typescript
+// lib/zendfi.ts
+import { ZendFi } from '@zendfi/sdk';
+
+export const zendfi = new ZendFi({
+  apiKey: process.env.ZENDFI_API_KEY!,
+  mode: process.env.NODE_ENV === 'production' ? 'live' : 'test',
+});
 ```
 
 ## Step 2: Create Checkout Flow
@@ -57,18 +70,19 @@ export default async function ProductPage({ params }: { params: { id: string } }
   async function checkout() {
     'use server';
     
-    const payment = await zendfi.payments.create({
+    const payment = await zendfi.createPayment({
       amount: product.price,
+      currency: 'USD',
+      token: 'USDC', // Accept USDC stablecoin
       description: product.name,
       metadata: {
         product_id: product.id,
         product_name: product.name,
       },
-      successUrl: `${process.env.NEXT_PUBLIC_URL}/orders/success`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_URL}/products/${product.id}`,
     });
     
-    return payment.paymentUrl;
+    // Redirect to checkout
+    return payment.payment_url; // Returns hosted checkout URL
   }
   
   return (
@@ -98,8 +112,10 @@ export async function POST(request: Request) {
   const total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   
   // Create payment with line items
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount: total,
+    currency: 'USD',
+    token: 'USDC',
     description: `Order from My Store`,
     metadata: {
       user_id: userId,
@@ -111,11 +127,12 @@ export async function POST(request: Request) {
         price: item.price,
       }))),
     },
-    successUrl: `${process.env.NEXT_PUBLIC_URL}/orders/success?session_id={PAYMENT_ID}`,
-    cancelUrl: `${process.env.NEXT_PUBLIC_URL}/cart`,
   });
   
-  return Response.json({ paymentUrl: payment.paymentUrl });
+  // Return checkout URL with payment ID in query string
+  const checkoutUrl = `${payment.payment_url}?session_id=${payment.id}`;
+  
+  return Response.json({ paymentUrl: checkoutUrl });
 }
 ```
 
@@ -125,13 +142,13 @@ Create webhook handler to process orders:
 
 ```typescript
 // app/api/webhooks/zendfi/route.ts
-import { createNextWebhookHandler } from '@zendfi/sdk/nextjs';
-import { fulfillOrder, sendOrderConfirmation } from '@/lib/orders';
+import { createNextWebhookHandler } from '@zendfi/sdk/next';
+import { createOrder, reduceInventory, sendOrderConfirmation, clearCart, sendPaymentFailedEmail } from '@/lib/orders';
 
 export const POST = createNextWebhookHandler({
   secret: process.env.ZENDFI_WEBHOOK_SECRET!,
   handlers: {
-    'payment.confirmed': async (payment) => {
+    'PaymentConfirmed': async (payment) => {
       // Payment successful - fulfill the order
       const items = JSON.parse(payment.metadata.items);
       
@@ -139,9 +156,9 @@ export const POST = createNextWebhookHandler({
       const order = await createOrder({
         userId: payment.metadata.user_id,
         items,
-        total: payment.amount,
+        total: payment.amount_usd || payment.amount,
         paymentId: payment.id,
-        transactionHash: payment.transactionHash,
+        transactionSignature: payment.transaction_signature,
       });
       
       // 2. Reduce inventory
@@ -149,10 +166,10 @@ export const POST = createNextWebhookHandler({
       
       // 3. Send confirmation email
       await sendOrderConfirmation({
-        email: payment.email,
+        email: payment.customer_email,
         orderId: order.id,
         items,
-        total: payment.amount,
+        total: payment.amount_usd || payment.amount,
       });
       
       // 4. Clear user's cart
@@ -161,12 +178,14 @@ export const POST = createNextWebhookHandler({
       console.log(`Order ${order.id} fulfilled for payment ${payment.id}`);
     },
     
-    'payment.failed': async (payment) => {
+    'PaymentFailed': async (payment) => {
       // Payment failed - notify user
-      await sendPaymentFailedEmail({
-        email: payment.email,
-        reason: payment.failureReason,
-      });
+      if (payment.customer_email) {
+        await sendPaymentFailedEmail({
+          email: payment.customer_email,
+          reason: 'Payment could not be processed',
+        });
+      }
     },
   },
 });
@@ -183,7 +202,7 @@ export default async function OrderSuccessPage({
 }: { 
   searchParams: { session_id: string } 
 }) {
-  const payment = await zendfi.payments.retrieve(searchParams.session_id);
+  const payment = await zendfi.getPayment(searchParams.session_id);
   const items = JSON.parse(payment.metadata.items);
   
   return (
@@ -200,12 +219,16 @@ export default async function OrderSuccessPage({
           </div>
         ))}
         <div className="total">
-          <strong>Total: ${payment.amount}</strong>
+          <strong>Total: ${payment.amount_usd || payment.amount}</strong>
         </div>
       </div>
       
-      <p>Transaction: {payment.transactionHash}</p>
-      <p>We've sent a confirmation email to {payment.email}</p>
+      {payment.transaction_signature && (
+        <p>Transaction: {payment.transaction_signature}</p>
+      )}
+      {payment.customer_email && (
+        <p>We've sent a confirmation email to {payment.customer_email}</p>
+      )}
     </div>
   );
 }
@@ -225,10 +248,10 @@ export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const payment = await zendfi.payments.retrieve(params.id);
+  const payment = await zendfi.getPayment(params.id);
   return Response.json({
     status: payment.status,
-    confirmed: payment.confirmedAt,
+    confirmed_at: payment.confirmed_at,
   });
 }
 ```
@@ -271,14 +294,18 @@ export function PaymentStatus({ paymentId }: { paymentId: string }) {
 ```typescript
 const discountCode = 'SAVE20';
 const discountPercent = 0.20;
+const discountedAmount = total * (1 - discountPercent);
 
-const payment = await zendfi.payments.create({
-  amount: total * (1 - discountPercent),
+const payment = await zendfi.createPayment({
+  amount: discountedAmount,
+  currency: 'USD',
+  token: 'USDC',
   description: `Order from My Store (${discountCode} applied)`,
   metadata: {
     discount_code: discountCode,
     original_amount: total,
     discount_amount: total * discountPercent,
+    final_amount: discountedAmount,
   },
 });
 ```
@@ -286,38 +313,107 @@ const payment = await zendfi.payments.create({
 
 ## Testing
 
-```bash
-# Test the checkout flow
-zendfi payment create --amount 99.99 --open
+### Create Test Payment
 
-# Listen for webhooks locally
-zendfi webhooks listen --forward-to http://localhost:3000/api/webhooks/zendfi
+```typescript
+import { ZendFi } from '@zendfi/sdk';
+
+const zendfi = new ZendFi({
+  apiKey: process.env.ZENDFI_API_KEY!,
+  mode: 'test',
+});
+
+// Create test payment
+const payment = await zendfi.createPayment({
+  amount: 99.99,
+  currency: 'USD',
+  token: 'USDC',
+  description: 'Test order',
+  metadata: {
+    test: true,
+    items: JSON.stringify([{
+      id: 'prod_1',
+      name: 'Test Product',
+      quantity: 1,
+      price: 99.99,
+    }]),
+  },
+});
+
+console.log('Payment URL:', payment.payment_url);
+console.log('Payment ID:', payment.id);
+```
+
+### Test Webhooks Locally
+
+Use ngrok to test webhooks on localhost:
+
+```bash
+# Start ngrok
+ngrok http 3000
+
+# Update webhook URL in ZendFi dashboard to:
+# https://your-ngrok-url.ngrok.io/api/webhooks/zendfi
+
+# Make a test payment and watch your logs
+```
+
+### Verify Payment Status
+
+```typescript
+// Check payment status
+const payment = await zendfi.getPayment('payment_id');
+console.log('Status:', payment.status);
+console.log('Amount:', payment.amount_usd || payment.amount);
+console.log('Transaction:', payment.transaction_signature);
 ```
 
 ## Production Checklist
 
-- [ ] Switch to `zfi_live_` API key
-- [ ] Test webhooks on production URL
-- [ ] Set up error monitoring (Sentry, LogRocket)
-- [ ] Add loading states and error handling
+- [ ] Switch to live API key (`zfi_live_...`)
+- [ ] Update webhook URL to production domain
+- [ ] Test webhooks with real payments on testnet first
+- [ ] Set up error monitoring (Sentry, DataDog, etc.)
+- [ ] Add loading states and error handling in UI
 - [ ] Test with different tokens (SOL, USDC, USDT)
-- [ ] Add customer support contact
-- [ ] Set up order notification system
-- [ ] Test refund flow
+- [ ] Add customer support contact information
+- [ ] Set up order notification system (email/SMS)
+- [ ] Test refund/cancellation flow
+- [ ] Implement inventory management
+- [ ] Add order tracking system
+- [ ] Set up analytics and monitoring
+- [ ] Test mobile checkout experience
+- [ ] Ensure HTTPS on production domain
 
 
-## Complete Example
+## Complete Integration Flow
 
-See the full working example:
+1. **User adds items to cart**
+2. **User clicks checkout**
+   - Your app creates payment via `zendfi.createPayment()`
+   - Redirects user to `payment.payment_url`
+3. **User completes payment on ZendFi**
+   - ZendFi sends webhook to your server
+4. **Your webhook handler processes the order**
+   - Creates order in database
+   - Reduces inventory
+   - Sends confirmation email
+   - Clears cart
+5. **User redirected back to your success page**
+   - Shows order confirmation
+   - Displays transaction details
 
-```bash
-npx create-zendfi-app my-store --template nextjs-ecommerce
-```
 
-**Live Demo:** [ecommerce.zendfi.tech](https://ecommerce.zendfi.tech)
+## Learn More
+
+- [Payments API](../api/payments.md)
+- [Webhooks Guide](../features/webhooks.md)
+- [Payment Links](../api/payment-links.md)
+- [Error Handling](../developer-tools/best-practices.md)
+
 
 ## Need Help?
 
 - [Join Discord](https://discord.gg/zendfi)
 - [Email support](mailto:support@zendfi.tech)
-- [View API docs](https://docs.zendfi.tech/api)
+- [Book a demo](https://zendfi.tech/demo)

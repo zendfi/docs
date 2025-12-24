@@ -144,12 +144,14 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 
 ```json
 {
-  "payment_id": "pay_abc123",
-  "amount_usd": 50,
+  "id": "pay_abc123",
+  "amount": 50,
+  "currency": "USD",
   "status": "Pending",
-  "payment_url": "https://pay.zendfi.tech/abc123",
+  "payment_url": "https://checkout.zendfi.tech/pay/pay_abc123",
   "qr_code": "data:image/png;base64,...",
-  "expires_at": "2025-12-22T12:15:00Z"
+  "expires_at": "2025-12-22T12:15:00Z",
+  "mode": "test"
 }
 ```
 
@@ -176,13 +178,14 @@ Get notified when payments are confirmed:
 
 ```typescript
 // Next.js example
-import { createWebhookHandler } from '@zendfi/sdk/nextjs';
+import { createNextWebhookHandler } from '@zendfi/sdk/next';
 
-export const POST = createWebhookHandler({
+export const POST = createNextWebhookHandler({
   secret: process.env.ZENDFI_WEBHOOK_SECRET!,
   handlers: {
-    'payment.confirmed': async (payment) => {
+    PaymentConfirmed: async (event) => {
       // Payment received! Fulfill order
+      const payment = event.data;
       await fulfillOrder(payment.metadata.orderId);
     },
   },
@@ -270,14 +273,14 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 
 ```json
 {
-  "payment_id": "pay_abc123xyz789",
-  "amount_usd": 25.00,
-  "token": "USDC",
-  "status": "pending",
-  "payment_url": "https://zendfi.tech/pay/pay_abc123xyz789",
-  "qr_code": "solana:...",
+  "id": "pay_abc123xyz789",
+  "amount": 25.00,
+  "currency": "USD",
+  "status": "Pending",
+  "payment_url": "https://checkout.zendfi.tech/pay/pay_abc123xyz789",
+  "qr_code": "data:image/png;base64,...",
   "expires_at": "2025-10-26T12:15:00Z",
-  "created_at": "2025-10-26T12:00:00Z"
+  "mode": "test"
 }
 ```
 
@@ -285,7 +288,7 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 
 1. **Create payment** → Get `payment_url` and `qr_code`
 2. **Customer pays** → Scans QR or clicks link
-3. **Webhook fired** → `payment.confirmed` event sent to your server
+3. **Webhook fired** → `PaymentConfirmed` event sent to your server
 4. **Funds received** → Check your wallet balance!
 
 ## Step 5: Handle Webhooks
@@ -298,14 +301,14 @@ app.post('/webhooks/zendfi', (req, res) => {
   const { event, data } = req.body;
   
   switch (event) {
-    case 'payment.confirmed':
+    case 'PaymentConfirmed':
       // Payment successful!
-      console.log(`Payment ${data.payment_id} confirmed!`);
+      console.log(`Payment ${data.id} confirmed!`);
       // Fulfill the order...
       break;
-    case 'payment.failed':
+    case 'PaymentFailed':
       // Payment failed
-      console.log(`Payment ${data.payment_id} failed`);
+      console.log(`Payment ${data.id} failed`);
       break;
   }
   

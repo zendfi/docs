@@ -6,8 +6,6 @@ title: Introduction
 
 # Welcome to ZendFi
 
-**The only crypto payment API built for the AI era.**
-
 Accept SOL, USDC, and USDT payments in 7 lines of code. Built for e-commerce. Ready for AI agents.
 
 ```typescript
