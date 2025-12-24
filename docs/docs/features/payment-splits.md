@@ -6,7 +6,7 @@ description: Automatic revenue distribution to multiple wallets
 
 # Payment Splits
 
-Automatically distribute payments across multiple recipients with configurable percentages. Perfect for marketplaces, affiliate programs, and revenue sharing.
+Automatically distribute payments across multiple recipients with configurable percentages or fixed amounts. Perfect for marketplaces, affiliate programs, and revenue sharing.
 
 ## How It Works
 
@@ -21,16 +21,17 @@ Customer Payment ($100)
 └───────────────────┴───────────────────┴───────────────────┘
 ```
 
-When a payment is completed, funds are automatically distributed to all split recipients in a single atomic transaction.
+When a payment is completed, funds are automatically distributed to all split recipients according to the specified percentages or fixed amounts.
 
 
 ## What's Built In?
 
-- **Atomic Transfers** - All splits happen in one transaction
-- **Flexible Percentages** - Any split configuration totaling 100%
-- **Multiple Recipients** - Up to 10 recipients per payment
-- **Per-Payment or Global** - Set splits per payment or as defaults
-- **Real-Time Settlement** - Recipients receive funds immediately
+- **Atomic Transfers** - All splits happen in one transaction on Solana
+- **Flexible Configuration** - Use percentages OR fixed USD amounts per recipient
+- **Multiple Recipients** - Distribute to multiple wallets simultaneously
+- **Per-Payment Configuration** - Set splits individually for each payment
+- **Real-Time Settlement** - Recipients receive funds when payment confirms
+- **Automatic Retry** - Failed splits are automatically retried
 
 
 ## Use Cases
@@ -50,17 +51,23 @@ Add splits to any payment request.
 
 ### Request Parameters
 
-Add a `splits` array to your payment request:
+Add a `split_recipients` array to your payment request:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `wallet` | string | **Yes** | Recipient's Solana wallet address |
-| `percentage` | number | **Yes** | Percentage of payment (0.01 - 99.99) |
-| `name` | string | No | Recipient name for your records |
-| `reference` | string | No | Reference ID for reconciliation |
+| `recipient_wallet` | string | **Yes** | Recipient's Solana wallet address |
+| `percentage` | number | Conditional | Percentage of payment (0.01 - 100) |
+| `fixed_amount_usd` | number | Conditional | Fixed USD amount to send |
+| `recipient_name` | string | No | Recipient name for your records |
+| `split_order` | number | No | Order of execution (default: 0) |
 
-:::warning Split Total
-All split percentages must total exactly 100%. If they total less than 100%, the remainder goes to your merchant wallet.
+:::warning Split Configuration
+Each recipient must have **either** `percentage` OR `fixed_amount_usd` (not both).
+
+For percentage-based splits:
+- Total percentages can be ≤ 100%
+- If total < 100%, remainder goes to your merchant wallet
+- If total = 100%, entire payment is distributed to recipients
 :::
 
 ### Example: Marketplace with Platform Fee
@@ -73,18 +80,18 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
     "amount": 100,
     "currency": "USD",
     "description": "Vintage Camera - Seller: vintage_finds",
-    "splits": [
+    "split_recipients": [
       {
-        "wallet": "SellerWalletAddress123...",
+        "recipient_wallet": "SellerWalletAddress123...",
         "percentage": 85,
-        "name": "vintage_finds",
-        "reference": "seller_001"
+        "recipient_name": "vintage_finds",
+        "split_order": 0
       },
       {
-        "wallet": "YourPlatformWallet456...",
+        "recipient_wallet": "YourPlatformWallet456...",
         "percentage": 15,
-        "name": "Platform Fee",
-        "reference": "platform"
+        "recipient_name": "Platform Fee",
+        "split_order": 1
       }
     ],
     "metadata": {
@@ -97,6 +104,7 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 **Result:** When customer pays $100:
 - Seller receives $85 directly to their wallet
 - Platform receives $15 to your merchant wallet
+- Both transfers happen atomically in one Solana transaction
 
 ### Example: Affiliate Commission
 
@@ -108,17 +116,16 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
     "amount": 299,
     "currency": "USD",
     "description": "Pro Plan Subscription",
-    "splits": [
+    "split_recipients": [
       {
-        "wallet": "YourMerchantWallet...",
+        "recipient_wallet": "YourMerchantWallet...",
         "percentage": 90,
-        "name": "Merchant"
+        "recipient_name": "Merchant"
       },
       {
-        "wallet": "AffiliateWalletXYZ...",
+        "recipient_wallet": "AffiliateWalletXYZ...",
         "percentage": 10,
-        "name": "Affiliate - John",
-        "reference": "aff_john_123"
+        "recipient_name": "Affiliate - John"
       }
     ],
     "metadata": {
@@ -138,21 +145,24 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
     "amount": 1000,
     "currency": "USD",
     "description": "Website Development Project",
-    "splits": [
+    "split_recipients": [
       {
-        "wallet": "ProjectLeadWallet...",
+        "recipient_wallet": "ProjectLeadWallet...",
         "percentage": 50,
-        "name": "Project Lead"
+        "recipient_name": "Project Lead",
+        "split_order": 0
       },
       {
-        "wallet": "DeveloperWallet...",
+        "recipient_wallet": "DeveloperWallet...",
         "percentage": 30,
-        "name": "Developer"
+        "recipient_name": "Developer",
+        "split_order": 1
       },
       {
-        "wallet": "DesignerWallet...",
+        "recipient_wallet": "DesignerWallet...",
         "percentage": 20,
-        "name": "Designer"
+        "recipient_name": "Designer",
+        "split_order": 2
       }
     ]
   }'
@@ -163,58 +173,49 @@ curl -X POST https://api.zendfi.tech/api/v1/payments \
 - Developer: $300
 - Designer: $200
 
-
-## Default Splits
-
-Set default splits for all payments from your merchant account.
-
-### Configure Default Splits
-
-```
-PATCH /api/v1/merchants/settings
-```
+### Example: Fixed Amount Splits
 
 ```bash
-curl -X PATCH https://api.zendfi.tech/api/v1/merchants/settings \
+curl -X POST https://api.zendfi.tech/api/v1/payments \
   -H "Authorization: Bearer zfi_live_abc123..." \
   -H "Content-Type: application/json" \
   -d '{
-    "default_splits": [
+    "amount": 1000,
+    "currency": "USD",
+    "description": "Custom Project with Fixed Fees",
+    "split_recipients": [
       {
-        "wallet": "PartnerWalletAddress...",
-        "percentage": 5,
-        "name": "Strategic Partner"
+        "recipient_wallet": "ConsultantWallet...",
+        "fixed_amount_usd": 250,
+        "recipient_name": "Consultant Fee"
+      },
+      {
+        "recipient_wallet": "ReferralWallet...",
+        "fixed_amount_usd": 50,
+        "recipient_name": "Referral Bonus"
       }
     ]
   }'
 ```
 
-Now all payments will automatically include 5% to your partner (unless overridden).
-
-### Override Default Splits
-
-Pass `splits` in your payment request to override defaults:
-
-```json
-{
-  "amount": 100,
-  "currency": "USD",
-  "splits": [],  // Empty array = no splits for this payment
-  "override_default_splits": true
-}
-```
+**Result:**
+- Consultant: $250 (fixed)
+- Referral: $50 (fixed)
+- Merchant: $700 (remainder)
 
 
-## Split Verification
+## Split Validation
 
 ZendFi validates all splits before processing:
 
 | Validation | Description |
 |------------|-------------|
-| **Total Check** | Percentages must total ≤ 100% |
+| **Configuration Check** | Each recipient must have percentage OR fixed_amount_usd (not both) |
+| **Total Check** | Percentage totals must be ≤ 100% |
 | **Wallet Validation** | All wallets must be valid Solana addresses |
-| **Minimum Amount** | Each split must result in at least $0.01 |
-| **Recipient Limit** | Maximum 10 recipients per payment |
+| **Duplicate Check** | No duplicate wallet addresses allowed |
+| **Amount Validation** | Fixed amounts must be positive |
+| **Percentage Range** | Percentages must be 0-100 |
 
 
 ## Split Settlement
@@ -225,13 +226,26 @@ All splits settle in a single Solana transaction:
 - Either all recipients receive funds, or none do
 - No partial settlements
 - One transaction signature for the entire payment
+- Automatic retry on failure
 
 ### Settlement Timing
 
 | Scenario | Settlement |
 |----------|------------|
-| **Standard Payment** | Immediate (same block as payment) |
+| **Standard Payment** | Immediate (when payment confirms) |
 | **Subscription Renewal** | Splits applied each billing cycle |
+
+### Split Status
+
+Each split has a status that tracks its settlement:
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Split created, waiting for payment confirmation |
+| `processing` | Payment confirmed, split transfer in progress |
+| `completed` | Split successfully transferred to recipient |
+| `failed` | Split transfer failed (will auto-retry) |
+| `refunded` | Split was refunded |
 
 
 ## Webhook Data
@@ -240,77 +254,119 @@ Payment webhooks include split details:
 
 ```json
 {
-  "event": "payment.completed",
-  "timestamp": "2025-10-26T15:00:00Z",
-  "data": {
-    "payment_id": "pay_abc123",
-    "amount": 100,
-    "currency": "USD",
+  "event": "PaymentConfirmed",
+  "timestamp": "2025-12-24T15:00:00Z",
+  "merchant_id": "merch_abc123",
+  "payment": {
+    "id": "pay_abc123",
+    "merchant_id": "merch_abc123",
+    "amount_usd": 100,
+    "status": "confirmed",
     "transaction_signature": "5K2Nz...",
+    "customer_wallet": "CustomerWallet...",
+    "payment_token": "USDC",
     "splits": [
       {
-        "wallet": "SellerWalletAddress123...",
+        "id": "split_123",
+        "recipient_wallet": "SellerWalletAddress123...",
+        "recipient_name": "vintage_finds",
         "percentage": 85,
-        "amount": 85,
-        "name": "vintage_finds",
-        "reference": "seller_001",
-        "settled": true
+        "amount_usd": 85,
+        "amount_crypto": 85.0,
+        "currency": "USDC",
+        "status": "completed",
+        "transaction_signature": "5K2Nz...",
+        "settled_at": "2025-12-24T15:00:05Z",
+        "split_order": 0
       },
       {
-        "wallet": "YourPlatformWallet456...",
+        "id": "split_124",
+        "recipient_wallet": "YourPlatformWallet456...",
+        "recipient_name": "Platform Fee",
         "percentage": 15,
-        "amount": 15,
-        "name": "Platform Fee",
-        "reference": "platform",
-        "settled": true
+        "amount_usd": 15,
+        "amount_crypto": 15.0,
+        "currency": "USDC",
+        "status": "completed",
+        "transaction_signature": "5K2Nz...",
+        "settled_at": "2025-12-24T15:00:05Z",
+        "split_order": 1
       }
-    ]
+    ],
+    "created_at": "2025-12-24T14:58:00Z",
+    "expires_at": "2025-12-24T15:58:00Z"
   }
 }
 ```
 
 
-## Reporting
+## Using SDK
 
-### Get Split Summary
+### TypeScript/JavaScript
 
-View all split payments and distributions:
+```typescript
+import { ZendFiClient } from '@zendfi/sdk';
+import type { CreatePaymentRequest, SplitRecipient } from '@zendfi/sdk';
 
-```
-GET /api/v1/splits/summary
-```
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
-```bash
-curl -X GET "https://api.zendfi.tech/api/v1/splits/summary?from=2025-10-01&to=2025-10-31" \
-  -H "Authorization: Bearer zfi_live_abc123..."
-```
-
-**Response:**
-
-```json
-{
-  "period": {
-    "from": "2025-10-01T00:00:00Z",
-    "to": "2025-10-31T23:59:59Z"
+// Create payment with splits
+const splitRecipients: SplitRecipient[] = [
+  {
+    recipient_wallet: 'SellerWallet...',
+    percentage: 85,
+    recipient_name: 'Seller',
+    split_order: 0
   },
-  "total_payments": 150,
-  "total_volume": 45000,
-  "recipients": [
-    {
-      "wallet": "SellerWallet1...",
-      "name": "Top Seller",
-      "payments_count": 45,
-      "total_received": 12750
-    },
-    {
-      "wallet": "SellerWallet2...",
-      "name": "Active Seller",
-      "payments_count": 30,
-      "total_received": 8500
-    }
-  ],
-  "platform_revenue": 6750
-}
+  {
+    recipient_wallet: 'PlatformWallet...',
+    percentage: 15,
+    recipient_name: 'Platform',
+    split_order: 1
+  }
+];
+
+const payment = await zendfi.createPayment({
+  amount: 100,
+  currency: 'USD',
+  description: 'Marketplace sale',
+  split_recipients: splitRecipients
+});
+
+console.log('Payment URL:', payment.payment_url);
+```
+
+### Python
+
+```python
+import zendfi
+
+client = zendfi.Client(api_key="zfi_live_abc123...")
+
+# Create payment with splits
+payment = client.payments.create(
+    amount=100,
+    currency="USD",
+    description="Marketplace sale",
+    split_recipients=[
+        {
+            "recipient_wallet": "SellerWallet...",
+            "percentage": 85,
+            "recipient_name": "Seller",
+            "split_order": 0
+        },
+        {
+            "recipient_wallet": "PlatformWallet...",
+            "percentage": 15,
+            "recipient_name": "Platform",
+            "split_order": 1
+        }
+    ]
+)
+
+print(f"Payment URL: {payment['payment_url']}")
 ```
 
 
@@ -318,11 +374,11 @@ curl -X GET "https://api.zendfi.tech/api/v1/splits/summary?from=2025-10-01&to=20
 
 ### Minimum Split Amounts
 
-If a split results in less than $0.01, it's rounded:
+Small percentages may result in tiny amounts. The minimum transferable amount on Solana is determined by the token's decimal places (typically $0.000001 for USDC).
 
 ```
-$1.00 payment with 0.5% split = $0.005 → Rounded to $0.01
-$0.50 payment with 1% split = $0.005 → Rounded to $0.01
+$1.00 payment with 0.5% split = $0.005
+$0.50 payment with 1% split = $0.005
 ```
 
 ### Remainder Handling
@@ -331,33 +387,49 @@ If percentages total less than 100%, the remainder goes to your merchant wallet:
 
 ```json
 {
-  "splits": [
-    { "wallet": "Partner1...", "percentage": 30 },
-    { "wallet": "Partner2...", "percentage": 20 }
+  "split_recipients": [
+    { "recipient_wallet": "Partner1...", "percentage": 30 },
+    { "recipient_wallet": "Partner2...", "percentage": 20 }
   ]
 }
-// 50% remainder → Your merchant wallet
+// 50% remainder → Your merchant wallet receives $50 from $100 payment
 ```
+
+### Failed Split Recovery
+
+If a split fails (e.g., invalid recipient wallet, network issues):
+- Split status becomes `failed`
+- Automatic retry attempts are made
+- You'll receive a webhook with `failure_reason`
+- Failed splits don't prevent payment completion
 
 
 ## Best Practices
 
 ### For Marketplaces
 
-1. **Verify Seller Wallets** - Validate wallet addresses before onboarding
-2. **Clear Fee Structure** - Document platform fees in your terms
-3. **Handle Disputes** - Have a process for split payment disputes
-4. **Track by Reference** - Use `reference` field for reconciliation
+1. **Verify Seller Wallets** - Validate wallet addresses before onboarding sellers
+2. **Clear Fee Structure** - Document platform fees in your terms of service
+3. **Track by Name** - Use `recipient_name` field for easy reconciliation
+4. **Monitor Split Status** - Track split status via webhooks to detect issues
 
 ### For Affiliates
 
-1. **Unique References** - Track each affiliate with unique reference IDs
-2. **Cap Commissions** - Consider maximum commission amounts
-3. **Attribution Windows** - Track referral sources in metadata
-4. **Payout Reports** - Generate reports for affiliate reconciliation
+1. **Unique Identification** - Use `recipient_name` to track each affiliate
+2. **Metadata Tracking** - Store affiliate codes in payment metadata
+3. **Cap Commissions** - Consider using `fixed_amount_usd` for maximum limits
+4. **Attribution Windows** - Track referral sources in metadata
+
+### For Revenue Sharing
+
+1. **Use Split Order** - Set `split_order` to control execution sequence
+2. **Mix Percentage and Fixed** - Combine fixed platform fees with percentage splits
+3. **Document Agreements** - Keep split configurations in contracts
+4. **Audit Trail** - Use `recipient_name` for clear audit trails
 
 
 ## Next Steps
 
-- [Payments API](/api/payments) - Create payments with splits
-- [Webhooks](/features/webhooks) - Get notified of split settlements
+- [Payments API](../api/payments) - Full API reference
+- [Webhooks](./webhooks) - Get notified of split settlements
+- [SDK Documentation](../developer-tools/typescript-guide) - Type-safe development

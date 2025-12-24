@@ -14,7 +14,7 @@ Receive real-time notifications when events happen in your ZendFi account. Webho
 Payment Event → ZendFi → POST to Your URL → Your Server Processes
 ```
 
-1. An event occurs (payment completed, subscription renewed, etc.)
+1. An event occurs (payment confirmed, subscription renewed, etc.)
 2. ZendFi sends an HTTP POST request to your webhook URL
 3. Your server receives and processes the event
 4. Respond with 200 OK to acknowledge receipt
@@ -49,16 +49,16 @@ app.post('/webhooks/zendfi', (req, res) => {
   }
   
   // Process the event
-  const { event, data } = req.body;
+  const { event, payment } = req.body;
   
   switch (event) {
-    case 'payment.completed':
+    case 'PaymentConfirmed':
       // Grant access, send confirmation, update database
-      console.log('Payment completed:', data.payment_id);
+      console.log('Payment confirmed:', payment.id);
       break;
-    case 'subscription.renewed':
+    case 'SubscriptionRenewed':
       // Extend subscription period
-      console.log('Subscription renewed:', data.subscription.id);
+      console.log('Subscription renewed:', payment.id);
       break;
     // ... handle other events
   }
@@ -70,16 +70,16 @@ app.post('/webhooks/zendfi', (req, res) => {
 app.listen(3000);
 ```
 
-### 2. Register Your Webhook
+### 2. Configure Your Webhook URL
+
+Set your webhook URL in the merchant dashboard or via API:
 
 ```bash
-curl -X POST https://api.zendfi.tech/api/v1/webhooks \
+curl -X PUT https://api.zendfi.tech/api/v1/merchants/me/webhook \
   -H "Authorization: Bearer zfi_live_abc123..." \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://myapp.com/webhooks/zendfi",
-    "events": ["payment.completed", "subscription.renewed"],
-    "description": "Production webhook"
+    "webhook_url": "https://myapp.com/webhooks/zendfi"
   }'
 ```
 
@@ -87,22 +87,20 @@ curl -X POST https://api.zendfi.tech/api/v1/webhooks \
 
 ```json
 {
-  "id": "wh_abc123def456",
-  "url": "https://myapp.com/webhooks/zendfi",
-  "events": ["payment.completed", "subscription.renewed"],
-  "secret": "whsec_abc123xyz789...",
-  "active": true,
-  "created_at": "2025-10-26T12:00:00Z"
+  "success": true,
+  "webhook_url": "https://myapp.com/webhooks/zendfi",
+  "webhook_secret": "whsec_abc123xyz789...",
+  "message": "Webhook URL updated successfully"
 }
 ```
 
 :::warning Save Your Secret!
-The webhook secret is only shown once. Save it securely - you'll need it to verify webhook signatures.
+The webhook secret is shown when you configure your webhook URL. Save it securely - you'll need it to verify webhook signatures.
 :::
 
 ### 3. Start Receiving Events
 
-Once registered, ZendFi will send events to your URL immediately when they occur.
+Once configured, ZendFi will send events to your URL immediately when they occur.
 
 
 ## Webhook Events
@@ -111,56 +109,79 @@ Once registered, ZendFi will send events to your URL immediately when they occur
 
 | Event | Description | Trigger |
 |-------|-------------|---------|
-| `payment.created` | Payment request created | Create payment API called |
-| `payment.pending` | Awaiting blockchain confirmation | Transaction submitted |
-| `payment.completed` | Payment confirmed on-chain | Transaction confirmed |
-| `payment.failed` | Payment failed | Transaction failed or expired |
-| `payment.expired` | Payment link expired | Expiration time reached |
+| `PaymentCreated` | Payment request created | Create payment API called |
+| `PaymentConfirmed` | Payment confirmed on-chain | Transaction confirmed |
+| `PaymentFailed` | Payment failed | Transaction failed or expired |
+| `PaymentExpired` | Payment link expired | Expiration time reached |
+
+### Payment Intent Events
+
+| Event | Description | Trigger |
+|-------|-------------|---------|
+| `PaymentIntentCreated` | Payment intent created | Create intent API called |
+| `PaymentIntentRequiresPayment` | Awaiting payment | Intent ready for payment |
+| `PaymentIntentSucceeded` | Intent payment successful | Payment confirmed |
+| `PaymentIntentCanceled` | Intent cancelled | Cancel API called |
+| `PaymentIntentFailed` | Intent payment failed | Payment failed |
 
 ### Subscription Events
 
 | Event | Description | Trigger |
 |-------|-------------|---------|
-| `subscription.created` | New subscription started | Customer subscribed |
-| `subscription.renewed` | Subscription billing completed | Renewal payment confirmed |
-| `subscription.payment_failed` | Renewal payment failed | Payment not received |
-| `subscription.cancelled` | Subscription cancelled | Cancel API called |
-| `subscription.expired` | Subscription expired | Max cycles reached |
-
+| `SubscriptionCreated` | New subscription started | Customer subscribed |
+| `SubscriptionRenewed` | Subscription billing completed | Renewal payment confirmed |
+| `SubscriptionPaymentFailed` | Renewal payment failed | Payment not received |
+| `SubscriptionCancelled` | Subscription cancelled | Cancel API called |
 
 ### Installment Events
 
 | Event | Description | Trigger |
 |-------|-------------|---------|
-| `installment.created` | Installment plan created | Create installment API called |
-| `installment.first_payment` | Down payment received | First payment confirmed |
-| `installment.payment_due` | Installment payment due | Due date reached |
-| `installment.payment_received` | Installment paid | Payment confirmed |
-| `installment.payment_late` | Payment overdue | Grace period ended |
-| `installment.completed` | All installments paid | Final payment confirmed |
-| `installment.defaulted` | Customer defaulted | Excessive late payments |
+| `InstallmentPaid` | Installment payment received | Payment confirmed |
+| `InstallmentLate` | Payment overdue | Grace period ended |
+| `InstallmentDefaulted` | Customer defaulted | Excessive late payments |
+| `InstallmentPlanCompleted` | All installments paid | Final payment confirmed |
 
 ### Invoice Events
 
 | Event | Description | Trigger |
 |-------|-------------|---------|
-| `invoice.created` | Invoice created | Create invoice API called |
-| `invoice.sent` | Invoice emailed | Send API called |
-| `invoice.viewed` | Customer viewed invoice | Invoice page loaded |
-| `invoice.payment_received` | Payment received | Full or partial payment |
-| `invoice.paid` | Invoice fully paid | Balance reaches zero |
-| `invoice.overdue` | Invoice past due | Due date passed |
-| `invoice.voided` | Invoice voided | Void API called |
+| `InvoiceCreated` | Invoice created | Create invoice API called |
+| `InvoiceSent` | Invoice emailed | Send API called |
+| `InvoicePaid` | Invoice fully paid | Balance reaches zero |
 
 ### Payment Link Events
 
 | Event | Description | Trigger |
 |-------|-------------|---------|
-| `payment_link.created` | Payment link created | Create link API called |
-| `payment_link.payment_completed` | Payment via link | Link payment confirmed |
-| `payment_link.deactivated` | Link deactivated | Deactivate API called |
-| `payment_link.expired` | Link expired | Expiration reached |
-| `payment_link.limit_reached` | Usage limit hit | max_uses reached |
+| `PaymentLinkCreated` | Payment link created | Create link API called |
+| `PaymentLinkUsed` | Payment via link | Link payment confirmed |
+
+### Escrow Events
+
+| Event | Description | Trigger |
+|-------|-------------|---------|
+| `EscrowCreated` | Escrow contract created | Create escrow API called |
+| `EscrowFunded` | Escrow funded | Funds deposited |
+| `EscrowReleased` | Funds released to recipient | Release API called |
+| `EscrowRefunded` | Funds returned to payer | Refund API called |
+| `EscrowDisputed` | Escrow disputed | Dispute API called |
+
+### Withdrawal Events
+
+| Event | Description | Trigger |
+|-------|-------------|---------|
+| `WithdrawalInitiated` | Withdrawal requested | Withdraw API called |
+| `WithdrawalCompleted` | Withdrawal successful | Transaction confirmed |
+| `WithdrawalFailed` | Withdrawal failed | Transaction failed |
+
+### Settlement Events
+
+| Event | Description | Trigger |
+|-------|-------------|---------|
+| `SettlementCompleted` | Settlement processed | Funds settled |
+| `SettlementFailed` | Settlement failed | Settlement error |
+
 
 ## Webhook Payload Structure
 
@@ -168,48 +189,69 @@ All webhooks follow this structure:
 
 ```json
 {
-  "id": "evt_abc123def456",
-  "event": "payment.completed",
+  "event": "PaymentConfirmed",
   "timestamp": "2025-10-26T15:30:00Z",
-  "api_version": "2025-01",
-  "data": {
-    // Event-specific data
+  "signature": "t=1698325200,v1=abc123...",
+  "payment": {
+    // Payment data (see below)
   }
 }
 ```
 
-### Payment Completed Example
+**Top-level fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | string | Event type (e.g., `PaymentConfirmed`) |
+| `timestamp` | string | ISO 8601 timestamp |
+| `signature` | string | HMAC signature for verification |
+| `payment` | object | Payment data (for payment events) |
+| `settlement` | object | Settlement data (for settlement events) |
+| `withdrawal` | object | Withdrawal data (for withdrawal events) |
+
+### Payment Event Example
 
 ```json
 {
-  "id": "evt_abc123def456",
-  "event": "payment.completed",
+  "event": "PaymentConfirmed",
   "timestamp": "2025-10-26T15:30:00Z",
-  "api_version": "2025-01",
-  "data": {
-    "payment_id": "pay_xyz789",
-    "merchant_id": "merchant_abc123",
-    "amount": 99.99,
-    "currency": "USD",
-    "description": "Pro Plan Subscription",
-    "status": "completed",
-    "customer_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-    "customer_email": "customer@example.com",
+  "signature": "t=1698325200,v1=abc123def456...",
+  "payment": {
+    "id": "pay_xyz789",
+    "merchant_id": "merch_abc123",
+    "amount_usd": 99.99,
+    "status": "confirmed",
     "transaction_signature": "5K2Nz7J8H2...",
-    "confirmed_at": "2025-10-26T15:29:55Z",
+    "customer_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "payment_token": "USDC",
+    "mode": "live",
+    "payment_url": "https://checkout.zendfi.tech/pay/pay_xyz789",
+    "description": null,
+    "created_at": "2025-10-26T15:28:00Z",
+    "expires_at": "2025-10-26T16:28:00Z",
     "metadata": {
       "user_id": "user_12345",
       "plan": "pro"
     },
     "splits": [
       {
-        "wallet": "PartnerWallet...",
-        "percentage": 10,
-        "amount": 9.99,
-        "settled": true
+        "id": "split_123",
+        "recipient_wallet": "PartnerWallet...",
+        "recipient_name": "Partner",
+        "percentage": 10.0,
+        "amount_usd": 9.99,
+        "amount_crypto": 9.99,
+        "currency": "USDC",
+        "status": "completed",
+        "transaction_signature": "5K2Nz7J8H2...",
+        "settled_at": "2025-10-26T15:30:00Z",
+        "failure_reason": null,
+        "split_order": 0
       }
     ]
-  }
+  },
+  "settlement": null,
+  "withdrawal": null
 }
 ```
 
@@ -228,8 +270,9 @@ ZendFi signs all webhooks with your webhook secret using HMAC-SHA256.
 | Header | Description |
 |--------|-------------|
 | `X-ZendFi-Signature` | HMAC-SHA256 signature |
-| `X-ZendFi-Timestamp` | Unix timestamp of the request |
-| `X-ZendFi-Event-ID` | Unique event ID |
+| `X-ZendFi-Event` | Event type |
+| `X-ZendFi-Delivery` | Webhook delivery ID |
+| `X-ZendFi-Attempt` | Delivery attempt number (1-5) |
 
 ### Verification Code Examples
 
@@ -251,9 +294,11 @@ function verifyWebhook(payload: string, signature: string, secret: string): bool
 }
 
 // Usage
+const rawBody = JSON.stringify(req.body);
+const signature = req.headers['x-zendfi-signature'];
 const isValid = verifyWebhook(
-  JSON.stringify(req.body),
-  req.headers['x-zendfi-signature'],
+  rawBody,
+  signature,
   process.env.ZENDFI_WEBHOOK_SECRET
 );
 ```
@@ -284,36 +329,54 @@ is_valid = verify_webhook(
 
 ## Managing Webhooks
 
-### List Webhooks
+### Update Webhook URL
+
+```bash
+curl -X PUT https://api.zendfi.tech/api/v1/merchants/me/webhook \
+  -H "Authorization: Bearer zfi_live_abc123..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "webhook_url": "https://myapp.com/webhooks/v2/zendfi"
+  }'
+```
+
+### List Webhook Events
+
+Get recent webhook deliveries:
 
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/webhooks \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
-### Update Webhook
+**Response:**
 
-```bash
-curl -X PATCH https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456 \
-  -H "Authorization: Bearer zfi_live_abc123..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "events": ["payment.completed", "payment.failed"],
-    "url": "https://myapp.com/webhooks/v2/zendfi"
-  }'
+```json
+[
+  {
+    "id": "wh_xyz789",
+    "payment_id": "pay_abc123",
+    "merchant_id": "merch_abc123",
+    "event_type": "PaymentConfirmed",
+    "payload": { /* full webhook payload */ },
+    "webhook_url": "https://myapp.com/webhooks/zendfi",
+    "status": "delivered",
+    "attempts": 1,
+    "last_attempt_at": "2025-10-26T15:30:01Z",
+    "next_retry_at": null,
+    "response_code": 200,
+    "response_body": "{\"received\":true}",
+    "created_at": "2025-10-26T15:30:00Z"
+  }
+]
 ```
 
-### Delete Webhook
+### Retry Failed Webhook
+
+Manually retry a failed webhook:
 
 ```bash
-curl -X DELETE https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456 \
-  -H "Authorization: Bearer zfi_live_abc123..."
-```
-
-### Rotate Webhook Secret
-
-```bash
-curl -X POST https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/rotate-secret \
+curl -X POST https://api.zendfi.tech/api/v1/webhooks/wh_xyz789/retry \
   -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
@@ -325,12 +388,20 @@ curl -X POST https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/rotate-secr
 Trigger a test webhook to verify your endpoint:
 
 ```bash
-curl -X POST https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/test \
-  -H "Authorization: Bearer zfi_live_abc123..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event": "payment.completed"
-  }'
+curl -X POST https://api.zendfi.tech/api/v1/merchants/me/webhook/test \
+  -H "Authorization: Bearer zfi_live_abc123..."
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "response_time_ms": 145,
+  "response_body": "{\"received\":true}",
+  "message": "Webhook test successful!"
+}
 ```
 
 ### Using ngrok for Local Development
@@ -341,12 +412,11 @@ curl -X POST https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/test \
 4. Use the ngrok URL as your webhook URL
 
 ```bash
-curl -X POST https://api.zendfi.tech/api/v1/webhooks \
+curl -X PUT https://api.zendfi.tech/api/v1/merchants/me/webhook \
   -H "Authorization: Bearer zfi_test_abc123..." \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://abc123.ngrok.io/webhooks/zendfi",
-    "events": ["*"]
+    "webhook_url": "https://abc123.ngrok.io/webhooks/zendfi"
   }'
 ```
 
@@ -358,22 +428,22 @@ If your endpoint doesn't respond with 2xx status, ZendFi retries:
 | Attempt | Delay |
 |---------|-------|
 | 1 | Immediate |
-| 2 | 5 minutes |
-| 3 | 30 minutes |
-| 4 | 2 hours |
-| 5 | 8 hours |
+| 2 | 1 minute |
+| 3 | 5 minutes |
+| 4 | 15 minutes |
+| 5 | 1 hour |
 | 6 | 24 hours |
 
-After 6 failed attempts, the webhook is marked as failed. You can view failed webhooks in your dashboard.
+After 5 failed attempts, the webhook is marked as exhausted and moved to the dead letter queue.
 
 ### Retry Headers
 
-Retry attempts include additional headers:
+Retry attempts include the attempt number:
 
 | Header | Description |
 |--------|-------------|
-| `X-ZendFi-Retry-Count` | Number of retry attempt (1-6) |
-| `X-ZendFi-Original-Timestamp` | When the event originally occurred |
+| `X-ZendFi-Attempt` | Delivery attempt number (1-5) |
+| `X-ZendFi-Delivery` | Unique delivery ID |
 
 ## Best Practices
 
@@ -386,20 +456,20 @@ Retry attempts include additional headers:
 
 ### Idempotent Processing
 
-Use the event ID to prevent processing duplicates:
+Use the delivery ID to prevent processing duplicates:
 
 ```typescript
 app.post('/webhooks/zendfi', async (req, res) => {
-  const eventId = req.body.id;
+  const deliveryId = req.headers['x-zendfi-delivery'];
   
   // Check if already processed
-  const existing = await db.webhookEvents.findOne({ eventId });
+  const existing = await db.webhookEvents.findOne({ deliveryId });
   if (existing) {
     return res.status(200).json({ received: true, duplicate: true });
   }
   
   // Mark as processing
-  await db.webhookEvents.create({ eventId, status: 'processing' });
+  await db.webhookEvents.create({ deliveryId, status: 'processing' });
   
   // Acknowledge immediately
   res.status(200).json({ received: true });
@@ -414,57 +484,22 @@ app.post('/webhooks/zendfi', async (req, res) => {
 1. **Verify Signatures** - Always verify HMAC signatures
 2. **Use HTTPS** - Only use HTTPS webhook URLs
 3. **Validate Data** - Don't trust webhook data blindly
-4. **IP Allowlist** - Optionally restrict to ZendFi IPs
-
-ZendFi webhook IPs (for allowlisting):
-- `34.102.136.180`
-- `34.102.136.181`
-- `34.102.136.182`
+4. **Rate Limiting** - Implement rate limiting on your endpoint
 
 
-## Webhook Logs
+## Webhook Status
 
-View recent webhook deliveries in your dashboard or via API:
+Check webhook delivery status:
 
-```bash
-curl -X GET https://api.zendfi.tech/api/v1/webhooks/wh_abc123def456/logs \
-  -H "Authorization: Bearer zfi_live_abc123..."
-```
-
-**Response:**
-
-```json
-{
-  "logs": [
-    {
-      "id": "log_xyz789",
-      "event_id": "evt_abc123",
-      "event": "payment.completed",
-      "url": "https://myapp.com/webhooks/zendfi",
-      "status_code": 200,
-      "response_time_ms": 145,
-      "delivered_at": "2025-10-26T15:30:01Z",
-      "success": true
-    },
-    {
-      "id": "log_xyz790",
-      "event_id": "evt_def456",
-      "event": "payment.failed",
-      "url": "https://myapp.com/webhooks/zendfi",
-      "status_code": 500,
-      "response_time_ms": 3000,
-      "delivered_at": "2025-10-26T15:25:00Z",
-      "success": false,
-      "retry_count": 2,
-      "next_retry": "2025-10-26T17:25:00Z"
-    }
-  ]
-}
-```
-
+| Status | Description |
+|--------|-------------|
+| `pending` | Queued for delivery |
+| `delivered` | Successfully delivered (200 OK) |
+| `failed` | Failed delivery, will retry |
+| `exhausted` | Failed after 5 attempts, in dead letter queue |
 
 ## Next Steps
 
-- [Payments API](/api/payments) - Create payments that trigger webhooks
-- [Subscriptions](/api/subscriptions) - Set up recurring billing with webhook events
-- [TypeScript Guide](/developer-tools/typescript-guide) - Type-safe webhook handlers
+- [Payments API](../api/payments) - Create payments that trigger webhooks
+- [Subscriptions](../api/subscriptions) - Set up recurring billing with webhook events
+- [TypeScript Guide](../developer-tools/typescript-guide) - Type-safe webhook handlers
