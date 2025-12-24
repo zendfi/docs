@@ -4,6 +4,9 @@ description: Purchasing Power Parity for international agent markets
 sidebar_position: 5
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # PPP Pricing
 
 Purchasing Power Parity (PPP) allows AI agents to serve international markets with localized pricing. Automatically adjust prices based on the customer's location and economic conditions.
@@ -238,6 +241,25 @@ const suggestion = await zendfi.pricing.getSuggestion({
 
 ### Get PPP Factor
 
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const factor = await zendfi.pricing.getPPPFactor('BR');
+
+console.log(factor);
+// {
+//   country_code: 'BR',
+//   country_name: 'Brazil',
+//   ppp_factor: 0.55,
+//   currency_code: 'BRL',
+//   adjustment_percentage: 55.0
+// }
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
+
 ```bash
 curl "https://api.zendfi.tech/api/v1/ai/pricing/ppp-factor" \
   -X POST \
@@ -245,6 +267,9 @@ curl "https://api.zendfi.tech/api/v1/ai/pricing/ppp-factor" \
   -H "Content-Type: application/json" \
   -d '{"country_code": "BR"}'
 ```
+
+</TabItem>
+</Tabs>
 
 **Response:**
 ```json
@@ -259,12 +284,46 @@ curl "https://api.zendfi.tech/api/v1/ai/pricing/ppp-factor" \
 
 ### List All Factors
 
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const factors = await zendfi.pricing.listFactors();
+
+factors.forEach(f => {
+  console.log(`${f.country_name}: ${f.ppp_factor}`);
+});
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
+
 ```bash
 curl "https://api.zendfi.tech/api/v1/ai/pricing/ppp-factors" \
   -H "Authorization: Bearer $API_KEY"
 ```
 
+</TabItem>
+</Tabs>
+
 ### Get Pricing Suggestion
+
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const suggestion = await zendfi.pricing.getSuggestion({
+  agent_id: 'shopping-bot',
+  base_price: 99.99,
+  user_profile: { location_country: 'BR' },
+  ppp_config: { enabled: true },
+});
+
+console.log(suggestion);
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
 
 ```bash
 curl "https://api.zendfi.tech/api/v1/ai/pricing/suggest" \
@@ -278,6 +337,9 @@ curl "https://api.zendfi.tech/api/v1/ai/pricing/suggest" \
     "ppp_config": {"enabled": true}
   }'
 ```
+
+</TabItem>
+</Tabs>
 
 ## Best Practices
 
