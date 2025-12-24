@@ -21,279 +21,300 @@ PPP pricing helps you:
 ```typescript
 import { zendfi } from '@zendfi/sdk';
 
-// Get PPP-adjusted pricing
-const pricing = await zendfi.ppp.getPrice({
-  amount: 99.00,         // Base USD price
-  country_code: 'BR',    // Customer's country
-});
+// Get PPP factor for a country
+const factor = await zendfi.pricing.getPPPFactor('BR');
 
-console.log(pricing);
+console.log(factor);
 // {
-//   original_amount: 99.00,
-//   adjusted_amount: 49.50,
-//   discount_percent: 50,
-//   country: 'Brazil',
 //   country_code: 'BR',
-//   tier: 'emerging'
+//   country_name: 'Brazil',
+//   ppp_factor: 0.55,
+//   currency_code: 'BRL',
+//   adjustment_percentage: 55.0
 // }
+
+// Calculate adjusted price
+const basePrice = 99.00;
+const adjustedPrice = basePrice * factor.ppp_factor; // 99 * 0.55 = $54.45
 ```
 
-## PPP Tiers
+## How PPP Works
 
-Countries are grouped into pricing tiers based on economic data:
+Each country has a PPP factor (0.0 to 1.3+) that represents its purchasing power relative to the United States:
 
-| Tier | Discount | Description | Examples |
-|------|----------|-------------|----------|
-| `premium` | 0% | Developed economies | US, UK, Germany, Japan |
-| `standard` | 20% | Strong economies | Spain, Italy, South Korea |
-| `growth` | 35% | Growing markets | Mexico, Poland, Chile |
-| `emerging` | 50% | Emerging markets | Brazil, India, Indonesia |
-| `developing` | 65% | Developing economies | Vietnam, Nigeria, Pakistan |
+- **1.0** = Same as US prices (baseline)
+- **> 1.0** = Higher purchasing power (Switzerland: 1.30, Norway: 1.25)
+- **< 1.0** = Lower purchasing power (India: 0.28, Brazil: 0.55)
 
-## Country List
+**Examples:**
+- United States: 1.00 (baseline)
+- Switzerland: 1.30 (30% higher)
+- Brazil: 0.55 (45% lower)
+- India: 0.28 (72% lower)
 
-### Premium Tier (0%)
-```
-US, CA, UK, DE, FR, JP, AU, CH, NL, SE, NO, DK, AT, FI, IE, SG, LU, BE
-```
+Multiply your base price by the PPP factor to get the localized price
 
-### Standard Tier (20%)
-```
-ES, IT, KR, PT, CZ, IL, NZ, AE, GR, TW, HK, SI
-```
+## Supported Countries
 
-### Growth Tier (35%)
-```
-MX, PL, CL, HU, MY, TH, RO, AR, BG, HR
-```
+ZendFi supports PPP pricing for 50+ countries. Use `zendfi ppp factors` to see the complete list.
 
-### Emerging Tier (50%)
-```
-BR, IN, ID, CO, ZA, TR, PE, UA, EG, PH
-```
-
-### Developing Tier (65%)
-```
-VN, NG, PK, BD, KE, ET, GH, TZ, UG, MM
-```
+**Sample PPP factors:**
+- 🇨🇭 Switzerland: 1.30 (30% premium)
+- 🇳🇴 Norway: 1.25
+- 🇺🇸 United States: 1.00 (baseline)
+- 🇩🇪 Germany: 0.98
+- 🇧🇷 Brazil: 0.55
+- 🇲🇽 Mexico: 0.50
+- 🇻🇳 Vietnam: 0.33
+- 🇮🇳 India: 0.28
 
 ## SDK Usage
 
-### Get Adjusted Price
+### Get PPP Factor
 
 ```typescript
-const pricing = await zendfi.ppp.getPrice({
-  amount: 99.00,
-  country_code: 'IN',
-});
+const factor = await zendfi.pricing.getPPPFactor('IN');
+
+console.log(factor);
+// {
+//   country_code: 'IN',
+//   country_name: 'India',
+//   ppp_factor: 0.28,
+//   currency_code: 'INR',
+//   adjustment_percentage: 28.0
+// }
+
+// Calculate adjusted price
+const basePrice = 99.00;
+const adjustedPrice = basePrice * factor.ppp_factor; // $27.72
 
 // Create payment with adjusted amount
 const payment = await zendfi.payments.create({
-  amount: pricing.adjusted_amount,
+  amount: adjustedPrice,
   currency: 'USD',
   metadata: {
     ppp_applied: true,
-    original_amount: pricing.original_amount,
-    discount_percent: pricing.discount_percent,
-    country: pricing.country,
+    original_amount: basePrice,
+    ppp_factor: factor.ppp_factor,
+    country: factor.country_name,
   },
 });
 ```
 
-### Batch Pricing
+### List All Factors
 
 ```typescript
-const prices = await zendfi.ppp.getBatchPrices({
-  amount: 99.00,
-  countries: ['US', 'BR', 'IN', 'DE', 'VN'],
-});
+const factors = await zendfi.pricing.listFactors();
 
-prices.forEach(p => {
-  console.log(`${p.country}: $${p.adjusted_amount} (${p.discount_percent}% off)`);
+factors.forEach(f => {
+  console.log(`${f.country_name}: factor ${f.ppp_factor.toFixed(2)}`);
 });
-// United States: $99.00 (0% off)
-// Brazil: $49.50 (50% off)
-// India: $49.50 (50% off)
-// Germany: $99.00 (0% off)
-// Vietnam: $34.65 (65% off)
+// United States: factor 1.00
+// Brazil: factor 0.55
+// India: factor 0.28
+// Germany: factor 0.98
+// Vietnam: factor 0.33
 ```
 
-### Get Country Tier
+### Calculate Local Price
 
 ```typescript
-const tier = await zendfi.ppp.getTier('MX');
-console.log(tier);
+const result = await zendfi.pricing.calculateLocalPrice(99.00, 'BR');
+
+console.log(result);
 // {
-//   country_code: 'MX',
-//   country: 'Mexico',
-//   tier: 'growth',
-//   discount_percent: 35
+//   original: 99.00,
+//   adjusted: 54.45,
+//   savings: 44.55,
+//   discount_percentage: 55.0,
+//   country: 'Brazil',
+//   ppp_factor: 0.55
 // }
 ```
 
 ## CLI Commands
 
 ```bash
-# Get PPP pricing for a country
-zendfi ppp price --amount 99 --country BR
+# Get PPP factor for a country
+zendfi ppp check BR
 # Output:
 # Country: Brazil (BR)
-# Tier: emerging
-# Original: $99.00
-# Adjusted: $49.50 (50% discount)
+# PPP Factor: 0.55
+# Currency: BRL
+# Adjustment: 55% of US price
 
-# List all tiers
-zendfi ppp tiers
+# Get PPP factor with price calculation
+zendfi ppp check BR --price 99
+# Adjusted Price: $54.45
 
-# Get tier for a country
-zendfi ppp tier IN
+# List all PPP factors
+zendfi ppp factors
+zendfi ppp factors --sort discount
 
-# Batch pricing
-zendfi ppp price --amount 99 --countries US,BR,IN,DE,VN
+# Calculate localized price
+zendfi ppp calculate --price 99 --country BR
 ```
 
-## Integration with Agents
+## Integration with AI Pricing
 
-Agents can automatically apply PPP pricing:
+Use AI-powered pricing suggestions that automatically apply PPP:
 
 ```typescript
-// Shopping agent with PPP support
-const agent = await zendfi.agent.create({
-  name: 'global-shop-agent',
-  capabilities: ['ppp_pricing', 'payments'],
-});
-
-const session = await zendfi.agent.createSession({
-  agent_id: agent.id,
-  user_wallet: userWallet,
-  ppp_enabled: true,           // Enable automatic PPP
-  user_country: 'BR',          // User's country
-  limits: {
-    max_per_transaction: 100,  // Limits apply to adjusted prices
+const suggestion = await zendfi.pricing.getSuggestion({
+  agent_id: 'shopping-assistant',
+  base_price: 99.99,
+  user_profile: {
+    location_country: 'BR',  // User's country
+    wallet: userWallet,
+  },
+  ppp_config: {
+    enabled: true,
+    floor_price: 29.99,          // Never go below $29.99
+    max_discount_percent: 60,     // Cap discount at 60%
   },
 });
 
-// Agent creates payment - PPP applied automatically
-const intent = await zendfi.intents.create({
-  amount: 99.00,               // Base price
-  session_token: session.token, // Session enables PPP
-});
-
-// Intent uses adjusted price
-console.log(intent.amount); // 49.50 (50% discount for Brazil)
+console.log(suggestion);
+// {
+//   suggested_amount: 54.99,
+//   min_amount: 29.99,
+//   max_amount: 299.97,
+//   currency: 'USD',
+//   reasoning: 'Price adjusted for Brazil purchasing power parity (55% of US baseline)',
+//   ppp_adjusted: true,
+//   adjustment_factor: 0.55
+// }
 ```
 
-## Geo-Detection
+## Using PPP with Payments
 
-You can auto-detect country from IP:
-
-```typescript
-const pricing = await zendfi.ppp.getPrice({
-  amount: 99.00,
-  ip_address: request.ip, // Detects country automatically
-});
-```
-
-:::warning
-IP-based detection is approximate. For accuracy, use explicit country codes when possible.
-:::
-
-## Custom Tiers
-
-Set up custom pricing tiers for your business:
+Calculate localized pricing before creating payments:
 
 ```typescript
-// Dashboard or API configuration
-await zendfi.ppp.setCustomTiers({
-  merchant_id: 'your_merchant_id',
-  tiers: {
-    premium: { discount: 0, countries: ['US', 'CA', 'UK'] },
-    standard: { discount: 15, countries: ['DE', 'FR', 'JP'] },
-    growth: { discount: 30, countries: ['MX', 'BR', 'IN'] },
-    // ... custom configuration
+// Get user's country (from your application)
+const userCountry = 'IN'; // Could come from IP, user profile, etc.
+
+// Get PPP factor
+const factor = await zendfi.pricing.getPPPFactor(userCountry);
+
+// Calculate adjusted price
+const basePrice = 99.99;
+const localPrice = basePrice * factor.ppp_factor;
+
+// Create payment with adjusted price
+const payment = await zendfi.payments.create({
+  amount: localPrice,
+  currency: 'USD',
+  metadata: {
+    base_price: basePrice,
+    ppp_factor: factor.ppp_factor,
+    country: factor.country_name,
   },
 });
 ```
 
-## Minimum Prices
+## Pricing Configuration
 
-Set floor prices to ensure profitability:
+Control PPP adjustments with `ppp_config`:
 
 ```typescript
-const pricing = await zendfi.ppp.getPrice({
-  amount: 99.00,
-  country_code: 'VN',
-  minimum: 25.00, // Never go below $25
+const suggestion = await zendfi.pricing.getSuggestion({
+  agent_id: 'my-agent',
+  base_price: 99.99,
+  user_profile: { location_country: 'VN' },
+  ppp_config: {
+    enabled: true,
+    floor_price: 25.00,          // Minimum price
+    ceiling_price: 199.99,        // Maximum price
+    min_factor: 0.30,            // Don't go below 30% of base
+    max_factor: 1.50,            // Don't go above 150% of base
+    max_discount_percent: 60,     // Cap discount at 60%
+    extra_discount_percent: 5,    // Add extra 5% discount
+  },
 });
-
-// Adjusted would be $34.65 (65% off)
-// But if that's below minimum, returns $25.00
 ```
 
 ## API Reference
 
-### Get PPP Price
+### Get PPP Factor
 
 ```bash
-curl "https://api.zend.fi/api/v1/ai/ppp/price?amount=99&country=BR" \
-  -H "Authorization: Bearer $API_KEY"
+curl "https://api.zendfi.tech/api/v1/ai/pricing/ppp-factor" \
+  -X POST \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"country_code": "BR"}'
 ```
 
 **Response:**
 ```json
 {
-  "original_amount": 99.00,
-  "adjusted_amount": 49.50,
-  "discount_percent": 50,
-  "country": "Brazil",
   "country_code": "BR",
-  "tier": "emerging"
+  "country_name": "Brazil",
+  "ppp_factor": 0.55,
+  "currency_code": "BRL",
+  "adjustment_percentage": 55.0
 }
 ```
 
-### List Tiers
+### List All Factors
 
 ```bash
-curl "https://api.zend.fi/api/v1/ai/ppp/tiers" \
+curl "https://api.zendfi.tech/api/v1/ai/pricing/ppp-factors" \
   -H "Authorization: Bearer $API_KEY"
 ```
 
-### Get Country Tier
+### Get Pricing Suggestion
 
 ```bash
-curl "https://api.zend.fi/api/v1/ai/ppp/tier/MX" \
-  -H "Authorization: Bearer $API_KEY"
+curl "https://api.zendfi.tech/api/v1/ai/pricing/suggest" \
+  -X POST \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "shopping-bot",
+    "base_price": 99.99,
+    "user_profile": {"location_country": "BR"},
+    "ppp_config": {"enabled": true}
+  }'
 ```
 
 ## Best Practices
 
-1. **Display original price** - Show the discount clearly to users
-2. **Verify country** - Use payment address to confirm location
-3. **Set minimums** - Ensure prices cover your costs
-4. **Track metrics** - Monitor conversion rates by region
-5. **Test markets** - A/B test discount levels
+1. **Store PPP factors** - Cache factors to reduce API calls
+2. **Display original price** - Show the discount clearly to users
+3. **Set minimums** - Use `floor_price` to ensure profitability
+4. **Verify country** - Get country from user profile or billing address
+5. **Monitor conversions** - Track conversion rates by country
 
-## Fraud Prevention
-
-PPP can be exploited with VPNs. Protect yourself:
+## Example: E-Commerce Integration
 
 ```typescript
-const pricing = await zendfi.ppp.getPrice({
-  amount: 99.00,
-  country_code: 'BR',
-  verify_with: 'payment_method', // Verify with payment location
-  fraud_score_threshold: 0.7,    // Reject high-risk transactions
-});
+// In your checkout flow
+async function getLocalizedPrice(basePrice: number, userCountry: string) {
+  try {
+    const factor = await zendfi.pricing.getPPPFactor(userCountry);
+    const localPrice = basePrice * factor.ppp_factor;
+    
+    return {
+      original: basePrice,
+      local: localPrice,
+      savings: basePrice - localPrice,
+      country: factor.country_name,
+      factor: factor.ppp_factor,
+    };
+  } catch (error) {
+    // Fallback to base price if PPP lookup fails
+    return {
+      original: basePrice,
+      local: basePrice,
+      savings: 0,
+      country: userCountry,
+      factor: 1.0,
+    };
+  }
+}
 ```
-
-## Analytics
-
-Track PPP performance in the dashboard:
-
-- Revenue by country/tier
-- Conversion rates with/without PPP
-- Average discount applied
-- Top markets by volume
 
 ## Next Steps
 

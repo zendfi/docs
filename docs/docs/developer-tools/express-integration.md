@@ -45,9 +45,9 @@ PORT=3000
 
 ```typescript
 // lib/zendfi.ts
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-export const zendfi = new ZendFi({
+export const zendfi = new ZendFiClient({
   apiKey: process.env.ZENDFI_API_KEY!,
 });
 ```
@@ -65,7 +65,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`�� Server running on port ${PORT}`);
 });
 ```
 
@@ -89,17 +89,17 @@ router.post('/payments', async (req, res) => {
     }
     
     // Create payment
-    const payment = await zendfi.payments.create({
+    const payment = await zendfi.createPayment({
       amount: parseFloat(amount),
       currency: 'USD',
       token: 'USDC',
-      customerEmail: email,
+      customer_email: email,
       metadata,
     });
     
     res.json({
-      paymentId: payment.id,
-      paymentUrl: payment.paymentUrl,
+      payment_id: payment.id,
+      payment_url: payment.payment_url,
       status: payment.status,
     });
   } catch (error) {
@@ -126,6 +126,7 @@ app.use('/api', paymentRoutes);
 ```typescript
 // routes/webhooks.ts
 import { Router } from 'express';
+import express from 'express';
 import { createExpressWebhookHandler } from '@zendfi/sdk/express';
 import { fulfillOrder } from '../lib/orders';
 
@@ -133,6 +134,7 @@ const router = Router();
 
 router.post(
   '/webhooks/zendfi',
+  express.raw({ type: 'application/json' }),
   createExpressWebhookHandler({
     secret: process.env.ZENDFI_WEBHOOK_SECRET!,
     handlers: {
@@ -141,9 +143,9 @@ router.post(
         
         // Fulfill order
         await fulfillOrder({
-          paymentId: payment.id,
+          payment_id: payment.id,
           amount: payment.amount,
-          email: payment.customerEmail,
+          email: payment.customer_email,
           metadata: payment.metadata,
         });
       },
@@ -167,40 +169,46 @@ export default router;
 ```typescript
 // routes/webhooks.ts
 import { Router } from 'express';
-import crypto from 'crypto';
+import express from 'express';
+import { zendfi } from '../lib/zendfi';
 
 const router = Router();
 
-router.post('/webhooks/zendfi', express.raw({ type: 'application/json' }), (req, res) => {
-  const signature = req.headers['x-zendfi-signature'] as string;
-  const payload = req.body.toString();
-  
-  // Verify signature
-  const expectedSignature = crypto
-    .createHmac('sha256', process.env.ZENDFI_WEBHOOK_SECRET!)
-    .update(payload)
-    .digest('hex');
-  
-  if (signature !== expectedSignature) {
-    return res.status(401).json({ error: 'Invalid signature' });
+router.post(
+  '/webhooks/zendfi', 
+  express.raw({ type: 'application/json' }), 
+  (req, res) => {
+    const signature = req.headers['x-zendfi-signature'] as string;
+    const payload = req.body.toString();
+    
+    // Verify signature
+    const isValid = zendfi.verifyWebhook({
+      payload,
+      signature,
+      secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+    });
+    
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+    
+    // Parse payload
+    const event = JSON.parse(payload);
+    
+    // Handle event
+    switch (event.event_type) {
+      case 'PaymentConfirmed':
+        handlePaymentConfirmed(event.data);
+        break;
+      case 'PaymentFailed':
+        handlePaymentFailed(event.data);
+        break;
+      // ... other events
+    }
+    
+    res.json({ received: true });
   }
-  
-  // Parse payload
-  const event = JSON.parse(payload);
-  
-  // Handle event
-  switch (event.type) {
-    case 'payment.confirmed':
-      handlePaymentConfirmed(event.data);
-      break;
-    case 'payment.failed':
-      handlePaymentFailed(event.data);
-      break;
-    // ... other events
-  }
-  
-  res.json({ received: true });
-});
+);
 
 export default router;
 ```
@@ -252,7 +260,7 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 
-// Body parser (except for webhooks)
+// Body parser (except for webhooks - must use raw body)
 app.use('/api/webhooks', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
@@ -291,11 +299,11 @@ router.post('/payments', authenticate, validatePayment, async (req, res) => {
   const { amount, description, email, metadata } = req.body;
   
   try {
-    const payment = await zendfi.payments.create({
+    const payment = await zendfi.createPayment({
       amount,
       currency: 'USD',
       description,
-      customerEmail: email,
+      customer_email: email,
       metadata: {
         ...metadata,
         user_id: req.user.id,
@@ -304,7 +312,7 @@ router.post('/payments', authenticate, validatePayment, async (req, res) => {
     
     res.json({
       id: payment.id,
-      url: payment.paymentUrl,
+      url: payment.payment_url,
       status: payment.status,
       amount: payment.amount,
     });
@@ -316,7 +324,7 @@ router.post('/payments', authenticate, validatePayment, async (req, res) => {
 // Get payment
 router.get('/payments/:id', authenticate, async (req, res) => {
   try {
-    const payment = await zendfi.payments.retrieve(req.params.id);
+    const payment = await zendfi.getPayment(req.params.id);
     res.json(payment);
   } catch (error) {
     res.status(404).json({ error: 'Payment not found' });
@@ -328,7 +336,7 @@ router.get('/payments', authenticate, async (req, res) => {
   const { page = 1, limit = 20, status } = req.query;
   
   try {
-    const payments = await zendfi.payments.list({
+    const payments = await zendfi.listPayments({
       page: Number(page),
       limit: Number(limit),
       status: status as string,
@@ -355,12 +363,13 @@ const router = Router();
 
 // Create subscription
 router.post('/subscriptions', authenticate, async (req, res) => {
-  const { planId, email } = req.body;
+  const { plan_id, email, wallet } = req.body;
   
   try {
-    const subscription = await zendfi.subscriptions.create({
-      planId,
-      customerEmail: email,
+    const subscription = await zendfi.createSubscription({
+      plan_id,
+      customer_wallet: wallet,
+      customer_email: email,
       metadata: {
         user_id: req.user.id,
       },
@@ -368,7 +377,7 @@ router.post('/subscriptions', authenticate, async (req, res) => {
     
     res.json({
       id: subscription.id,
-      url: subscription.paymentUrl,
+      url: subscription.payment_url,
       status: subscription.status,
     });
   } catch (error) {
@@ -379,7 +388,7 @@ router.post('/subscriptions', authenticate, async (req, res) => {
 // Cancel subscription
 router.delete('/subscriptions/:id', authenticate, async (req, res) => {
   try {
-    await zendfi.subscriptions.cancel(req.params.id);
+    await zendfi.cancelSubscription(req.params.id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Cancellation failed' });
@@ -483,7 +492,7 @@ export function errorHandler(
 npm run dev
 
 # Listen for webhooks (in another terminal)
-zendfi webhooks listen --forward-to http://localhost:3000/api/webhooks/zendfi
+zendfi webhooks --forward-to http://localhost:3000/api/webhooks/zendfi
 ```
 
 ### API Testing with cURL
@@ -591,16 +600,20 @@ services:
 ### 1. Error Handling
 
 ```typescript
+import { ZendFiError } from '@zendfi/sdk';
+
 router.post('/payments', async (req, res) => {
   try {
-    const payment = await zendfi.payments.create(req.body);
+    const payment = await zendfi.createPayment(req.body);
     res.json(payment);
   } catch (error) {
-    if (error.code === 'VALIDATION_ERROR') {
-      return res.status(400).json({ error: error.message });
-    }
-    if (error.code === 'RATE_LIMIT') {
-      return res.status(429).json({ error: 'Too many requests' });
+    if (error instanceof ZendFiError) {
+      if (error.type === 'validation_error') {
+        return res.status(400).json({ error: error.message });
+      }
+      if (error.type === 'rate_limit_error') {
+        return res.status(429).json({ error: 'Too many requests' });
+      }
     }
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -646,7 +659,7 @@ app.use(morgan('combined', {
 
 ```bash
 # Test webhook locally
-zendfi webhooks listen --forward-to http://localhost:3000/api/webhooks/zendfi
+zendfi webhooks --forward-to http://localhost:3000/api/webhooks/zendfi
 
 # Check webhook endpoint is publicly accessible
 curl https://yourapi.com/api/webhooks/zendfi

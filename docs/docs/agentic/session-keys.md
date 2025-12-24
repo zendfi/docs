@@ -1,12 +1,12 @@
 ---
 title: Session Keys
-description: On-chain funded wallets with PKP identity for autonomous agent payments
+description: Pre-funded wallets with spending limits for autonomous agent payments
 sidebar_position: 4
 ---
 
 # Session Keys
 
-Session Keys are pre-funded wallets with spending limits that enable AI agents to make autonomous payments without requiring user signatures for each transaction. They use Lit Protocol's PKP (Programmable Key Pairs) for secure on-chain identity.
+Session Keys are pre-funded wallets with spending limits that enable AI agents to make autonomous payments without requiring user signatures for each transaction.
 
 ## Overview
 
@@ -16,10 +16,10 @@ Session Keys differ from Agent Sessions in a key way:
 |---------|----------------|--------------|
 | **Funding** | Virtual limits on user's wallet | Pre-funded dedicated wallet |
 | **User Signature** | Required per payment | One-time approval only |
-| **On-Chain Identity** | Optional PKP | Always has PKP address |
 | **Best For** | Interactive flows | Fully autonomous agents |
 | **Can Link Together** | Yes | Yes |
 
+**Note:** Agent Sessions can optionally use Lit Protocol PKPs for on-chain identity when `mint_pkp: true` is set. Session Keys are simpler pre-funded wallets without PKP integration.
 :::tip Defense in Depth
 For maximum security, **link a session key to a session**. The session key provides signing capability while the session enforces granular spending policies. See [Linking Session Keys to Sessions](#linking-session-keys-to-sessions).
 :::
@@ -52,17 +52,16 @@ import { zendfi } from '@zendfi/sdk';
 
 // Step 1: Create a session key
 const key = await zendfi.sessionKeys.create({
-  agent_id: 'shopping-assistant',
   user_wallet: 'Hx7B...abc',
-  max_amount: 100,       // $100 spending limit
-  expiry_hours: 24,      // Valid for 24 hours
-  token: 'USDC',         // Token to fund with
+  limit_usdc: 100,          // $100 spending limit
+  duration_days: 7,         // Valid for 7 days (default)
+  device_fingerprint: fp,   // Required for security
 });
 
 console.log(`Session Key ID: ${key.session_key_id}`);
-console.log(`Status: ${key.status}`);  // "pending_approval"
-console.log(`Wallet Address: ${key.session_key_address}`);
-console.log(`PKP Public Key: ${key.pkp_public_key}`);
+console.log(`User Wallet: ${key.user_wallet}`);
+console.log(`Limit: $${key.limit_usdc}`);
+console.log(`Expires: ${key.expires_at}`);
 ```
 
 ### Response Fields
@@ -70,12 +69,12 @@ console.log(`PKP Public Key: ${key.pkp_public_key}`);
 | Field | Description |
 |-------|-------------|
 | `session_key_id` | Unique identifier for the session key |
-| `status` | Current status (see statuses below) |
-| `session_key_address` | The funded wallet address |
-| `pkp_public_key` | Lit Protocol PKP public key |
-| `approval_transaction` | Transaction for user to sign |
-| `max_amount` | Maximum spending limit |
-| `expires_at` | Expiration timestamp |
+| `user_wallet` | User's main wallet address |
+| `limit_usdc` | Maximum spending limit in USDC |
+| `expires_at` | Expiration timestamp (ISO 8601) |
+| `requires_approval` | Whether user must sign approval transaction |
+| `approval_transaction` | Base64 encoded transaction for user to sign |
+| `instructions` | Step-by-step setup instructions |
 
 ## Submitting User Approval
 
@@ -88,13 +87,14 @@ const signedTx = await userWallet.signTransaction(
 );
 
 // Submit the signed approval
-await zendfi.sessionKeys.submitApproval(key.session_key_id, {
+await zendfi.sessionKeys.submitApproval({
+  session_key_id: key.session_key_id,
   signed_transaction: signedTx,
 });
 
 // Session key is now active!
 const status = await zendfi.sessionKeys.getStatus(key.session_key_id);
-console.log(status.status);  // "active"
+console.log(`Active: ${status.is_active}`);
 ```
 
 ## Checking Session Key Status
@@ -102,29 +102,28 @@ console.log(status.status);  // "active"
 ```typescript
 const status = await zendfi.sessionKeys.getStatus(key.session_key_id);
 
-console.log(`Status: ${status.status}`);
-console.log(`Max Amount: $${status.max_amount}`);
-console.log(`Spent: $${status.spent_amount}`);
-console.log(`Remaining: $${status.remaining_amount}`);
-console.log(`Transaction Count: ${status.transaction_count}`);
+console.log(`Active: ${status.is_active}`);
+console.log(`Approved: ${status.is_approved}`);
+console.log(`Limit: $${status.limit_usdc}`);
+console.log(`Used: $${status.used_amount_usdc}`);
+console.log(`Remaining: $${status.remaining_usdc}`);
 console.log(`Expires: ${status.expires_at}`);
+console.log(`Days until expiry: ${status.days_until_expiry}`);
 
 // Security information
-if (status.security) {
-  console.log(`Last Activity: ${status.security.last_activity}`);
-  console.log(`Risk Score: ${status.security.risk_score}`);
+if (status.security_status) {
+  console.log(`Device matched: ${status.security_status.device_fingerprint_matched}`);
+  console.log(`Last used: ${status.security_status.last_used_at}`);
 }
 ```
 
 ### Session Key Statuses
 
-| Status | Description |
-|--------|-------------|
-| `pending_approval` | Waiting for user to sign approval transaction |
-| `active` | Ready for payments |
-| `exhausted` | Spending limit reached |
-| `expired` | Past expiry time |
-| `revoked` | Manually revoked |
+Session keys don't have explicit "status" strings. Instead, check:
+- `is_active`: Whether the key can be used
+- `is_approved`: Whether the approval transaction was confirmed
+- `remaining_usdc > 0`: Whether funds remain
+- Compare `expires_at` with current time for expiration
 
 ## Making Payments with Session Keys
 
@@ -152,25 +151,29 @@ Add more funds to an existing session key:
 ```typescript
 // Step 1: Request a top-up
 const topUp = await zendfi.sessionKeys.topUp(key.session_key_id, {
-  amount: 50,  // Add $50 more
+  user_wallet: 'Hx7B...abc',
+  amount_usdc: 50,          // Add $50 more
+  device_fingerprint: fp,
 });
 
-console.log(`New Max Amount: $${topUp.new_max_amount}`);
-console.log(`Approval Required: sign the transaction`);
+console.log(`Previous limit: $${topUp.previous_limit}`);
+console.log(`New limit: $${topUp.new_limit}`);
+console.log(`Added: $${topUp.added_amount}`);
 
 // Step 2: User signs the top-up transaction
 const signedTopUp = await userWallet.signTransaction(
-  topUp.approval_transaction
+  topUp.top_up_transaction
 );
 
 // Step 3: Submit the signed top-up
-await zendfi.sessionKeys.submitTopUp(key.session_key_id, {
-  signed_transaction: signedTopUp,
-});
+await zendfi.sessionKeys.submitTopUp(
+  key.session_key_id,
+  signedTopUp
+);
 
 // Verify the new limit
 const updated = await zendfi.sessionKeys.getStatus(key.session_key_id);
-console.log(`Updated Remaining: $${updated.remaining_amount}`);
+console.log(`Updated limit: $${updated.limit_usdc}`);
 ```
 
 ## Revoking a Session Key
@@ -191,11 +194,13 @@ Revocation is immediate and irreversible. Any pending payments will fail.
 ```typescript
 const result = await zendfi.sessionKeys.list();
 
-console.log(`Total: ${result.total}`);
+console.log(`Total: ${result.stats.total_keys}`);
+console.log(`Active: ${result.stats.active_keys}`);
+
 result.session_keys.forEach(key => {
   console.log(`${key.session_key_id}:`);
-  console.log(`  Status: ${key.status}`);
-  console.log(`  Remaining: $${key.remaining_amount}`);
+  console.log(`  Active: ${key.is_active}`);
+  console.log(`  Remaining: $${key.remaining_usdc}`);
   console.log(`  Expires: ${key.expires_at}`);
 });
 ```
@@ -294,29 +299,6 @@ await zendfi.sessionKeys.unlinkSession(key.session_key_id);
 
 **Recommendation:** Always link session keys to sessions for production AI agents.
 
-## CLI Commands
-
-```bash
-# Create a session key
-zendfi session-keys create \
-  --agent-id shopping-bot \
-  --wallet Hx7B...abc \
-  --max-amount 100 \
-  --expiry-hours 24
-
-# Get session key status
-zendfi session-keys status sk_abc123
-
-# Top up a session key
-zendfi session-keys top-up sk_abc123 --amount 50
-
-# Revoke a session key
-zendfi session-keys revoke sk_abc123
-
-# List all session keys
-zendfi session-keys list
-```
-
 ## Session Keys vs Agent Sessions
 
 Choose the right approach for your use case:
@@ -335,11 +317,10 @@ Choose the right approach for your use case:
 
 ## Security Considerations
 
-### PKP Identity
-Every session key has a Lit Protocol PKP, providing:
-- Verifiable on-chain session identity
-- Tamper-proof audit trail
-- Cryptographic proof of session parameters
+### Encrypted Storage
+- Session key private keys are encrypted using AES-256-GCM
+- Keys are stored securely in the backend database
+- Device fingerprinting adds an extra security layer
 
 ### Spending Limits
 - Limits are enforced at the protocol level
@@ -349,18 +330,7 @@ Every session key has a Lit Protocol PKP, providing:
 ### Expiration
 - Session keys auto-expire after the set duration
 - Expired keys cannot be used for new payments
-- Consider using 24-hour durations for most use cases
-
-## Webhook Events
-
-| Event | Description |
-|-------|-------------|
-| `session_key.created` | Session key created (pending approval) |
-| `session_key.activated` | User approved, session key active |
-| `session_key.exhausted` | Spending limit reached |
-| `session_key.expired` | Session key expired |
-| `session_key.revoked` | Session key manually revoked |
-| `session_key.topped_up` | Additional funds added |
+- Consider using 7-day durations for most use cases
 
 ## Best Practices
 

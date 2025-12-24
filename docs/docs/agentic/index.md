@@ -57,24 +57,7 @@ console.log('Payment confirmed:', payment.transaction_signature);
 
 
 ## How It Works
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 1. USER APPROVES ONCE                                       │
-│    ├─ Creates session with spending limits                  │
-│    ├─ Sets duration (24h, 1 week, etc.)                    │
-│    └─ Gets session token                                    │
-├─────────────────────────────────────────────────────────────┤
-│ 2. AI AGENT PAYS AUTONOMOUSLY                               │
-│    ├─ Uses session token                                    │
-│    ├─ ZendFi checks limits (cryptographic attestation)     │
-│    ├─ Signs transaction (session key or delegation)        │
-│    └─ Payment confirmed (if within limits)                 │
-├─────────────────────────────────────────────────────────────┤
-│ 3. SESSION EXPIRES AUTOMATICALLY                            │
-│    └─ No more payments after duration/limits hit           │
-└─────────────────────────────────────────────────────────────┘
-```
+![How do agentic payments work?](/images/how-agentic-payments-work.png)
 
 
 ## Core Features
@@ -168,20 +151,7 @@ const session = await zendfi.agent.createSession({
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Your AI Agent                          │
-├─────────────────────────────────────────────────────────────┤
-│                       ZendFi SDK                            │
-├───────────────┬───────────────┬───────────────┬─────────────┤
-│  Agent Keys   │   Sessions    │  Session Keys │   Smart     │
-│  (Scoped)     │   (Limits)    │  (Pre-funded) │  Payments   │
-├───────────────┴───────────────┴───────────────┴─────────────┤
-│                    ZendFi Platform                          │
-├─────────────────────────────────────────────────────────────┤
-│   Solana   │   Lit Protocol   │   Webhooks   │   Analytics  │
-└─────────────────────────────────────────────────────────────┘
-```
+![Agentic Intent Protocol Architecture](/images/agentic-architecture.png)
 
 ## Features at a Glance
 
@@ -260,21 +230,21 @@ const delegation = await zendfi.agent.createDelegation({
 
 ```bash
 # Agent Keys
-zendfi agent keys create --name "My Agent"
-zendfi agent keys list
-zendfi agent keys revoke <key-id>
+zendfi ai keys create --agent-id my-agent --name "My Agent"
+zendfi ai keys list
+zendfi ai keys revoke <key-id>
 
 # Agent Sessions
-zendfi agent sessions create --agent-id my-agent --wallet Hx7B...
-zendfi agent sessions list
+zendfi ai sessions create --agent-id my-agent --wallet Hx7B...
+zendfi ai sessions list
 
 # Payment Intents
-zendfi intents create --amount 99.99
-zendfi intents confirm <intent-id> --wallet Hx7B...
+zendfi ai intents create --amount 99.99
+zendfi ai intents confirm <intent-id> --wallet Hx7B...
 
 # PPP Pricing
-zendfi ppp check BR
-zendfi ppp calculate --price 99.99 --country IN
+zendfi ai ppp check BR
+zendfi ai ppp calculate --price 99.99 --country IN
 
 # Smart Payments
 zendfi smart pay --to <wallet> --amount 99.99

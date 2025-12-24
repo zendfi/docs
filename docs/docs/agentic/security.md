@@ -38,21 +38,17 @@ Comprehensive security guide for implementing agentic payments safely. Learn abo
 
 ## API Key Scopes
 
-Always use the minimum required scopes:
+Agent API keys support the following scopes:
 
 | Scope | Capabilities | Risk Level |
 |-------|--------------|------------|
-| `payments:read` | View payments | Low |
-| `payments:write` | Create payments | Medium |
-| `intents:read` | View intents | Low |
-| `intents:write` | Create/confirm intents | Medium |
-| `sessions:read` | View sessions | Low |
-| `sessions:write` | Create/manage sessions | Medium |
-| `keys:read` | View keys | Low |
-| `keys:write` | Create/revoke keys | High |
-| `webhooks:read` | View webhooks | Low |
-| `webhooks:write` | Configure webhooks | Medium |
-| `admin:*` | Full admin access | Critical |
+| `full` | Full access to all APIs | Critical |
+| `read_only` | Read-only access to data | Low |
+| `create_payments` | Create new payments | Medium |
+| `create_subscriptions` | Create subscriptions | Medium |
+| `manage_escrow` | Manage escrow transactions | High |
+| `manage_installments` | Manage installment plans | Medium |
+| `read_analytics` | Access analytics data | Low |
 
 ### Creating Scoped Keys
 
@@ -60,37 +56,28 @@ Always use the minimum required scopes:
 import { zendfi } from '@zendfi/sdk';
 
 // Create minimally-scoped key for a shopping agent
-const agentKey = await zendfi.admin.createApiKey({
+const agentKey = await zendfi.agent.createKey({
   name: 'Shopping Agent Key',
-  scopes: ['payments:write', 'intents:write'],
-  rate_limit: {
-    requests_per_minute: 60,
-    requests_per_day: 1000,
-  },
-  ip_whitelist: ['192.168.1.0/24'],
-  expires_at: '2024-12-31T23:59:59Z',
+  agent_id: 'shopping-agent-v1',
+  scopes: ['create_payments'],
+  rate_limit_per_hour: 1000,
 });
+
+// IMPORTANT: Save the full_key immediately - it won't be shown again!
+console.log(agentKey.full_key); // zai_test_abc123...
 ```
 
 ## Rate Limiting
 
-Protect against abuse with rate limits:
+Protect against abuse with API key rate limits:
 
 ```typescript
-// Configure rate limits per endpoint
-const session = await zendfi.agent.createSession({
-  agent_id: 'my-agent',
-  user_wallet: userWallet,
-  rate_limits: {
-    payments: {
-      per_minute: 10,
-      per_hour: 100,
-    },
-    intents: {
-      per_minute: 20,
-      per_hour: 200,
-    },
-  },
+// Configure rate limit when creating agent key
+const agentKey = await zendfi.agent.createKey({
+  name: 'Shopping Agent',
+  agent_id: 'shopping-assistant-v1',
+  scopes: ['create_payments'],
+  rate_limit_per_hour: 500, // Max 500 API calls per hour
 });
 ```
 
@@ -120,7 +107,7 @@ const session = await zendfi.agent.createSession({
     require_approval_above: 200, // Require approval for large tx
   },
   duration_hours: 24,
-  mint_pkp: true, // Enable on-chain enforcement
+  mint_pkp: true, // Enable on-chain audit trail (Lit Protocol)
 });
 ```
 
@@ -152,110 +139,45 @@ console.log(`Remaining today: $${status.remaining_today}`);
 console.log(`Remaining this week: $${status.remaining_this_week}`);
 ```
 
-## Key Security
-
-### Device-Bound Keys
-
-Always prefer device-bound keys over file-based:
-
-```typescript
-// ✅ Good: Device-bound key
-const key = await zendfi.keys.createDeviceBound({
-  type: 'webauthn',
-  user_verification: 'required',
-});
-
-// ❌ Bad: File-based key
-const privateKey = fs.readFileSync('key.json'); // Vulnerable
-```
-
-### Key Rotation
-
-Rotate keys regularly:
-
-```typescript
-// Create new key
-const newKey = await zendfi.keys.createDeviceBound({
-  name: 'Rotated Key',
-  type: 'webauthn',
-});
-
-// Migrate permissions
-await zendfi.keys.migrate({
-  from_key_id: oldKey.id,
-  to_key_id: newKey.id,
-});
-
-// Revoke old key
-await zendfi.keys.revoke(oldKey.id);
-```
-
-### MPC for High-Value Operations
-
-```typescript
-// Distribute key across Lit Protocol nodes
-const mpcKey = await zendfi.keys.createMPC({
-  threshold: 2,
-  node_count: 3,
-  access_control: {
-    type: 'multi_condition',
-    conditions: [
-      { type: 'wallet', wallet: adminWallet },
-      { type: 'time', after: '2024-01-01' },
-    ],
-  },
-});
-```
-
-## Network Security
-
-### IP Whitelisting
-
-```typescript
-const key = await zendfi.admin.createApiKey({
-  name: 'Production Key',
-  ip_whitelist: [
-    '203.0.113.0/24',      // Office network
-    '198.51.100.50',       // Production server
-  ],
-});
-```
-
-### mTLS Authentication
-
-For high-security environments:
-
-```typescript
-const client = new ZendFiClient({
-  api_key: process.env.ZENDFI_API_KEY,
-  mtls: {
-    cert: fs.readFileSync('client.crt'),
-    key: fs.readFileSync('client.key'),
-    ca: fs.readFileSync('ca.crt'),
-  },
-});
-```
-
 ## Webhook Security
 
 ### Signature Verification
 
-Always verify webhook signatures:
+Always verify webhook signatures. The signature format is `t=<timestamp>,v1=<signature>`.
+
+**Note:** Signature verification is handled by ZendFi's backend when sending webhooks. If you're receiving webhooks, you'll need to implement verification manually using HMAC-SHA256:
 
 ```typescript
-import { verifyWebhookSignature } from '@zendfi/sdk';
+import crypto from 'crypto';
 
 app.post('/webhooks/zendfi', (req, res) => {
   const signature = req.headers['x-zendfi-signature'];
   const timestamp = req.headers['x-zendfi-timestamp'];
   
-  const isValid = verifyWebhookSignature({
-    payload: req.rawBody,
-    signature,
-    timestamp,
-    secret: process.env.WEBHOOK_SECRET,
-    tolerance: 300, // 5 minute tolerance
-  });
+  // Extract timestamp and signature
+  const parts = signature.split(',');
+  const timestampPart = parts[0].replace('t=', '');
+  const signaturePart = parts[1].replace('v1=', '');
+  
+  // Recreate signed payload
+  const signedPayload = `${timestampPart}:${req.rawBody}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.WEBHOOK_SECRET)
+    .update(signedPayload)
+    .digest('hex');
+  
+  // Constant-time comparison
+  const isValid = crypto.timingSafeEqual(
+    Buffer.from(signaturePart, 'hex'),
+    Buffer.from(expectedSignature, 'hex')
+  );
+  
+  // Check timestamp (within 5 minutes)
+  const now = Math.floor(Date.now() / 1000);
+  const age = now - parseInt(timestampPart);
+  if (age > 300) {
+    return res.status(401).send('Signature expired');
+  }
   
   if (!isValid) {
     return res.status(401).send('Invalid signature');
@@ -266,28 +188,6 @@ app.post('/webhooks/zendfi', (req, res) => {
   handleEvent(event);
   
   res.status(200).send('OK');
-});
-```
-
-### Webhook IP Filtering
-
-Only accept webhooks from ZendFi IPs:
-
-```typescript
-const ZENDFI_WEBHOOK_IPS = [
-  '34.102.136.180',
-  '35.186.227.140',
-  // Get full list from dashboard
-];
-
-app.post('/webhooks/zendfi', (req, res) => {
-  const clientIp = req.ip;
-  
-  if (!ZENDFI_WEBHOOK_IPS.includes(clientIp)) {
-    return res.status(403).send('Forbidden');
-  }
-  
-  // Process webhook...
 });
 ```
 
@@ -412,42 +312,6 @@ Attestations strengthen ZendFi's non-MSB (Money Services Business) position:
 - **Non-custodial proof** - Demonstrates ZendFi doesn't hold funds
 - **Third-party verifiable** - Anyone can audit with the public key
 
-## Fraud Detection
-
-### Velocity Checks
-
-```typescript
-const session = await zendfi.agent.createSession({
-  agent_id: 'agent',
-  user_wallet: wallet,
-  
-  fraud_detection: {
-    enabled: true,
-    velocity_threshold: 0.8,  // Flag if 80% of limit used quickly
-    suspicious_patterns: [
-      'rapid_succession',      // Many tx in short time
-      'round_amounts',         // Unusual round amounts
-      'new_merchants',         // Payments to new merchants
-    ],
-    action_on_suspicious: 'flag', // or 'block'
-  },
-});
-```
-
-### Anomaly Alerts
-
-```typescript
-// Configure alerts for suspicious activity
-await zendfi.alerts.create({
-  type: 'spending_anomaly',
-  threshold: 2.0,  // 2x normal spending
-  notification: {
-    email: 'security@company.com',
-    webhook: 'https://company.com/alerts',
-  },
-});
-```
-
 ## Environment Security
 
 ### Secret Management
@@ -496,20 +360,18 @@ const prodClient = new ZendFiClient({
 ### Before Launch
 
 - [ ] API keys are scoped minimally
-- [ ] Rate limits are configured
-- [ ] Spending limits are set
-- [ ] IP whitelisting is enabled (if applicable)
+- [ ] Rate limits are configured on agent keys
+- [ ] Spending limits are set on sessions
 - [ ] Webhook signatures are verified
-- [ ] Device-bound keys are used for signing
 - [ ] Audit logging is enabled
 - [ ] Test mode is disabled for production
+- [ ] Environment variables are used for secrets
 
 ### Ongoing
 
 - [ ] Keys are rotated every 90 days
 - [ ] Audit logs are reviewed regularly
 - [ ] Spending patterns are monitored
-- [ ] Security alerts are configured
 - [ ] Dependencies are kept updated
 
 ## Incident Response
@@ -517,11 +379,14 @@ const prodClient = new ZendFiClient({
 If you suspect a compromised key:
 
 ```typescript
-// 1. Immediately revoke the key
-await zendfi.keys.revoke(compromisedKeyId);
+// 1. Immediately revoke the agent key
+await zendfi.agent.revokeKey(compromisedKeyId);
 
-// 2. Revoke all sessions
-await zendfi.sessions.revokeAll({ agent_id: 'compromised-agent' });
+// 2. Revoke all sessions for that agent
+const sessions = await zendfi.agent.listSessions();
+for (const session of sessions.filter(s => s.agent_id === 'compromised-agent')) {
+  await zendfi.agent.revokeSession(session.id);
+}
 
 // 3. Review audit logs
 const logs = await zendfi.audit.list({
@@ -529,10 +394,12 @@ const logs = await zendfi.audit.list({
   start_date: suspectedCompromiseDate,
 });
 
-// 4. Create new key with enhanced security
-const newKey = await zendfi.keys.createDeviceBound({
-  type: 'webauthn',
-  user_verification: 'required',
+// 4. Create new key with limited scope
+const newKey = await zendfi.agent.createKey({
+  name: 'Replacement Key',
+  agent_id: 'new-agent-v2',
+  scopes: ['create_payments'], // Minimal permissions
+  rate_limit_per_hour: 500,
 });
 ```
 

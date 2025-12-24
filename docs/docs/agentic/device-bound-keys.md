@@ -1,378 +1,376 @@
 ---
-title: Device-Bound Keys
-description: Secure key storage using WebAuthn and TPM for agentic payments
+title: Device-Bound Session Keys
+description: Non-custodial session keys with client-side PIN encryption
 sidebar_position: 8
 ---
 
-# Device-Bound Keys
+# Device-Bound Session Keys
 
-Device-Bound Keys tie cryptographic keys to specific hardware devices using WebAuthn and TPM. Even if malware compromises your system, keys cannot be extracted.
+Device-Bound Session Keys provide truly non-custodial payment sessions where private keys are encrypted client-side with a PIN and never leave the user's device unencrypted. The backend stores only the encrypted blob and cannot decrypt it.
 
 ## Overview
 
-Traditional key storage has vulnerabilities:
-- **File-based**: Keys can be copied from disk
-- **Memory**: Keys can be dumped from RAM
-- **Environment variables**: Exposed to processes
+**Traditional custodial session keys:**
+- Backend holds private keys
+- Single point of failure
+- Trust required
 
-Device-Bound Keys solve this by:
-- Storing keys in hardware (TPM/Secure Enclave)
-- Requiring biometric or PIN verification
-- Making keys non-exportable
+**Device-Bound Session Keys:**
+- Client generates and encrypts keys
+- Backend stores encrypted blob only
+- PIN + device fingerprint required to decrypt
+- Backend **cannot** access private keys
 
 ## How It Works
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Your Application                        │
+│                   User's Device (Client)                     │
 ├─────────────────────────────────────────────────────────────┤
-│                       ZendFi SDK                            │
-├───────────────┬─────────────────────────┬───────────────────┤
-│   WebAuthn    │    Lit Protocol MPC     │    TPM Direct     │
-│  (Browser)    │   (Distributed Keys)    │   (Hardware)      │
-├───────────────┴─────────────────────────┴───────────────────┤
-│               Hardware Secure Elements                       │
-│     ┌──────────┐    ┌──────────┐    ┌──────────┐           │
-│     │   TPM    │    │  Secure  │    │ Hardware │           │
-│     │  Chip    │    │ Enclave  │    │   Key    │           │
-│     └──────────┘    └──────────┘    └──────────┘           │
+│  1. Generate Solana keypair                                  │
+│  2. Encrypt with PIN + Device Fingerprint                    │
+│     (Argon2id + AES-256-GCM)                                │
+│  3. Send encrypted blob to backend                          │
+│                                                              │
+│  Later: Decrypt with PIN for each payment                   │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│                  ZendFi Backend (Server)                     │
+├─────────────────────────────────────────────────────────────┤
+│  - Stores encrypted blob only                               │
+│  - Cannot decrypt (no PIN, no device fingerprint)           │
+│  - Returns encrypted blob when requested                    │
+│  - Client decrypts locally for signing                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Creating a Device-Bound Key
+## Creating a Device-Bound Session Key
 
 ```typescript
-import { zendfi } from '@zendfi/sdk';
+import { DeviceBoundSessionKey } from '@zendfi/sdk';
 
-// Create device-bound key (prompts for biometric)
-const key = await zendfi.keys.createDeviceBound({
-  name: 'My Agent Key',
-  type: 'webauthn',
-  
-  // Require biometric for signing
-  user_verification: 'required',
-  
-  // Attach to agent
-  agent_id: 'shopping-agent',
-  
-  // Set permissions
-  permissions: ['payments', 'intents'],
-  
-  // Spending limits
-  limits: {
-    max_per_transaction: 100,
-    max_per_day: 1000,
-  },
+// Step 1: Create session key client-side
+const sessionKey = await DeviceBoundSessionKey.create({
+  pin: '123456',              // 6-digit PIN
+  limitUSDC: 100,             // Spending limit
+  durationDays: 7,            // Session duration
+  userWallet: 'Hx7B...abc',   // User's main wallet
+  generateRecoveryQR: true,   // Enable recovery
 });
 
-console.log(`Key ID: ${key.id}`);
-console.log(`Public Key: ${key.public_key}`);
-console.log(`Device: ${key.device_info.name}`);
+// Step 2: Register with backend
+import { ZendFiSessionKeyManager } from '@zendfi/sdk';
+
+const manager = new ZendFiSessionKeyManager(
+  process.env.ZENDFI_API_KEY,
+  'https://api.zendfi.tech'
+);
+
+const result = await manager.createSessionKey({
+  userWallet: 'Hx7B...abc',
+  limitUSDC: 100,
+  durationDays: 7,
+  pin: '123456',
+  generateRecoveryQR: true,
+});
+
+console.log('Session ID:', result.sessionKeyId);
+console.log('Session Wallet:', result.sessionWallet);
+console.log('Expires:', result.expiresAt);
+
+// Save recovery QR (IMPORTANT!)
+if (result.recoveryQR) {
+  console.log('Recovery QR:', result.recoveryQR);
+  // Display QR to user or save securely
+}
 ```
 
-## WebAuthn Integration
+## Security Details
 
-For browser-based agents:
+### Encryption Algorithm
+
+- **Key Derivation**: Argon2id (OWASP recommended)
+  - Memory: 64MB
+  - Iterations: 3
+  - Parallelism: 4
+  - Salt: Device fingerprint
+
+- **Encryption**: AES-256-GCM
+  - Nonce: 12 bytes (random per encryption)
+  - Tag: 16 bytes (authentication)
+
+### Device Fingerprinting
+
+Generates unique fingerprint from:
+- Canvas rendering
+- WebGL capabilities
+- Audio context
+- Screen resolution
+- Timezone
+- Languages
+- Platform
+- Hardware concurrency
+
+## Making Payments
+
+### First Payment (Requires PIN)
 
 ```typescript
-// Initialize WebAuthn
-const webauthn = await zendfi.keys.initWebAuthn({
-  rp: {
-    name: 'My Agent',
-    id: 'myagent.com',
-  },
-});
+import { Transaction } from '@solana/web3.js';
 
-// Create credential (shows biometric prompt)
-const credential = await webauthn.create({
-  user: {
-    id: userId,
-    name: 'user@example.com',
-    displayName: 'User',
-  },
-  authenticatorSelection: {
-    authenticatorAttachment: 'platform', // Use device's TPM
-    userVerification: 'required',
-    residentKey: 'required',
-  },
-});
+// Decrypt and sign (requires PIN on first use)
+const signedTx = await sessionKey.signTransaction(
+  transaction,
+  '123456',  // PIN
+  true       // Cache keypair
+);
 
-// Register with ZendFi
-const key = await zendfi.keys.registerWebAuthn({
-  credential_id: credential.id,
-  public_key: credential.publicKey,
-  agent_id: 'browser-agent',
-});
+// Submit to blockchain
+const signature = await connection.sendRawTransaction(
+  signedTx.serialize()
+);
 ```
 
-## Signing with Device-Bound Keys
+### Subsequent Payments (Auto-Signing)
 
 ```typescript
-// Request signature (prompts for biometric)
-const signature = await zendfi.keys.sign({
-  key_id: key.id,
-  message: transactionData,
-});
+// Cached keypair - no PIN needed! ✨
+const signedTx = await sessionKey.signTransaction(
+  transaction
+  // No PIN needed - uses cached keypair
+);
 
-// Submit signed transaction
-const result = await zendfi.smart.submitSigned({
-  signed_transaction: signature.signed_data,
-});
+// Cache expires after 30 minutes (configurable)
 ```
 
-## Lit Protocol MPC Keys
+## Recovery QR Code
 
-Distribute keys across Lit Protocol nodes:
+If device is lost, use recovery QR to restore session key on new device:
 
 ```typescript
-// Create MPC key (splits across Lit nodes)
-const mpcKey = await zendfi.keys.createMPC({
-  name: 'Distributed Agent Key',
-  threshold: 2,      // 2-of-3 threshold
-  node_count: 3,
-  
-  // Access control conditions
-  access_control: {
-    type: 'wallet',
-    wallet: userWallet,
-  },
-  
-  agent_id: 'secure-agent',
+// On new device: Scan recovery QR
+const recoveryData = 'qr_data_from_scan';
+
+// Re-encrypt with new device fingerprint
+const newSessionKey = await DeviceBoundSessionKey.create({
+  pin: '123456',              // Same PIN
+  limitUSDC: 100,
+  durationDays: 7,
+  userWallet: 'Hx7B...abc',
+  generateRecoveryQR: true,
 });
 
-console.log(`MPC Key ID: ${mpcKey.id}`);
-console.log(`PKP Address: ${mpcKey.pkp_address}`);
+// Register recovery with backend
+await manager.recoverSessionKey({
+  recoveryQrData: recoveryData,
+  newDeviceFingerprint: newSessionKey.getDeviceFingerprint(),
+  newEncryptedSessionKey: newSessionKey.getEncryptedData().encryptedData,
+  newNonce: newSessionKey.getEncryptedData().nonce,
+});
 ```
 
-### Signing with MPC
+## API Reference
+
+### Create Device-Bound Session Key
+
+```
+POST /api/v1/ai/session-keys/device-bound/create
+```
+
+**Request:**
+```json
+{
+  "user_wallet": "Hx7B...abc",
+  "limit_usdc": 100,
+  "duration_days": 7,
+  "encrypted_session_key": "base64_encrypted_data",
+  "nonce": "base64_nonce",
+  "session_public_key": "public_key_base58",
+  "device_fingerprint": "sha256_hash",
+  "recovery_qr_data": "optional_recovery_data"
+}
+```
+
+**Response:**
+```json
+{
+  "session_key_id": "sk_abc123",
+  "mode": "device_bound",
+  "is_custodial": false,
+  "user_wallet": "Hx7B...abc",
+  "session_wallet": "7xKN...xyz",
+  "limit_usdc": 100,
+  "expires_at": "2025-12-30T12:00:00Z",
+  "requires_client_signing": true,
+  "security_info": {
+    "encryption_type": "Argon2id + AES-256-GCM",
+    "device_bound": true,
+    "backend_can_decrypt": false,
+    "recovery_qr_saved": true
+  }
+}
+```
+
+### Get Encrypted Session Key
+
+```
+POST /api/v1/ai/session-keys/device-bound/get-encrypted
+```
+
+Retrieve encrypted session key from server (requires device fingerprint match).
+
+### Recover on New Device
+
+```
+POST /api/v1/ai/session-keys/device-bound/:id/recover
+```
+
+Register new device fingerprint for existing session key.
+
+### Submit Signed Transaction
+
+```
+POST /api/v1/ai/payments/:payment_id/submit-signed
+```
+
+Submit client-signed transaction to blockchain.
+
+## Complete Example
 
 ```typescript
-// Request distributed signature
-const signature = await zendfi.keys.signMPC({
-  key_id: mpcKey.id,
-  message: transactionData,
-  
-  // Prove access control
-  auth_sig: await zendfi.lit.getAuthSig(userWallet),
+import { 
+  DeviceBoundSessionKey,
+  ZendFiSessionKeyManager 
+} from '@zendfi/sdk';
+import { Connection, Transaction } from '@solana/web3.js';
+
+// Setup
+const manager = new ZendFiSessionKeyManager(
+  process.env.ZENDFI_API_KEY,
+  'https://api.zendfi.tech'
+);
+
+// 1. Create session key
+const result = await manager.createSessionKey({
+  userWallet: '7xKNH6ttXQfJpAoDW1p7zGMKS7kGvXZ4XG7fCcUjU86Y',
+  limitUSDC: 100,
+  durationDays: 7,
+  pin: '123456',
+  generateRecoveryQR: true,
 });
+
+console.log('✅ Session created:', result.sessionKeyId);
+
+// 2. Save recovery QR
+if (result.recoveryQR) {
+  // Display to user or save securely
+  console.log('📱 Save this QR code:', result.recoveryQR);
+}
+
+// 3. Create payment intent
+const payment = await manager.createPayment({
+  sessionKeyId: result.sessionKeyId,
+  amountUSD: 25,
+  description: 'Coffee',
+});
+
+// 4. Get encrypted session key
+const encrypted = await manager.getEncryptedSessionKey({
+  sessionKeyId: result.sessionKeyId,
+  deviceFingerprint: sessionKey.getDeviceFingerprint(),
+});
+
+// 5. Decrypt and sign
+const sessionKey = await DeviceBoundSessionKey.create({
+  pin: '123456',
+  // ... original parameters
+});
+
+const signedTx = await sessionKey.signTransaction(
+  payment.transaction,
+  '123456',  // PIN on first use
+  true       // Cache for future payments
+);
+
+// 6. Submit signed transaction
+await manager.submitSignedTransaction({
+  paymentId: payment.id,
+  signedTransaction: Buffer.from(signedTx.serialize()).toString('base64'),
+});
+
+console.log('✅ Payment submitted!');
+
+// 7. Subsequent payments - no PIN needed!
+const payment2 = await manager.createPayment({
+  sessionKeyId: result.sessionKeyId,
+  amountUSD: 15,
+  description: 'Snack',
+});
+
+// Auto-signing with cached keypair ✨
+const signedTx2 = await sessionKey.signTransaction(payment2.transaction);
 ```
-
-## TPM Direct Keys
-
-For server-side agents with TPM:
-
-```typescript
-// Create TPM-bound key
-const tpmKey = await zendfi.keys.createTPM({
-  name: 'Server Agent Key',
-  
-  // TPM configuration
-  tpm_path: '/dev/tpmrm0',
-  pcr_selection: [0, 1, 7], // PCR registers for attestation
-  
-  agent_id: 'server-agent',
-});
-
-// Sign with TPM
-const signature = await zendfi.keys.signTPM({
-  key_id: tpmKey.id,
-  message: transactionData,
-});
-```
-
-## Key Types Comparison
-
-| Type | Security | User Experience | Use Case |
-|------|----------|-----------------|----------|
-| WebAuthn | High | Biometric prompt | Browser agents |
-| Lit MPC | Very High | No user action | Automated agents |
-| TPM | Very High | No user action | Server agents |
-
-## Device Attestation
-
-Verify device integrity:
-
-```typescript
-const attestation = await zendfi.keys.getAttestation(key.id);
-
-console.log(attestation);
-// {
-//   device: 'MacBook Pro',
-//   authenticator: 'Touch ID',
-//   aaguid: '...',
-//   attestation_type: 'packed',
-//   verified: true,
-// }
-```
-
-## Key Recovery
-
-Device-bound keys cannot be exported, but you can set up recovery:
-
-```typescript
-// Create key with recovery option
-const key = await zendfi.keys.createDeviceBound({
-  name: 'Recoverable Key',
-  type: 'webauthn',
-  
-  recovery: {
-    enabled: true,
-    method: 'social',    // or 'seed_phrase'
-    guardians: [
-      guardian1Wallet,
-      guardian2Wallet,
-      guardian3Wallet,
-    ],
-    threshold: 2,        // 2-of-3 guardians to recover
-  },
-});
-
-// Later: Initiate recovery
-const recovery = await zendfi.keys.initiateRecovery({
-  key_id: key.id,
-  new_device: true,
-});
-
-// Guardians approve
-await zendfi.keys.approveRecovery({
-  recovery_id: recovery.id,
-  guardian_signature: guardianSig,
-});
-```
-
-## Rotating Keys
-
-```typescript
-// Create new key on new device
-const newKey = await zendfi.keys.createDeviceBound({
-  name: 'New Agent Key',
-  type: 'webauthn',
-  agent_id: 'my-agent',
-});
-
-// Migrate from old key
-await zendfi.keys.migrate({
-  from_key_id: oldKey.id,
-  to_key_id: newKey.id,
-  
-  // Requires signature from old key
-  old_key_signature: oldKeySig,
-});
-
-// Revoke old key
-await zendfi.keys.revoke(oldKey.id);
-```
-
-## CLI Commands
-
-```bash
-# Create device-bound key
-zendfi keys create --type webauthn --name "My Key"
-
-# Create MPC key
-zendfi keys create --type mpc --threshold 2 --nodes 3
-
-# List keys
-zendfi keys list
-
-# Get key info
-zendfi keys info key_abc123
-
-# Sign message
-zendfi keys sign --key key_abc123 --message "data"
-
-# Revoke key
-zendfi keys revoke key_abc123
-```
-
-## Browser Support
-
-| Browser | WebAuthn Support | Platform Authenticator |
-|---------|------------------|----------------------|
-| Chrome | ✅ | Touch ID, Windows Hello |
-| Firefox | ✅ | Touch ID, Windows Hello |
-| Safari | ✅ | Touch ID, Face ID |
-| Edge | ✅ | Windows Hello |
 
 ## Security Best Practices
 
-1. **Always require user verification** for high-value operations
-2. **Use platform authenticators** (Touch ID, Windows Hello) over external keys
-3. **Set up recovery** before deploying to production
-4. **Rotate keys periodically** (every 90 days recommended)
-5. **Monitor key usage** via webhooks
-6. **Use MPC for automated agents** that can't prompt users
+1. **PIN Requirements**
+   - Must be 6 numeric digits
+   - Never store PIN on device
+   - Prompt user for PIN entry
 
-## Webhook Events
+2. **Recovery QR**
+   - Always generate recovery QR
+   - Display to user immediately (shown only once)
+   - User should save screenshot or print
 
-| Event | Description |
-|-------|-------------|
-| `key.created` | New key registered |
-| `key.used` | Key signed a message |
-| `key.revoked` | Key was revoked |
-| `key.recovery_initiated` | Recovery started |
-| `key.recovery_completed` | Recovery finished |
-| `key.attestation_verified` | Device attestation passed |
+3. **Cache Management**
+   - Default cache TTL: 30 minutes
+   - Customize with `cacheTTL` parameter
+   - Cache is memory-only (not persisted)
+
+4. **Device Fingerprint**
+   - Automatically generated
+   - Ties encrypted key to specific device
+   - Changes if device configuration changes
+
+5. **Spending Limits**
+   - Set conservative limits initially
+   - Max limit: $10,000 per session
+   - Max duration: 30 days
+
+## Advantages Over Custodial Keys
+
+| Feature | Custodial | Device-Bound |
+|---------|-----------|--------------|
+| Private key location | Backend server | User's device only |
+| Backend can access | ✅ Yes | ❌ No |
+| Requires user action | No | PIN on first use |
+| Recovery method | Backend restore | Recovery QR |
+| Security model | Trust backend | Zero-trust |
+| Regulatory | May require licenses | Non-custodial |
 
 ## Error Handling
 
 ```typescript
 try {
-  const signature = await zendfi.keys.sign({
-    key_id: key.id,
-    message: data,
-  });
+  const signedTx = await sessionKey.signTransaction(tx, pin);
 } catch (error) {
-  switch (error.code) {
-    case 'USER_CANCELLED':
-      console.log('User cancelled biometric prompt');
-      break;
-    case 'DEVICE_NOT_FOUND':
-      console.log('Device not available');
-      break;
-    case 'KEY_REVOKED':
-      console.log('Key has been revoked');
-      break;
-    case 'ATTESTATION_FAILED':
-      console.log('Device attestation failed');
-      break;
-    case 'NOT_ALLOWED':
-      console.log('Key not permitted for this operation');
-      break;
-    default:
-      console.log('Signing failed:', error.message);
+  if (error.message.includes('PIN required')) {
+    // Cache expired, prompt for PIN
+    const newPin = await promptUserForPin();
+    const signed = await sessionKey.signTransaction(tx, newPin);
+  } else if (error.message.includes('device fingerprint')) {
+    // Device changed, need recovery
+    console.log('Device mismatch - use recovery QR');
+  } else {
+    console.error('Signing failed:', error);
   }
 }
 ```
 
-## API Reference
-
-### Create Device-Bound Key
-
-```
-POST /api/v1/ai/keys/device-bound
-```
-
-### Create MPC Key
-
-```
-POST /api/v1/ai/keys/mpc
-```
-
-### Sign with Key
-
-```
-POST /api/v1/ai/keys/:id/sign
-```
-
-### Revoke Key
-
-```
-DELETE /api/v1/ai/keys/:id
-```
-
 ## Next Steps
 
+- [Agent Sessions](/agentic/sessions) - Create spending-limited sessions
+- [Autonomous Delegation](/agentic/autonomous-delegation) - Enable autonomous payments
 - [Security](/agentic/security) - Security best practices
-- [Autonomous Delegation](/agentic/autonomous-delegation) - Agent spending controls
-- [Sessions](/agentic/sessions) - Session-based limits

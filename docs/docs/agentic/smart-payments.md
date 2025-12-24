@@ -1,22 +1,22 @@
 ---
 title: Smart Payments
-description: AI-optimized payment execution with automatic routing and gas management
+description: AI-powered payment routing with PPP pricing and gasless transactions
 sidebar_position: 7
 ---
 
 # Smart Payments
 
-Smart Payments use AI to optimize payment execution. Automatic routing, gas estimation, retry logic, and cross-chain bridging - all handled transparently.
+Smart Payments combine multiple features into a single intelligent API. The `zendfi.smart.execute()` method automatically applies PPP discounts, detects gasless needs, and routes payments optimally.
 
 ## Overview
 
-Smart Payments solve common agent payment challenges:
+Smart Payments provide:
 
-- **Gas estimation** - Accurate fee predictions
-- **Route optimization** - Best path for cross-chain payments
-- **Retry logic** - Automatic recovery from failures
-- **Transaction batching** - Combine multiple payments
-- **Slippage protection** - Prevent MEV and sandwich attacks
+- **PPP Pricing** - Automatic purchasing power parity adjustments
+- **Gasless Detection** - Auto-subsidize gas for better UX
+- **Session Integration** - Works with agent sessions for limit enforcement
+- **Instant Settlement** - Optional immediate merchant payout
+- **Escrow Support** - Optional fund holding for service delivery
 
 ## Basic Usage
 
@@ -25,282 +25,239 @@ import { zendfi } from '@zendfi/sdk';
 
 // Execute a smart payment
 const result = await zendfi.smart.execute({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 100.00,
-  currency: 'USD',
+  agent_id: 'shopping-assistant',
+  user_wallet: 'Hx7B...abc',
+  amount_usd: 100.00,
+  description: 'Premium subscription',
 });
 
 console.log(result);
 // {
-//   status: 'succeeded',
+//   status: 'confirmed',
 //   payment_id: 'pay_abc123',
-//   tx_signature: '5K7x...',
-//   gas_used: 0.00025,
-//   route: 'direct',
-//   optimization_savings: 0.0001
+//   transaction_signature: '5K7x...',
+//   requires_signature: false,
+//   receipt_url: 'https://zendfi.tech/receipt/...',
+//   next_steps: 'Payment complete!'
 // }
 ```
 
-## Smart Execution Options
+## Available Options
 
 ```typescript
 const result = await zendfi.smart.execute({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 100.00,
-  currency: 'USD',
+  // Required
+  agent_id: 'shopping-assistant',
+  user_wallet: 'Hx7B...abc',
+  amount_usd: 100.00,
   
-  // Optimization settings
-  optimize_for: 'speed',  // 'speed' | 'cost' | 'balanced'
-  max_slippage: 0.5,      // 0.5% max slippage
-  deadline: 300,          // 5 minute deadline
+  // Optional session token for limit enforcement
+  session_token: 'zai_session_...',
   
-  // Gas settings
-  gas_strategy: 'auto',   // 'auto' | 'fast' | 'slow' | 'custom'
-  max_gas: 0.01,          // Max gas in SOL
-  gasless: true,          // Pay gas for user
+  // Optional merchant targeting
+  merchant_id: 'merchant_abc123',
   
-  // Retry settings
-  retry_count: 3,
-  retry_delay: 5000,      // 5 seconds between retries
+  // Payment token (default: USDC)
+  token: 'USDC',
   
-  // Metadata
-  idempotency_key: 'order_123',
+  // Auto-detect if user needs gas subsidization
+  auto_detect_gasless: true,
+  
+  // Enable instant merchant settlement
+  instant_settlement: true,
+  
+  // Create escrow instead of direct payment
+  enable_escrow: false,
+  
+  // Description and metadata
+  description: 'Premium subscription',
+  product_details: {
+    name: 'Pro Plan',
+    sku: 'PRO-ANNUAL',
+  },
   metadata: {
     order_id: 'ORD-456',
   },
 });
 ```
 
-## Optimization Strategies
-
-### Speed Optimization
+## Response Structure
 
 ```typescript
-// Prioritize fast confirmation
-const result = await zendfi.smart.execute({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 50.00,
-  optimize_for: 'speed',
-  gas_strategy: 'fast',
-});
-
-// Typically confirms in 1-2 seconds on Solana
-```
-
-### Cost Optimization
-
-```typescript
-// Minimize fees
-const result = await zendfi.smart.execute({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 50.00,
-  optimize_for: 'cost',
-  gas_strategy: 'slow',
-  batch: true, // Batch with other payments
-});
-
-// May take longer but saves on fees
-```
-
-### Balanced (Default)
-
-```typescript
-// Balance speed and cost
-const result = await zendfi.smart.execute({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 50.00,
-  optimize_for: 'balanced',
-});
-```
-
-## Pre-Flight Simulation
-
-Simulate before executing:
-
-```typescript
-const simulation = await zendfi.smart.simulate({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 100.00,
-});
-
-console.log(simulation);
-// {
-//   success: true,
-//   estimated_gas: 0.00025,
-//   estimated_time: 2,
-//   route: 'direct',
-//   warnings: [],
-// }
-
-// Execute only if simulation succeeds
-if (simulation.success) {
-  const result = await zendfi.smart.execute({
-    from: userWallet,
-    to: merchantWallet,
-    amount: 100.00,
-  });
+interface SmartPaymentResponse {
+  /** Payment ID (UUID) */
+  payment_id: string;
+  
+  /** Current status */
+  status: 'pending' | 'confirmed' | 'awaiting_signature' | 'failed';
+  
+  /** Amount in USD */
+  amount_usd: number;
+  
+  /** Whether gasless transaction was used */
+  gasless_used: boolean;
+  
+  /** Whether settlement is complete */
+  settlement_complete: boolean;
+  
+  /** Escrow ID if escrow was enabled */
+  escrow_id?: string;
+  
+  /** Base64 encoded transaction (for signing) */
+  unsigned_transaction?: string;
+  
+  /** Whether client signature is required */
+  requires_signature: boolean;
+  
+  /** Transaction signature (if auto-signed) */
+  transaction_signature?: string;
+  
+  /** Confirmation time in milliseconds */
+  confirmed_in_ms?: number;
+  
+  /** URL to payment receipt */
+  receipt_url: string;
+  
+  /** NFT receipt address (if minted) */
+  receipt_nft?: string;
+  
+  /** Human-readable next steps */
+  next_steps: string;
+  
+  /** URL to submit signed transaction */
+  submit_url?: string;
+  
+  /** ISO 8601 timestamp */
+  created_at: string;
 }
 ```
 
-## Submit Signed Transaction
+## Device-Bound Flow
 
-For agents that build transactions locally:
-
-```typescript
-// Agent builds and signs transaction
-const tx = await zendfi.smart.buildTransaction({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 100.00,
-});
-
-// Sign with agent's key
-const signedTx = await signTransaction(tx, agentKey);
-
-// Submit via ZendFi (monitoring, retry, webhooks)
-const result = await zendfi.smart.submitSigned({
-  signed_transaction: signedTx,
-  monitor: true,
-  retry_on_failure: true,
-});
-
-console.log(result.tx_signature);
-```
-
-## Cross-Chain Payments
-
-Smart routing for cross-chain:
+When `requires_signature: true`, the user must sign the transaction:
 
 ```typescript
 const result = await zendfi.smart.execute({
-  from: { chain: 'ethereum', address: ethWallet },
-  to: { chain: 'solana', address: solWallet },
-  amount: 100.00,
-  currency: 'USD',
+  agent_id: 'my-agent',
+  user_wallet: userWallet,
+  amount_usd: 50.00,
 });
 
-// Automatic bridging via Wormhole/LayerZero
-console.log(result.route);
-// 'ethereum -> wormhole -> solana'
+if (result.requires_signature) {
+  // User needs to sign the transaction
+  console.log('Sign this transaction:', result.unsigned_transaction);
+  console.log('Submit to:', result.submit_url);
+  
+  // After user signs
+  const signedTx = await wallet.signTransaction(result.unsigned_transaction);
+  
+  // Submit the signed transaction
+  const confirmed = await zendfi.smart.submitSigned(
+    result.payment_id,
+    signedTx
+  );
+  
+  console.log('Payment confirmed:', confirmed.transaction_signature);
+} else {
+  // Payment auto-signed (custodial or autonomous delegate)
+  console.log('Payment complete:', result.transaction_signature);
+}
 ```
 
-## Batched Payments
+## Session Integration
 
-Combine multiple payments:
+Use smart payments with agent sessions for spending limit enforcement:
 
 ```typescript
-const batch = await zendfi.smart.batch([
-  { to: merchant1, amount: 25.00 },
-  { to: merchant2, amount: 30.00 },
-  { to: merchant3, amount: 45.00 },
-], {
-  from: userWallet,
-  atomic: true, // All or nothing
+// Create a session first
+const session = await zendfi.agent.createSession({
+  agent_id: 'shopping-bot',
+  user_wallet: userWallet,
+  limits: { max_per_day: 500 },
+  duration_hours: 24,
 });
 
-console.log(batch);
-// {
-//   status: 'succeeded',
-//   total_amount: 100.00,
-//   total_gas: 0.00045, // Less than 3 separate txs
-//   transactions: [...]
-// }
+// Make payment with session token (enforces limits)
+const payment = await zendfi.smart.execute({
+  session_token: session.session_token,
+  agent_id: 'shopping-bot',
+  user_wallet: userWallet,
+  amount_usd: 29.99,
+  auto_detect_gasless: true,
+});
+
+// Limits are automatically enforced
+// If payment would exceed limit, it fails with error
 ```
 
-## Conditional Payments
+## Gasless Transactions
 
-Execute based on conditions:
+Enable `auto_detect_gasless` to automatically subsidize gas:
 
 ```typescript
-const result = await zendfi.smart.executeConditional({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 100.00,
-  
-  conditions: {
-    price_check: {
-      token: 'SOL',
-      min_price: 150,  // Only if SOL > $150
-    },
-    gas_limit: {
-      max_gas: 0.001,  // Only if gas < 0.001 SOL
-    },
-  },
-  
-  timeout: 3600, // 1 hour to meet conditions
+const payment = await zendfi.smart.execute({
+  agent_id: 'my-agent',
+  user_wallet: userWallet,
+  amount_usd: 100.00,
+  auto_detect_gasless: true, // ZendFi covers gas if needed
 });
+
+// User only pays the amount in USDC
+// No SOL required for gas
+console.log(`Gasless used: ${payment.gasless_used}`);
 ```
 
-## Recurring Smart Payments
+## Instant Settlement
 
-Schedule recurring payments with optimization:
+Enable instant merchant payout:
 
 ```typescript
-const recurring = await zendfi.smart.createRecurring({
-  from: userWallet,
-  to: subscriptionMerchant,
-  amount: 9.99,
-  currency: 'USD',
-  
-  schedule: {
-    frequency: 'monthly',
-    day: 1, // 1st of each month
-    time: '09:00',
-    timezone: 'UTC',
-  },
-  
-  optimize_for: 'cost',
-  gasless: true,
+const payment = await zendfi.smart.execute({
+  agent_id: 'my-agent',
+  user_wallet: userWallet,
+  amount_usd: 100.00,
+  instant_settlement: true, // Merchant receives funds immediately
 });
 
-// Payments execute automatically each month
+console.log(`Settlement complete: ${payment.settlement_complete}`);
 ```
 
-## Gas Abstraction
+## Escrow Payments
 
-Let ZendFi handle gas:
+Create payment with escrow for service delivery:
 
 ```typescript
-// User pays in USDC, ZendFi handles gas
-const result = await zendfi.smart.execute({
-  from: userWallet,
-  to: merchantWallet,
-  amount: 100.00,
-  currency: 'USDC',
-  gasless: true, // ZendFi pays gas, deducts small fee
+const payment = await zendfi.smart.execute({
+  agent_id: 'my-agent',
+  user_wallet: userWallet,
+  amount_usd: 100.00,
+  enable_escrow: true,
 });
 
-// User only sees $100 deducted, no SOL needed
+console.log(`Escrow ID: ${payment.escrow_id}`);
+// Funds held in escrow until service is delivered
+// See escrow API for release/refund
 ```
 
 ## CLI Commands
 
 ```bash
-# Execute smart payment
-zendfi smart pay --to <wallet> --amount 100
+# Create a smart payment
+zendfi smart create \
+  --amount 100 \
+  --wallet <user-wallet> \
+  --merchant <merchant-id> \
+  --description "Premium subscription"
 
-# Simulate first
-zendfi smart simulate --to <wallet> --amount 100
-
-# Batch payments
-zendfi smart batch payments.json
-
-# Check gas estimates
-zendfi smart gas-estimate --amount 100
-
-# List pending smart payments
-zendfi smart pending
+# Simulate PPP pricing
+zendfi smart simulate \
+  --amount 100 \
+  --country BR
 ```
 
 ## Alias: smartPayment()
 
-For backward compatibility:
+For backward compatibility, `smartPayment()` is available as an alias:
 
 ```typescript
 // These are equivalent
@@ -313,103 +270,47 @@ const result2 = await zendfi.smartPayment(params);
 ```typescript
 try {
   const result = await zendfi.smart.execute({
-    from: userWallet,
-    to: merchantWallet,
-    amount: 100.00,
+    agent_id: 'my-agent',
+    user_wallet: userWallet,
+    amount_usd: 100.00,
   });
 } catch (error) {
-  switch (error.code) {
-    case 'INSUFFICIENT_FUNDS':
-      console.log('Not enough balance');
-      break;
-    case 'GAS_ESTIMATION_FAILED':
-      console.log('Could not estimate gas');
-      break;
-    case 'SLIPPAGE_EXCEEDED':
-      console.log('Price moved too much');
-      break;
-    case 'DEADLINE_EXCEEDED':
-      console.log('Transaction took too long');
-      break;
-    case 'SIMULATION_FAILED':
-      console.log('Transaction would fail:', error.simulation_error);
-      break;
-    case 'MAX_RETRIES_EXCEEDED':
-      console.log('All retries failed');
-      break;
-    default:
-      console.log('Payment failed:', error.message);
+  if (error.code === 'INSUFFICIENT_FUNDS') {
+    console.log('User does not have enough balance');
+  } else if (error.code === 'LIMIT_EXCEEDED') {
+    console.log('Session spending limit exceeded');
+  } else if (error.code === 'SESSION_EXPIRED') {
+    console.log('Agent session has expired');
+  } else {
+    console.log('Payment failed:', error.message);
   }
 }
 ```
-
-## Webhook Events
-
-| Event | Description |
-|-------|-------------|
-| `smart.initiated` | Payment started |
-| `smart.simulated` | Simulation completed |
-| `smart.routing` | Finding optimal route |
-| `smart.executing` | Transaction submitted |
-| `smart.succeeded` | Payment completed |
-| `smart.failed` | Payment failed |
-| `smart.retrying` | Retry in progress |
-
-## Performance Metrics
-
-Access optimization metrics:
-
-```typescript
-const metrics = await zendfi.smart.getMetrics(paymentId);
-
-console.log(metrics);
-// {
-//   total_time_ms: 1847,
-//   simulation_time_ms: 234,
-//   routing_time_ms: 89,
-//   execution_time_ms: 1524,
-//   gas_saved: 0.00012,
-//   route_optimization: 'Saved $0.02 vs default route'
-// }
-```
-
-## Best Practices
-
-1. **Always simulate first** for large payments
-2. **Use idempotency keys** to prevent duplicates
-3. **Set reasonable deadlines** (5-15 minutes typical)
-4. **Enable gasless** for better user experience
-5. **Monitor webhook events** for real-time status
-6. **Use batching** when making multiple payments
 
 ## API Reference
 
 ### Execute Payment
 
 ```
-POST /api/v1/ai/smart/execute
+POST /api/v1/ai/smart-payment
 ```
 
-### Simulate Payment
+### Submit Signed Transaction
 
 ```
-POST /api/v1/ai/smart/simulate
+POST /api/v1/ai/payments/{payment_id}/submit-signed
 ```
 
-### Submit Signed
+## Best Practices
 
-```
-POST /api/v1/ai/smart/submit-signed
-```
-
-### Batch Payments
-
-```
-POST /api/v1/ai/smart/batch
-```
+1. **Use session tokens** for spending limit enforcement
+2. **Enable auto_detect_gasless** for better user experience
+3. **Add product_details** for better receipts
+4. **Handle requires_signature flow** for device-bound keys
+5. **Use idempotency keys** (via headers) to prevent duplicates
 
 ## Next Steps
 
-- [Payment Intents](/agentic/payment-intents) - Two-phase payments
-- [Autonomous Delegation](/agentic/autonomous-delegation) - Agent spending limits
-- [Device-Bound Keys](/agentic/device-bound-keys) - Secure key storage
+- [Agent Sessions](/agentic/sessions) - Create sessions with spending limits
+- [Payment Intents](/agentic/payment-intents) - Two-phase payment flow
+- [Autonomous Delegation](/agentic/autonomous-delegation) - Enable auto-signing

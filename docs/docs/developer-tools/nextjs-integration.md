@@ -45,9 +45,9 @@ ZENDFI_WEBHOOK_SECRET=your_webhook_secret
 
 ```typescript
 // lib/zendfi.ts
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-export const zendfi = new ZendFi({
+export const zendfi = new ZendFiClient({
   apiKey: process.env.ZENDFI_API_KEY!,
 });
 ```
@@ -67,18 +67,18 @@ export async function createCheckout(formData: FormData) {
   const amount = parseFloat(formData.get('amount') as string);
   const email = formData.get('email') as string;
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount,
     currency: 'USD',
     token: 'USDC',
-    customerEmail: email,
-    successUrl: `${process.env.NEXT_PUBLIC_URL}/success`,
+    customer_email: email,
+    success_url: `${process.env.NEXT_PUBLIC_URL}/success`,
     metadata: {
       source: 'nextjs_app',
     },
   });
   
-  return payment.paymentUrl;
+  return payment.payment_url;
 }
 ```
 
@@ -126,15 +126,15 @@ import { NextRequest } from 'next/server';
 export async function POST(request: NextRequest) {
   const { amount, email } = await request.json();
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount,
     currency: 'USD',
-    customerEmail: email,
+    customer_email: email,
   });
   
   return Response.json({
-    paymentUrl: payment.paymentUrl,
-    paymentId: payment.id,
+    payment_url: payment.payment_url,
+    payment_id: payment.id,
   });
 }
 ```
@@ -152,9 +152,9 @@ export const POST = createNextWebhookHandler({
     'payment.confirmed': async (payment) => {
       // Payment successful - fulfill order
       await fulfillOrder({
-        paymentId: payment.id,
+        payment_id: payment.id,
         amount: payment.amount,
-        email: payment.customerEmail,
+        email: payment.customer_email,
         metadata: payment.metadata,
       });
       
@@ -167,13 +167,6 @@ export const POST = createNextWebhookHandler({
     },
   },
 });
-
-// Disable body parser for webhook verification
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 ```
 
 
@@ -197,15 +190,15 @@ export default async function handler(
   const { amount, email } = req.body;
   
   try {
-    const payment = await zendfi.payments.create({
+    const payment = await zendfi.createPayment({
       amount: parseFloat(amount),
       currency: 'USD',
-      customerEmail: email,
+      customer_email: email,
     });
     
     res.status(200).json({
-      paymentUrl: payment.paymentUrl,
-      paymentId: payment.id,
+      payment_url: payment.payment_url,
+      payment_id: payment.id,
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to create payment' });
@@ -237,8 +230,8 @@ export function Checkout() {
         body: JSON.stringify({ amount, email }),
       });
       
-      const { paymentUrl } = await res.json();
-      window.location.href = paymentUrl;
+      const { payment_url } = await res.json();
+      window.location.href = payment_url;
     } catch (error) {
       alert('Payment failed');
     } finally {
@@ -270,27 +263,70 @@ export function Checkout() {
 }
 ```
 
-### Webhooks Handler
+### Webhooks Handler (Pages Router)
 
 ```typescript
 // pages/api/webhooks/zendfi.ts
-import { createNextWebhookHandler } from '@zendfi/sdk/nextjs';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { zendfi } from '@/lib/zendfi';
+import { getRawBody } from '@/lib/raw-body';
 
-export default createNextWebhookHandler({
-  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
-  handlers: {
-    'payment.confirmed': async (payment) => {
-      console.log('Payment confirmed:', payment.id);
-      // Handle order fulfillment
-    },
-  },
-});
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const signature = req.headers['x-zendfi-signature'] as string;
+  const rawBody = await getRawBody(req);
+  
+  // Verify webhook signature
+  const isValid = zendfi.verifyWebhook({
+    payload: rawBody,
+    signature,
+    secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  });
+  
+  if (!isValid) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  const event = JSON.parse(rawBody);
+  
+  // Handle webhook events
+  switch (event.event_type) {
+    case 'PaymentConfirmed':
+      await handlePaymentConfirmed(event.data);
+      break;
+    case 'PaymentFailed':
+      await handlePaymentFailed(event.data);
+      break;
+  }
+  
+  res.status(200).json({ received: true });
+}
 
 export const config = {
   api: {
     bodyParser: false,
   },
 };
+```
+
+```typescript
+// lib/raw-body.ts
+import type { NextApiRequest } from 'next';
+
+export async function getRawBody(req: NextApiRequest): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => { data += chunk; });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
+}
 ```
 
 
@@ -314,17 +350,17 @@ export default async function ProductPage({
   async function buyNow() {
     'use server';
     
-    const payment = await zendfi.payments.create({
+    const payment = await zendfi.createPayment({
       amount: product.price,
       description: product.name,
       metadata: {
         product_id: product.id,
         product_name: product.name,
       },
-      successUrl: `${process.env.NEXT_PUBLIC_URL}/orders/success?payment_id={PAYMENT_ID}`,
+      success_url: `${process.env.NEXT_PUBLIC_URL}/orders/success?payment_id={PAYMENT_ID}`,
     });
     
-    redirect(payment.paymentUrl);
+    redirect(payment.payment_url);
   }
   
   return (
@@ -359,13 +395,13 @@ export default async function SubscribePage({
     
     const email = formData.get('email') as string;
     
-    const subscription = await zendfi.subscriptions.create({
-      planId: plan.id,
-      customerEmail: email,
-      successUrl: `${process.env.NEXT_PUBLIC_URL}/dashboard`,
+    const subscription = await zendfi.createSubscription({
+      plan_id: plan.id,
+      customer_email: email,
+      success_url: `${process.env.NEXT_PUBLIC_URL}/dashboard`,
     });
     
-    redirect(subscription.paymentUrl);
+    redirect(subscription.payment_url);
   }
   
   return (
@@ -404,7 +440,7 @@ export async function POST(request: NextRequest) {
     0
   );
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount: total,
     description: `Order from My Store`,
     metadata: {
@@ -414,7 +450,7 @@ export async function POST(request: NextRequest) {
     },
   });
   
-  return Response.json({ paymentUrl: payment.paymentUrl });
+  return Response.json({ payment_url: payment.payment_url });
 }
 ```
 
@@ -431,7 +467,7 @@ npm run dev
 
 ```bash
 # In a new terminal
-zendfi webhooks listen --forward-to http://localhost:3000/api/webhooks/zendfi
+zendfi webhooks --forward-to http://localhost:3000/api/webhooks/zendfi
 ```
 
 ### 3. Create Test Payment
@@ -475,16 +511,20 @@ zendfi payment create --amount 10 --open
 ### 1. Error Handling
 
 ```typescript
+import { ZendFiError } from '@zendfi/sdk';
+
 try {
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount: 50,
     currency: 'USD',
   });
 } catch (error) {
-  if (error.code === 'INVALID_AMOUNT') {
-    // Handle validation error
-  } else if (error.code === 'RATE_LIMIT_EXCEEDED') {
-    // Handle rate limit
+  if (error instanceof ZendFiError) {
+    if (error.type === 'validation_error') {
+      // Handle validation error
+    } else if (error.type === 'rate_limit_error') {
+      // Handle rate limit
+    }
   } else {
     // Handle other errors
   }
@@ -503,8 +543,8 @@ export function CheckoutButton() {
     setIsLoading(true);
     try {
       const res = await fetch('/api/checkout', { method: 'POST' });
-      const { paymentUrl } = await res.json();
-      window.location.href = paymentUrl;
+      const { payment_url } = await res.json();
+      window.location.href = payment_url;
     } catch (error) {
       alert('Failed to create payment');
       setIsLoading(false);
@@ -544,7 +584,7 @@ async function processOrder(data: OrderData) {
 
 ```bash
 # Test webhook locally
-zendfi webhooks listen
+zendfi webhooks --forward-to http://localhost:3000/api/webhooks/zendfi
 
 # Check webhook signature in production
 # Make sure ZENDFI_WEBHOOK_SECRET is set correctly

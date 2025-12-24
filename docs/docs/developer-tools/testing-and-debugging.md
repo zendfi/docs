@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 6
 title: Testing & Debugging
 description: Test locally, debug issues, and troubleshoot common problems
 ---
@@ -59,9 +59,9 @@ pnpm add @zendfi/sdk
 <TabItem value="sdk" label="TypeScript SDK" default>
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi({
+const zendfi = new ZendFiClient({
   apiKey: process.env.ZENDFI_API_KEY,
   debug: true // Logs all requests/responses
 });
@@ -95,18 +95,20 @@ Debug mode logs:
 ### Create Test Payment
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 // Create test payment
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 10,
   currency: 'USD',
   description: 'Test Payment'
 });
 
-console.log('Payment URL:', payment.paymentUrl);
+console.log('Payment URL:', payment.payment_url);
 // Visit this URL to complete test payment
 ```
 
@@ -130,7 +132,7 @@ In test mode, you can simulate payment completion without real crypto:
 
 ```typescript
 // Create payment
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 25,
   currency: 'USD'
 });
@@ -149,19 +151,16 @@ The ZendFi CLI can forward webhooks to your local server:
 
 ```bash
 # Forward webhooks to localhost:3000
-zendfi webhooks forward --port 3000
+zendfi webhooks --forward-to http://localhost:3000/api/webhooks/zendfi
 
-# Or specify full URL
-zendfi webhooks forward --url http://localhost:3000/api/webhooks
+# This creates a secure tunnel and automatically configures your webhook endpoint
 ```
-
-This creates a secure tunnel and automatically configures your webhook endpoint.
 
 **Output:**
 ```
 ✓ Tunnel created: https://abc123.zendfi.dev
 ✓ Webhook endpoint configured
-✓ Forwarding to http://localhost:3000/api/webhooks
+✓ Forwarding to http://localhost:3000/api/webhooks/zendfi
 
 Listening for webhooks...
 Press Ctrl+C to stop
@@ -187,30 +186,40 @@ ngrok http 3000
 Test webhook handler logic without external service:
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 // Your webhook handler
 async function handleWebhook(body: any, signature: string) {
-  const event = zendfi.webhooks.constructEvent(
-    body,
+  const isValid = zendfi.verifyWebhook({
+    payload: body,
     signature,
-    process.env.ZENDFI_WEBHOOK_SECRET!
-  );
+    secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  });
   
-  console.log('Event:', event.event);
+  if (!isValid) {
+    console.error('Invalid webhook signature');
+    return;
+  }
+  
+  const event = typeof body === 'string' ? JSON.parse(body) : body;
+  
+  console.log('Event:', event.event_type);
   console.log('Data:', event.data);
 }
 
 // Simulate webhook payload
 const mockPayload = {
-  event: 'payment.completed',
+  event_type: 'PaymentConfirmed',
   timestamp: new Date().toISOString(),
+  merchant_id: 'merch_test_123',
   data: {
     id: 'pay_test_123',
     amount: 50,
-    status: 'completed'
+    status: 'confirmed'
   }
 };
 
@@ -223,34 +232,36 @@ await handleWebhook(mockPayload, 'mock_signature');
 Always verify webhook signatures in production:
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 export async function POST(request: Request) {
   const body = await request.text();
-  const signature = request.headers.get('zendfi-signature');
+  const signature = request.headers.get('x-zendfi-signature');
   
   if (!signature) {
     return new Response('No signature', { status: 400 });
   }
   
-  try {
-    // Verifies signature and parses event
-    const event = zendfi.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.ZENDFI_WEBHOOK_SECRET!
-    );
-    
-    // Handle event
-    console.log('Verified event:', event.event);
-    
-    return new Response('Success', { status: 200 });
-  } catch (err) {
-    console.error('Webhook verification failed:', err);
-    return new Response('Invalid signature', { status: 400 });
+  // Verify signature
+  const isValid = zendfi.verifyWebhook({
+    payload: body,
+    signature,
+    secret: process.env.ZENDFI_WEBHOOK_SECRET!
+  });
+  
+  if (!isValid) {
+    return new Response('Invalid signature', { status: 401 });
   }
+  
+  // Parse and handle event
+  const event = JSON.parse(body);
+  console.log('Verified event:', event.event_type);
+  
+  return new Response('Success', { status: 200 });
 }
 ```
 
@@ -282,7 +293,7 @@ Status: 401 Unauthorized
 
 **Solutions:**
 1. ✅ Verify payment was created successfully (check `payment.id`)
-2. ✅ Use `payment.paymentUrl` field (not `payment.url`)
+2. ✅ Use `payment.payment_url` field (snake_case, not camelCase)
 3. ✅ Check payment hasn't expired
 4. ✅ Test mode payments require test wallet
 
@@ -294,10 +305,10 @@ Status: 401 Unauthorized
 
 **Solutions:**
 1. ✅ Verify webhook endpoint is configured in dashboard
-2. ✅ Endpoint must be **publicly accessible** (use ngrok/tunnel for localhost)
+2. ✅ Endpoint must be **publicly accessible** (use CLI webhook forwarding or ngrok for localhost)
 3. ✅ Endpoint must return **200 status code**
 4. ✅ Check webhook logs in dashboard for delivery errors
-5. ✅ Verify signature is being validated correctly
+5. ✅ Verify signature is being validated correctly using `zendfi.verifyWebhook()`
 6. ✅ Check firewall isn't blocking ZendFi IPs
 
 ### Issue: "Module not found: @zendfi/sdk"
@@ -325,18 +336,19 @@ const url = payment.paymentUrl;
 ```
 
 **Solutions:**
-1. ✅ Update to latest SDK version:
+1. ✅ Use snake_case field names: `payment.payment_url` (not `payment.paymentUrl`)
+2. ✅ Update to latest SDK version:
    ```bash
    npm install @zendfi/sdk@latest
    ```
-2. ✅ Check TypeScript version (requires 4.5+):
+3. ✅ Check TypeScript version (requires 4.5+):
    ```bash
    npx tsc --version
    ```
-3. ✅ Add proper imports:
+4. ✅ Add proper imports:
    ```typescript
-   import { ZendFi } from '@zendfi/sdk';
-   import type { Payment, PaymentCreateParams } from '@zendfi/sdk';
+   import { ZendFiClient } from '@zendfi/sdk';
+   import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
    ```
 
 ### Issue: "CORS errors in browser"
@@ -357,19 +369,21 @@ Access to fetch blocked by CORS policy
 
 ```typescript
 // app/api/create-payment/route.ts
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi(); // Uses server-side env vars
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+}); // Uses server-side env vars
 
 export async function POST(request: Request) {
   const { amount } = await request.json();
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount,
     currency: 'USD'
   });
   
-  return Response.json({ paymentUrl: payment.paymentUrl });
+  return Response.json({ payment_url: payment.payment_url });
 }
 ```
 
@@ -378,20 +392,22 @@ export async function POST(request: Request) {
 
 ```typescript
 import express from 'express';
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
 const app = express();
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 app.post('/api/create-payment', async (req, res) => {
   const { amount } = req.body;
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount,
     currency: 'USD'
   });
   
-  res.json({ paymentUrl: payment.paymentUrl });
+  res.json({ payment_url: payment.payment_url });
 });
 ```
 
@@ -410,9 +426,10 @@ Retry-After: 60
 **Solutions:**
 1. ✅ Implement exponential backoff:
    ```typescript
-   import { ZendFi } from '@zendfi/sdk';
+   import { ZendFiClient } from '@zendfi/sdk';
    
-   const zendfi = new ZendFi({
+   const zendfi = new ZendFiClient({
+     apiKey: process.env.ZENDFI_API_KEY,
      retries: 3, // Auto-retry with backoff
    });
    ```
@@ -430,7 +447,8 @@ Error: Request timeout after 30000ms
 **Solutions:**
 1. ✅ Increase timeout:
    ```typescript
-   const zendfi = new ZendFi({
+   const zendfi = new ZendFiClient({
+     apiKey: process.env.ZENDFI_API_KEY,
      timeout: 60000 // 60 seconds
    });
    ```
@@ -448,7 +466,7 @@ Before asking for help, verify:
 - [ ] Debug mode enabled (`debug: true` or `ZENDFI_DEBUG=true`)
 - [ ] Webhook endpoint returns 200 status code
 - [ ] Webhook endpoint is publicly accessible (not localhost)
-- [ ] Webhook signature is verified
+- [ ] Webhook signature is verified using `zendfi.verifyWebhook()`
 - [ ] Error messages are logged (check console/server logs)
 - [ ] Check [status page](https://status.zendfi.tech) for outages
 
@@ -474,15 +492,15 @@ ZENDFI_API_KEY=zfi_live_xyz789...
 ### 3. Write Integration Tests
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 import { expect, test } from 'vitest';
 
 test('creates payment successfully', async () => {
-  const zendfi = new ZendFi({
+  const zendfi = new ZendFiClient({
     apiKey: process.env.ZENDFI_TEST_API_KEY
   });
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount: 10,
     currency: 'USD',
     description: 'Test payment'
@@ -497,16 +515,17 @@ test('creates payment successfully', async () => {
 ### 4. Mock Webhooks in Tests
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-test('handles payment completed webhook', async () => {
+test('handles payment confirmed webhook', async () => {
   const mockEvent = {
-    event: 'payment.completed',
+    event_type: 'PaymentConfirmed',
     timestamp: new Date().toISOString(),
+    merchant_id: 'merch_test_123',
     data: {
       id: 'pay_test_123',
       amount: 50,
-      status: 'completed'
+      status: 'confirmed'
     }
   };
   
@@ -518,14 +537,19 @@ test('handles payment completed webhook', async () => {
 ### 5. Test Error Scenarios
 
 ```typescript
+import { ZendFiError } from '@zendfi/sdk';
+
 test('handles payment creation failure', async () => {
-  const zendfi = new ZendFi({
+  const zendfi = new ZendFiClient({
     apiKey: 'invalid_key'
   });
   
-  await expect(
-    zendfi.payments.create({ amount: 10, currency: 'USD' })
-  ).rejects.toThrow('Invalid API key');
+  try {
+    await zendfi.createPayment({ amount: 10, currency: 'USD' });
+  } catch (error) {
+    expect(error).toBeInstanceOf(ZendFiError);
+    expect(error.message).toContain('Invalid API key');
+  }
 });
 ```
 
@@ -535,7 +559,7 @@ test('handles payment creation failure', async () => {
 ### 1. Log All Payment Events
 
 ```typescript
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 100,
   currency: 'USD',
   metadata: {
@@ -556,20 +580,24 @@ console.log('Payment created', {
 
 ```typescript
 import * as Sentry from '@sentry/node';
+import { ZendFiError } from '@zendfi/sdk';
 
 try {
-  const payment = await zendfi.payments.create({...});
+  const payment = await zendfi.createPayment({...});
 } catch (error) {
-  Sentry.captureException(error, {
-    tags: {
-      service: 'zendfi',
-      operation: 'create_payment'
-    },
-    extra: {
-      amount: 100,
-      currency: 'USD'
-    }
-  });
+  if (error instanceof ZendFiError) {
+    Sentry.captureException(error, {
+      tags: {
+        service: 'zendfi',
+        operation: 'create_payment',
+        error_type: error.type
+      },
+      extra: {
+        amount: 100,
+        currency: 'USD'
+      }
+    });
+  }
   throw error;
 }
 ```
@@ -581,11 +609,27 @@ export async function POST(request: Request) {
   const startTime = Date.now();
   
   try {
-    const event = await processWebhook(request);
+    const body = await request.text();
+    const signature = request.headers.get('x-zendfi-signature');
+    
+    const isValid = zendfi.verifyWebhook({
+      payload: body,
+      signature: signature!,
+      secret: process.env.ZENDFI_WEBHOOK_SECRET!
+    });
+    
+    if (!isValid) {
+      console.warn('Invalid webhook signature', {
+        duration: Date.now() - startTime
+      });
+      return new Response('Invalid signature', { status: 401 });
+    }
+    
+    const event = JSON.parse(body);
     
     // Log success
     console.log('Webhook processed', {
-      event: event.event,
+      event: event.event_type,
       duration: Date.now() - startTime
     });
     
@@ -613,7 +657,7 @@ zendfi status
 zendfi payment list --limit 10
 
 # Get payment details
-zendfi payment status pay_abc123
+zendfi payment get pay_abc123
 
 # Test webhook delivery
 zendfi webhooks test
@@ -630,7 +674,7 @@ zendfi --version
 
 **Still stuck?**
 
-- 📖 [API Reference](/api/payments) - Complete API documentation
+- �� [API Reference](../api/payments) - Complete API documentation
 - 💬 [Discord Community](https://discord.gg/zendfi) - Get help from the community
 - 📧 [Email Support](mailto:support@zendfi.tech) - Contact our team
 - 🐛 [GitHub Issues](https://github.com/zendfi/issues) - Report bugs

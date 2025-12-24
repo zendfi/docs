@@ -243,15 +243,6 @@ User Approves Session
    (auto after duration)
 ```
 
-## Webhook Events
-
-| Event | Description |
-|-------|-------------|
-| `agent.session.created` | New session started |
-| `agent.session.revoked` | Session manually revoked |
-| `agent.session.expired` | Session auto-expired |
-| `agent.session.limit_reached` | Spending limit hit |
-
 ## Best Practices
 
 1. **Short durations** - Use 24 hours or less for most use cases

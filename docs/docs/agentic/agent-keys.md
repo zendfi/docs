@@ -121,7 +121,7 @@ zendfi agent keys revoke ak_xyz789...
 ### Create Agent Key
 
 ```
-POST /api/v1/ai/agent-keys
+POST /api/v1/agent-keys
 ```
 
 **Request:**

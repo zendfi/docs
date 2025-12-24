@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 title: TypeScript Guide
 description: Type safety, best practices, and TypeScript patterns
 ---
@@ -53,10 +53,12 @@ npm install -D typescript @types/node
 ### Import the SDK
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
-import type { Payment, PaymentCreateParams } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
+import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 ```
 
 ## Core Types
@@ -66,25 +68,25 @@ const zendfi = new ZendFi();
 ```typescript
 import type {
   Payment,
-  PaymentCreateParams,
+  CreatePaymentRequest,
   PaymentStatus,
-  PaymentUpdateParams
+  ListPaymentsRequest
 } from '@zendfi/sdk';
 
-// Payment object returned from API
+// Payment object returned from API (snake_case fields)
 const payment: Payment = {
   id: 'pay_abc123',
-  merchantId: 'merchant_xyz789',
+  merchant_id: 'merch_xyz789',
   amount: 99.99,
   currency: 'USD',
   status: 'pending',
-  paymentUrl: 'https://zendfi.tech/pay/pay_abc123',
-  createdAt: '2025-12-22T10:00:00Z',
+  payment_url: 'https://pay.zendfi.tech/pay_abc123',
+  expires_at: '2025-12-22T10:00:00Z',
   metadata: {}
 };
 
 // Parameters for creating a payment
-const params: PaymentCreateParams = {
+const params: CreatePaymentRequest = {
   amount: 99.99,
   currency: 'USD',
   description: 'Pro Plan Subscription',
@@ -93,8 +95,8 @@ const params: PaymentCreateParams = {
   }
 };
 
-// Payment status enum
-const status: PaymentStatus = 'completed'; // 'pending' | 'completed' | 'failed' | 'expired'
+// Payment status type
+const status: PaymentStatus = 'confirmed'; // 'pending' | 'confirmed' | 'failed' | 'expired'
 ```
 
 ### Subscription Types
@@ -102,34 +104,39 @@ const status: PaymentStatus = 'completed'; // 'pending' | 'completed' | 'failed'
 ```typescript
 import type {
   SubscriptionPlan,
-  SubscriptionPlanCreateParams,
+  CreateSubscriptionPlanRequest,
   Subscription,
-  SubscriptionCreateParams,
+  CreateSubscriptionRequest,
   SubscriptionStatus
 } from '@zendfi/sdk';
 
-// Plan object
+// Plan object (snake_case fields)
 const plan: SubscriptionPlan = {
   id: 'plan_abc123',
-  merchantId: 'merchant_xyz789',
+  merchant_id: 'merch_xyz789',
   name: 'Pro Plan',
   amount: 29.99,
   currency: 'USD',
   interval: 'monthly',
-  active: true,
-  createdAt: '2025-12-22T10:00:00Z'
+  interval_count: 1,
+  trial_days: 0,
+  is_active: true,
+  created_at: '2025-12-22T10:00:00Z',
+  updated_at: '2025-12-22T10:00:00Z'
 };
 
-// Subscription object
+// Subscription object (snake_case fields)
 const subscription: Subscription = {
   id: 'sub_abc123',
-  merchantId: 'merchant_xyz789',
-  planId: 'plan_abc123',
-  customerWallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+  merchant_id: 'merch_xyz789',
+  plan_id: 'plan_abc123',
+  customer_email: 'user@example.com',
+  customer_wallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
   status: 'active',
-  currentPeriodStart: '2025-12-22T10:00:00Z',
-  currentPeriodEnd: '2026-01-22T10:00:00Z',
-  createdAt: '2025-12-22T10:00:00Z'
+  current_period_start: '2025-12-22T10:00:00Z',
+  current_period_end: '2026-01-22T10:00:00Z',
+  created_at: '2025-12-22T10:00:00Z',
+  updated_at: '2025-12-22T10:00:00Z'
 };
 ```
 
@@ -138,21 +145,22 @@ const subscription: Subscription = {
 ```typescript
 import type {
   PaymentLink,
-  PaymentLinkCreateParams,
-  PaymentLinkUpdateParams
+  CreatePaymentLinkRequest
 } from '@zendfi/sdk';
 
 const link: PaymentLink = {
-  id: 'plink_abc123',
-  merchantId: 'merchant_xyz789',
-  name: 'Pro Plan Upgrade',
+  link_code: 'plink_abc123',
+  merchant_id: 'merch_xyz789',
+  description: 'Pro Plan Upgrade',
   amount: 99.99,
   currency: 'USD',
-  url: 'https://zendfi.tech/pay/plink_abc123',
-  active: true,
-  timesUsed: 47,
-  totalRevenue: 4699.53,
-  createdAt: '2025-12-22T10:00:00Z'
+  payment_url: 'https://pay.zendfi.tech/plink_abc123',
+  hosted_page_url: 'https://pay.zendfi.tech/plink_abc123',
+  url: 'https://pay.zendfi.tech/plink_abc123', // Alias for hosted_page_url
+  is_active: true,
+  uses_count: 47,
+  created_at: '2025-12-22T10:00:00Z',
+  updated_at: '2025-12-22T10:00:00Z'
 };
 ```
 
@@ -161,34 +169,34 @@ const link: PaymentLink = {
 ```typescript
 import type {
   Invoice,
-  InvoiceCreateParams,
+  CreateInvoiceRequest,
   InvoiceLineItem,
   InvoiceStatus
 } from '@zendfi/sdk';
 
 const lineItem: InvoiceLineItem = {
-  id: 'li_001',
   description: 'Website Development',
   quantity: 40,
-  unitPrice: 150,
+  unit_amount: 150,
   amount: 6000
 };
 
 const invoice: Invoice = {
   id: 'inv_abc123',
-  merchantId: 'merchant_xyz789',
-  invoiceNumber: 'INV-2025-001',
-  customerName: 'Acme Corp',
-  customerEmail: 'billing@acme.com',
-  lineItems: [lineItem],
+  merchant_id: 'merch_xyz789',
+  invoice_number: 'INV-2025-001',
+  customer_name: 'Acme Corp',
+  customer_email: 'billing@acme.com',
+  line_items: [lineItem],
   subtotal: 6000,
-  taxAmount: 510,
+  tax: 510,
   total: 6510,
-  amountPaid: 0,
-  amountDue: 6510,
+  amount_paid: 0,
+  amount_due: 6510,
   status: 'sent',
-  dueDate: '2025-12-31T23:59:59Z',
-  createdAt: '2025-12-22T10:00:00Z'
+  due_date: '2025-12-31',
+  created_at: '2025-12-22T10:00:00Z',
+  updated_at: '2025-12-22T10:00:00Z'
 };
 ```
 
@@ -196,26 +204,28 @@ const invoice: Invoice = {
 
 ```typescript
 import type {
-  WebhookEvent,
-  WebhookEventType
+  WebhookPayload,
+  WebhookEvent
 } from '@zendfi/sdk';
 
-const event: WebhookEvent = {
-  event: 'payment.completed',
+const payload: WebhookPayload = {
+  event: 'payment.confirmed',
   timestamp: '2025-12-22T10:00:00Z',
+  merchant_id: 'merch_test_123',
   data: {
     id: 'pay_abc123',
     amount: 99.99,
-    status: 'completed'
-  }
+    status: 'confirmed'
+  } as Payment
 };
 
-// Event type enum
-const eventType: WebhookEventType =
-  'payment.completed' |
+// Event type union
+const eventType: WebhookEvent =
+  'payment.created' |
+  'payment.confirmed' |
   'payment.failed' |
   'subscription.created' |
-  'subscription.cancelled';
+  'subscription.canceled';
 ```
 
 ## Type-Safe API Calls
@@ -223,15 +233,17 @@ const eventType: WebhookEventType =
 ### Payments
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
-import type { Payment, PaymentCreateParams } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
+import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 async function createPayment(): Promise<Payment> {
-  const params: PaymentCreateParams = {
+  const params: CreatePaymentRequest = {
     amount: 99.99,
-    currency: 'USD', // Type-checked: only 'USD' is valid
+    currency: 'USD',
     description: 'Pro Plan',
     metadata: {
       order_id: 'order_123',
@@ -240,22 +252,22 @@ async function createPayment(): Promise<Payment> {
   };
   
   // TypeScript knows the return type is Payment
-  const payment = await zendfi.payments.create(params);
+  const payment = await zendfi.createPayment(params);
   
-  // Autocomplete available for all properties
+  // Autocomplete available for all properties (snake_case)
   console.log(payment.id);
-  console.log(payment.paymentUrl);
+  console.log(payment.payment_url); // Note: snake_case
   console.log(payment.status);
   
   return payment;
 }
 
 async function getPayment(id: string): Promise<Payment> {
-  return await zendfi.payments.retrieve(id);
+  return await zendfi.getPayment(id);
 }
 
 async function listPayments(limit: number = 20): Promise<Payment[]> {
-  const result = await zendfi.payments.list({ limit });
+  const result = await zendfi.listPayments({ limit });
   return result.data;
 }
 ```
@@ -265,36 +277,36 @@ async function listPayments(limit: number = 20): Promise<Payment[]> {
 ```typescript
 import type {
   SubscriptionPlan,
-  SubscriptionPlanCreateParams,
+  CreateSubscriptionPlanRequest,
   Subscription,
-  SubscriptionCreateParams
+  CreateSubscriptionRequest
 } from '@zendfi/sdk';
 
 async function createPlan(): Promise<SubscriptionPlan> {
-  const params: SubscriptionPlanCreateParams = {
+  const params: CreateSubscriptionPlanRequest = {
     name: 'Pro Plan',
     amount: 29.99,
     currency: 'USD',
     interval: 'monthly', // Type-checked: 'daily' | 'weekly' | 'monthly' | 'yearly'
-    trialPeriodDays: 14
+    trial_days: 14
   };
   
-  return await zendfi.subscriptions.createPlan(params);
+  return await zendfi.createSubscriptionPlan(params);
 }
 
 async function subscribe(
   planId: string,
-  customerWallet: string
+  email: string
 ): Promise<Subscription> {
-  const params: SubscriptionCreateParams = {
-    planId,
-    customerWallet,
+  const params: CreateSubscriptionRequest = {
+    plan_id: planId,
+    customer_email: email,
     metadata: {
       source: 'website'
     }
   };
   
-  return await zendfi.subscriptions.create(params);
+  return await zendfi.createSubscription(params);
 }
 ```
 
@@ -303,22 +315,26 @@ async function subscribe(
 ```typescript
 import type {
   PaymentLink,
-  PaymentLinkCreateParams
+  CreatePaymentLinkRequest
 } from '@zendfi/sdk';
 
 async function createPaymentLink(): Promise<PaymentLink> {
-  const params: PaymentLinkCreateParams = {
-    name: 'Pro Plan Upgrade',
+  const params: CreatePaymentLinkRequest = {
     amount: 99.99,
     currency: 'USD',
-    collectEmail: true,
-    successUrl: 'https://myapp.com/success',
+    description: 'Pro Plan Upgrade',
     metadata: {
       campaign: 'summer_sale'
     }
   };
   
-  return await zendfi.paymentLinks.create(params);
+  const link = await zendfi.createPaymentLink(params);
+  
+  // Use snake_case fields
+  console.log(link.payment_url);
+  console.log(link.link_code);
+  
+  return link;
 }
 ```
 
@@ -330,8 +346,8 @@ Create type guards for runtime validation:
 import type { Payment, PaymentStatus } from '@zendfi/sdk';
 
 // Type guard for payment status
-function isCompletedPayment(payment: Payment): boolean {
-  return payment.status === 'completed';
+function isConfirmedPayment(payment: Payment): boolean {
+  return payment.status === 'confirmed';
 }
 
 // Type guard with type predicate
@@ -346,16 +362,16 @@ function isValidPayment(value: unknown): value is Payment {
 }
 
 // Usage
-const payment = await zendfi.payments.retrieve('pay_abc123');
+const payment = await zendfi.getPayment('pay_abc123');
 
-if (isCompletedPayment(payment)) {
-  // TypeScript knows payment is completed here
-  console.log('Payment completed:', payment.id);
+if (isConfirmedPayment(payment)) {
+  // TypeScript knows payment is confirmed here
+  console.log('Payment confirmed:', payment.id);
 }
 
 if (isValidPayment(unknownData)) {
   // TypeScript knows unknownData is Payment here
-  console.log(unknownData.paymentUrl);
+  console.log(unknownData.payment_url);
 }
 ```
 
@@ -380,50 +396,60 @@ function addMetadata<T extends { metadata?: Record<string, any> }>(
 }
 
 // Usage with different types
-const payment: Payment = await zendfi.payments.retrieve('pay_123');
+const payment: Payment = await zendfi.getPayment('pay_123');
 const updatedPayment = addMetadata(payment, 'processed', true);
 
-const invoice: Invoice = await zendfi.invoices.retrieve('inv_123');
+const invoice: Invoice = await zendfi.getInvoice('inv_123');
 const updatedInvoice = addMetadata(invoice, 'sent_via', 'email');
 ```
 
 ## Type-Safe Webhook Handlers
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
-import type { WebhookEvent, Payment, Subscription } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
+import type { WebhookPayload, Payment, Subscription } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
-// Generic webhook handler with type narrowing
+// Webhook handler with type narrowing
 async function handleWebhook(
   body: string,
   signature: string
 ): Promise<void> {
-  const event: WebhookEvent = zendfi.webhooks.constructEvent(
-    body,
+  // Verify webhook signature (returns boolean)
+  const isValid = zendfi.verifyWebhook({
+    payload: body,
     signature,
-    process.env.ZENDFI_WEBHOOK_SECRET!
-  );
+    secret: process.env.ZENDFI_WEBHOOK_SECRET!
+  });
+  
+  if (!isValid) {
+    throw new Error('Invalid webhook signature');
+  }
+  
+  // Parse payload
+  const payload: WebhookPayload = JSON.parse(body);
   
   // Type narrowing based on event type
-  switch (event.event) {
-    case 'payment.completed':
-      await handlePaymentCompleted(event.data as Payment);
+  switch (payload.event) {
+    case 'payment.confirmed':
+      await handlePaymentConfirmed(payload.data as Payment);
       break;
     case 'subscription.created':
-      await handleSubscriptionCreated(event.data as Subscription);
+      await handleSubscriptionCreated(payload.data as Subscription);
       break;
-    case 'subscription.cancelled':
-      await handleSubscriptionCancelled(event.data as Subscription);
+    case 'subscription.canceled':
+      await handleSubscriptionCanceled(payload.data as Subscription);
       break;
     default:
-      console.log('Unhandled event:', event.event);
+      console.log('Unhandled event:', payload.event);
   }
 }
 
-async function handlePaymentCompleted(payment: Payment): Promise<void> {
-  console.log('Payment completed:', payment.id);
+async function handlePaymentConfirmed(payment: Payment): Promise<void> {
+  console.log('Payment confirmed:', payment.id);
   // TypeScript knows payment has all Payment properties
   console.log('Amount:', payment.amount);
   console.log('Status:', payment.status);
@@ -431,13 +457,13 @@ async function handlePaymentCompleted(payment: Payment): Promise<void> {
 
 async function handleSubscriptionCreated(subscription: Subscription): Promise<void> {
   console.log('Subscription created:', subscription.id);
-  // TypeScript knows subscription has all Subscription properties
-  console.log('Plan:', subscription.planId);
-  console.log('Customer:', subscription.customerWallet);
+  // TypeScript knows subscription has all Subscription properties (snake_case)
+  console.log('Plan:', subscription.plan_id);
+  console.log('Customer:', subscription.customer_email);
 }
 
-async function handleSubscriptionCancelled(subscription: Subscription): Promise<void> {
-  console.log('Subscription cancelled:', subscription.id);
+async function handleSubscriptionCanceled(subscription: Subscription): Promise<void> {
+  console.log('Subscription canceled:', subscription.id);
 }
 ```
 
@@ -460,7 +486,7 @@ export {};
 
 ```typescript
 // config/zendfi.ts
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
 // TypeScript ensures env vars are defined
 const apiKey = process.env.ZENDFI_API_KEY;
@@ -474,7 +500,7 @@ if (!webhookSecret) {
   throw new Error('ZENDFI_WEBHOOK_SECRET is required');
 }
 
-export const zendfi = new ZendFi({
+export const zendfi = new ZendFiClient({
   apiKey,
   debug: process.env.NODE_ENV === 'development'
 });
@@ -489,7 +515,7 @@ export const config = {
 Add custom properties to metadata:
 
 ```typescript
-import type { Payment, PaymentCreateParams } from '@zendfi/sdk';
+import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
 
 // Define custom metadata interface
 interface OrderMetadata {
@@ -499,16 +525,16 @@ interface OrderMetadata {
   coupon_code?: string;
 }
 
-// Extend PaymentCreateParams with typed metadata
-interface TypedPaymentCreateParams extends Omit<PaymentCreateParams, 'metadata'> {
+// Extend CreatePaymentRequest with typed metadata
+interface TypedPaymentRequest extends Omit<CreatePaymentRequest, 'metadata'> {
   metadata: OrderMetadata;
 }
 
 // Type-safe payment creation
 async function createOrderPayment(
-  params: TypedPaymentCreateParams
+  params: TypedPaymentRequest
 ): Promise<Payment> {
-  return await zendfi.payments.create(params);
+  return await zendfi.createPayment(params);
 }
 
 // Usage - TypeScript enforces metadata structure
@@ -528,16 +554,18 @@ const payment = await createOrderPayment({
 ## Error Handling with Types
 
 ```typescript
-import { ZendFi, ZendFiError } from '@zendfi/sdk';
+import { ZendFiClient, ZendFiError } from '@zendfi/sdk';
 import type { Payment } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 async function createPaymentSafely(
   amount: number
 ): Promise<Payment | null> {
   try {
-    return await zendfi.payments.create({
+    return await zendfi.createPayment({
       amount,
       currency: 'USD'
     });
@@ -565,6 +593,7 @@ const payment = await createPaymentSafely(99.99);
 if (payment) {
   // TypeScript knows payment is Payment here (not null)
   console.log('Payment created:', payment.id);
+  console.log('Payment URL:', payment.payment_url); // snake_case
 } else {
   // Handle null case
   console.log('Payment creation failed');
@@ -582,7 +611,7 @@ type PaymentSummary = Pick<Payment, 'id' | 'amount' | 'status'>;
 const summary: PaymentSummary = {
   id: 'pay_123',
   amount: 99.99,
-  status: 'completed'
+  status: 'confirmed'
 };
 
 // Make all properties optional
@@ -595,7 +624,7 @@ type RequiredSubscription = Required<Subscription>;
 type PaymentWithoutMetadata = Omit<Payment, 'metadata'>;
 
 // Create union type from status values
-type PaymentStatusUnion = Payment['status']; // 'pending' | 'completed' | 'failed' | 'expired'
+type PaymentStatusUnion = Payment['status']; // 'pending' | 'confirmed' | 'failed' | 'expired'
 ```
 
 ## Best Practices
@@ -604,11 +633,11 @@ type PaymentStatusUnion = Payment['status']; // 'pending' | 'completed' | 'faile
 
 ```typescript
 // ✅ Good: Import types separately
-import { ZendFi } from '@zendfi/sdk';
-import type { Payment, PaymentCreateParams } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
+import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
 
-// ❌ Avoid: Importing everything
-import { ZendFi, Payment, PaymentCreateParams } from '@zendfi/sdk';
+// ❌ Avoid: Importing everything without type keyword
+import { ZendFiClient, Payment, CreatePaymentRequest } from '@zendfi/sdk';
 ```
 
 ### 2. Use Strict TypeScript
@@ -630,12 +659,12 @@ import { ZendFi, Payment, PaymentCreateParams } from '@zendfi/sdk';
 ```typescript
 // ✅ Good: Explicit return type
 async function getPayment(id: string): Promise<Payment> {
-  return await zendfi.payments.retrieve(id);
+  return await zendfi.getPayment(id);
 }
 
 // ❌ Avoid: Implicit return type
 async function getPayment(id: string) {
-  return await zendfi.payments.retrieve(id);
+  return await zendfi.getPayment(id);
 }
 ```
 
@@ -647,8 +676,8 @@ import type { Payment } from '@zendfi/sdk';
 function processPayment(payment: Payment): void {
   // Type narrowing with switch
   switch (payment.status) {
-    case 'completed':
-      console.log('Payment completed');
+    case 'confirmed':
+      console.log('Payment confirmed');
       break;
     case 'pending':
       console.log('Payment pending');
@@ -663,11 +692,27 @@ function processPayment(payment: Payment): void {
 }
 ```
 
-### 5. Validate at Runtime
+### 5. Remember snake_case Fields
+
+```typescript
+import type { Payment } from '@zendfi/sdk';
+
+// ✅ Correct: snake_case
+const url = payment.payment_url;
+const merchant = payment.merchant_id;
+const createdAt = payment.created_at;
+
+// ❌ Wrong: camelCase (TypeScript error)
+const url = payment.paymentUrl;
+const merchant = payment.merchantId;
+const createdAt = payment.createdAt;
+```
+
+### 6. Validate at Runtime
 
 ```typescript
 import { z } from 'zod';
-import type { PaymentCreateParams } from '@zendfi/sdk';
+import type { CreatePaymentRequest } from '@zendfi/sdk';
 
 // Define validation schema
 const PaymentParamsSchema = z.object({
@@ -682,7 +727,7 @@ async function createValidatedPayment(data: unknown): Promise<Payment> {
   // Validates at runtime AND provides TypeScript types
   const params = PaymentParamsSchema.parse(data);
   
-  return await zendfi.payments.create(params);
+  return await zendfi.createPayment(params);
 }
 ```
 
@@ -693,16 +738,18 @@ async function createValidatedPayment(data: unknown): Promise<Payment> {
 ```typescript
 // app/api/payments/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 import type { Payment } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
     
-    const payment: Payment = await zendfi.payments.create({
+    const payment: Payment = await zendfi.createPayment({
       amount: body.amount,
       currency: 'USD',
       description: body.description
@@ -710,7 +757,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     
     return NextResponse.json({
       success: true,
-      paymentUrl: payment.paymentUrl
+      payment_url: payment.payment_url // snake_case
     });
   } catch (error) {
     return NextResponse.json(
@@ -726,11 +773,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 ```typescript
 // routes/payments.ts
 import express, { Request, Response } from 'express';
-import { ZendFi } from '@zendfi/sdk';
-import type { Payment, PaymentCreateParams } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
+import type { Payment, CreatePaymentRequest } from '@zendfi/sdk';
 
 const router = express.Router();
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
 
 interface CreatePaymentBody {
   amount: number;
@@ -742,17 +791,17 @@ router.post('/payments', async (
   res: Response
 ) => {
   try {
-    const params: PaymentCreateParams = {
+    const params: CreatePaymentRequest = {
       amount: req.body.amount,
       currency: 'USD',
       description: req.body.description
     };
     
-    const payment: Payment = await zendfi.payments.create(params);
+    const payment: Payment = await zendfi.createPayment(params);
     
     res.json({
       success: true,
-      paymentUrl: payment.paymentUrl
+      payment_url: payment.payment_url // snake_case
     });
   } catch (error) {
     res.status(500).json({
@@ -768,10 +817,10 @@ export default router;
 ## Next Steps
 
 **Learn More:**
-- [Testing & Debugging](/developer-tools/testing-and-debugging) - Test your integration
-- [Best Practices](/developer-tools/best-practices) - Production patterns
-- [API Reference](/api/payments) - Complete API documentation
+- [Testing & Debugging](./testing-and-debugging) - Test your integration
+- [Best Practices](./best-practices) - Production patterns
+- [API Reference](../api/payments) - Complete API documentation
 
 **Need Help?**
-- 💬 [Discord Community](https://discord.gg/zendfi)
-- 📧 [Email Support](mailto:support@zendfi.tech)
+- [Discord Community](https://discord.gg/zendfi)
+- [Email Support](mailto:support@zendfi.tech)

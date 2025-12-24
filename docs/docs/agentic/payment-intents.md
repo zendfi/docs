@@ -81,8 +81,8 @@ const intent = await zendfi.intents.create({
 const confirmed = await zendfi.intents.confirm(intent.id, {
   client_secret: intent.client_secret,
   customer_wallet: 'Hx7B...abc',
-  session_token: session.token,  // Optional: for session-based limits
-  auto_gasless: true,            // Optional: pay gas for user
+  session_token: session.session_token,  // Optional: for session-based limits
+  auto_gasless: true,                     // Optional: pay gas for user
   metadata: {
     confirmed_by: 'agent',
     ip_address: '192.168.1.1',
@@ -137,7 +137,7 @@ const intent = await zendfi.intents.create({
 const confirmed = await zendfi.intents.confirm(intent.id, {
   client_secret: intent.client_secret,
   customer_wallet: userWallet,
-  session_token: session.token, // Enforces spending limits
+  session_token: session.session_token, // Enforces spending limits
 });
 ```
 
@@ -186,11 +186,10 @@ zendfi intents cancel pi_abc123
 
 | Event | Description |
 |-------|-------------|
-| `intent.created` | New intent created |
-| `intent.confirmed` | Intent confirmed, payment processing |
-| `intent.succeeded` | Payment completed successfully |
-| `intent.failed` | Payment failed |
-| `intent.canceled` | Intent was canceled |
+| `payment_intent.created` | New intent created |
+| `payment_intent.succeeded` | Payment completed successfully |
+| `payment_intent.failed` | Payment failed |
+| `payment_intent.canceled` | Intent was canceled |
 
 ## Error Handling
 
@@ -227,25 +226,25 @@ try {
 ### Create Intent
 
 ```
-POST /api/v1/ai/intents
+POST /api/v1/payment-intents
 ```
 
 ### Confirm Intent
 
 ```
-POST /api/v1/ai/intents/:id/confirm
+POST /api/v1/payment-intents/:id/confirm
 ```
 
 ### Cancel Intent
 
 ```
-POST /api/v1/ai/intents/:id/cancel
+POST /api/v1/payment-intents/:id/cancel
 ```
 
 ### List Intents
 
 ```
-GET /api/v1/ai/intents
+GET /api/v1/payment-intents
 ```
 
 ## Next Steps

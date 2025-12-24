@@ -62,11 +62,10 @@ Authorization: Bearer YOUR_API_KEY
 | `name` | string | **Yes** | Plan name (e.g., "Premium Monthly") |
 | `description` | string | No | Plan description |
 | `amount` | number | **Yes** | Price per billing cycle in USD |
-| `currency` | string | **Yes** | Currency code ("USD" only) |
-| `billing_interval` | string | **Yes** | "daily", "weekly", "monthly", or "yearly" |
+| `currency` | string | No | Currency code (default: "USD") |
+| `interval` | string | **Yes** | "daily", "weekly", "monthly", or "yearly" |
 | `interval_count` | number | No | Number of intervals between charges (default: 1) |
 | `trial_days` | number | No | Free trial days before first charge (default: 0) |
-| `max_cycles` | number | No | Maximum billing cycles (null = unlimited) |
 | `metadata` | object | No | Custom key-value pairs |
 
 ### Example: Monthly SaaS Plan with Trial
@@ -75,16 +74,19 @@ Authorization: Bearer YOUR_API_KEY
 <TabItem value="sdk" label="TypeScript SDK" default>
 
 ```typescript
-import { zendfi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const plan = await zendfi.subscriptions.createPlan({
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
+
+const plan = await zendfi.createSubscriptionPlan({
   name: 'Pro Plan - Monthly',
   description: 'Full access to all pro features',
   amount: 29.99,
-  currency: 'USD',
-  billingInterval: 'monthly',
-  intervalCount: 1,
-  trialDays: 14,
+  interval: 'monthly',
+  interval_count: 1,
+  trial_days: 14,
   metadata: {
     features: ['unlimited_api_calls', 'priority_support', 'advanced_analytics'],
     tier: 'pro',
@@ -92,7 +94,7 @@ const plan = await zendfi.subscriptions.createPlan({
 });
 
 console.log('Plan ID:', plan.id);
-console.log('Subscription URL:', plan.subscriptionUrl);
+console.log('Subscription URL:', plan.subscription_url);
 ```
 
 </TabItem>
@@ -107,7 +109,7 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
     "description": "Full access to all pro features",
     "amount": 29.99,
     "currency": "USD",
-    "billing_interval": "monthly",
+    "interval": "monthly",
     "interval_count": 1,
     "trial_days": 14,
     "metadata": {
@@ -130,12 +132,12 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
   "description": "Full access to all pro features",
   "amount": 29.99,
   "currency": "USD",
-  "billing_interval": "monthly",
+  "billing_interval": "Monthly",
   "interval_count": 1,
   "trial_days": 14,
   "max_cycles": null,
   "is_active": true,
-  "created_at": "2025-10-26T12:00:00Z",
+  "created_at": "2025-10-26T12:10:00Z",
   "subscription_url": "/subscribe/plan_abc123def456"
 }
 ```
@@ -146,12 +148,11 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
 <TabItem value="sdk" label="TypeScript SDK" default>
 
 ```typescript
-const annualPlan = await zendfi.subscriptions.createPlan({
+const annualPlan = await zendfi.createSubscriptionPlan({
   name: 'Pro Plan - Annual',
   description: 'Save 20% with annual billing!',
   amount: 287.90,
-  currency: 'USD',
-  billingInterval: 'yearly',
+  interval: 'yearly',
   metadata: {
     annual_discount: '20%',
     monthly_equivalent: 23.99,
@@ -173,7 +174,7 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
     "description": "Save 20% with annual billing!",
     "amount": 287.90,
     "currency": "USD",
-    "billing_interval": "yearly",
+    "interval": "yearly",
     "interval_count": 1,
     "trial_days": 0,
     "metadata": {
@@ -181,41 +182,6 @@ curl -X POST https://api.zendfi.tech/api/v1/subscription-plans \
       "monthly_equivalent": 23.99
     }
   }'
-```
-
-</TabItem>
-</Tabs>
-
-
-## List Subscription Plans
-
-Get all subscription plans for your merchant account.
-
-### Endpoint
-
-```
-GET /api/v1/subscription-plans
-```
-
-### Example
-
-<Tabs groupId="sdk-language">
-<TabItem value="sdk" label="TypeScript SDK" default>
-
-```typescript
-const plans = await zendfi.subscriptions.listPlans();
-
-plans.forEach(plan => {
-  console.log(`${plan.name}: $${plan.amount}/${plan.billingInterval}`);
-});
-```
-
-</TabItem>
-<TabItem value="rest" label="REST API">
-
-```bash
-curl -X GET https://api.zendfi.tech/api/v1/subscription-plans \
-  -H "Authorization: Bearer zfi_live_abc123..."
 ```
 
 </TabItem>
@@ -234,9 +200,26 @@ GET /api/v1/subscription-plans/:plan_id
 
 ### Example
 
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+const plan = await zendfi.getSubscriptionPlan('plan_abc123def456');
+
+console.log('Plan:', plan.name);
+console.log('Price:', `$${plan.amount}/${plan.billing_interval.toLowerCase()}`);
+console.log('Trial:', plan.trial_days ? `${plan.trial_days} days` : 'No trial');
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
+
 ```bash
 curl -X GET https://api.zendfi.tech/api/v1/subscription-plans/plan_abc123def456
 ```
+
+</TabItem>
+</Tabs>
 
 
 ## Subscribe Customer to Plan
@@ -264,10 +247,10 @@ POST /api/v1/subscriptions
 <TabItem value="sdk" label="TypeScript SDK" default>
 
 ```typescript
-const subscription = await zendfi.subscriptions.create({
-  planId: 'plan_abc123def456',
-  customerWallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-  customerEmail: 'customer@example.com',
+const subscription = await zendfi.createSubscription({
+  plan_id: 'plan_abc123def456',
+  customer_wallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+  customer_email: 'customer@example.com',
   metadata: {
     user_id: 'user_12345',
     signup_source: 'landing_page',
@@ -275,9 +258,9 @@ const subscription = await zendfi.subscriptions.create({
 });
 
 console.log('Subscription ID:', subscription.id);
-console.log('Status:', subscription.status); // "trialing" or "active"
-if (subscription.trialEnd) {
-  console.log('Trial ends:', subscription.trialEnd);
+console.log('Status:', subscription.status); // "Trialing" or "Active"
+if (subscription.trial_end) {
+  console.log('Trial ends:', subscription.trial_end);
 }
 ```
 
@@ -309,7 +292,7 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions \
   "plan_id": "plan_abc123def456",
   "plan_name": "Pro Plan - Monthly",
   "customer_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-  "status": "trialing",
+  "status": "Trialing",
   "current_period_start": "2025-10-26T12:10:00Z",
   "current_period_end": "2025-11-09T12:10:00Z",
   "next_payment_attempt": "2025-11-09T12:10:00Z",
@@ -321,7 +304,7 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions \
 ```
 
 :::info Trial Period Behavior
-If the plan has `trial_days > 0`, the subscription status will be `"trialing"` and `payment_url` will be `null`. The first payment happens automatically after the trial ends!
+If the plan has `trial_days > 0`, the subscription status will be `"Trialing"` and `payment_url` will be `null`. The first payment happens automatically after the trial ends!
 :::
 
 
@@ -341,11 +324,11 @@ GET /api/v1/subscriptions/:id
 <TabItem value="sdk" label="TypeScript SDK" default>
 
 ```typescript
-const subscription = await zendfi.subscriptions.retrieve('sub_xyz789abc123');
+const subscription = await zendfi.getSubscription('sub_xyz789abc123');
 
 console.log('Status:', subscription.status);
-console.log('Next payment:', subscription.nextPaymentAttempt);
-console.log('Cycles completed:', subscription.cyclesCompleted);
+console.log('Next payment:', subscription.next_payment_attempt);
+console.log('Cycles completed:', subscription.cycles_completed);
 ```
 
 </TabItem>
@@ -366,16 +349,54 @@ curl -X GET https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123
   "plan_id": "plan_abc123def456",
   "plan_name": "Pro Plan - Monthly",
   "customer_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-  "status": "active",
+  "status": "Active",
   "current_period_start": "2025-11-09T12:10:00Z",
   "current_period_end": "2025-12-09T12:10:00Z",
   "next_payment_attempt": "2025-12-09T12:10:00Z",
   "cycles_completed": 1,
   "trial_end": null,
   "created_at": "2025-10-26T12:10:00Z",
-  "payment_url": "https://zendfi.tech/subscription/sub_xyz789abc123/pay"
+  "payment_url": "https://checkout.zendfi.tech/subscription/sub_xyz789abc123/pay"
 }
 ```
+
+
+## Create Subscription Payment
+
+Create a payment for a subscription's current billing cycle. Used by customers to pay their subscription bill.
+
+### Endpoint
+
+```
+POST /api/v1/subscriptions/:id/pay
+```
+
+### Example
+
+<Tabs groupId="sdk-language">
+<TabItem value="sdk" label="TypeScript SDK" default>
+
+```typescript
+// Customer initiates payment for their subscription
+const payment = await zendfi.request('POST', `/api/v1/subscriptions/${subscriptionId}/pay`);
+
+console.log('Payment created:', payment.id);
+console.log('Payment URL:', payment.payment_url);
+```
+
+</TabItem>
+<TabItem value="rest" label="REST API">
+
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/pay
+```
+
+</TabItem>
+</Tabs>
+
+**Response:**
+
+Returns a payment object with payment URL for the customer to complete payment.
 
 
 ## Cancel Subscription
@@ -393,7 +414,7 @@ POST /api/v1/subscriptions/:id/cancel
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `cancel_at_period_end` | boolean | No | If true, continues until period ends (default: false) |
-| `reason` | string | No | Cancellation reason for your records |
+| `cancellation_reason` | string | No | Cancellation reason for your records |
 
 ### Example: Cancel Immediately
 
@@ -401,13 +422,10 @@ POST /api/v1/subscriptions/:id/cancel
 <TabItem value="sdk" label="TypeScript SDK" default>
 
 ```typescript
-// Cancel immediately
-const subscription = await zendfi.subscriptions.cancel('sub_xyz789abc123', {
-  cancelAtPeriodEnd: false,
-  reason: 'Customer requested cancellation',
-});
+// Cancel immediately (SDK method doesn't support options - use direct request)
+const response = await zendfi.cancelSubscription('sub_xyz789abc123');
 
-console.log('Cancelled:', subscription.status); // "cancelled"
+console.log('Cancelled:', response);
 ```
 
 </TabItem>
@@ -418,7 +436,7 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
   -H "Content-Type: application/json" \
   -d '{
     "cancel_at_period_end": false,
-    "reason": "Customer requested cancellation"
+    "cancellation_reason": "Customer requested cancellation"
   }'
 ```
 
@@ -432,13 +450,14 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
 
 ```typescript
 // Let customer finish the current billing period
-const subscription = await zendfi.subscriptions.cancel('sub_xyz789abc123', {
-  cancelAtPeriodEnd: true,
-  reason: 'Switching to annual plan',
+// Use direct API request for full control
+const response = await zendfi.request('POST', `/api/v1/subscriptions/${subscriptionId}/cancel`, {
+  cancel_at_period_end: true,
+  cancellation_reason: 'Switching to annual plan',
 });
 
-// Status remains "active" until period ends
-console.log('Will cancel at:', subscription.currentPeriodEnd);
+// Status remains "Active" until period ends
+console.log('Will cancel at:', response.current_period_end);
 ```
 
 </TabItem>
@@ -449,7 +468,7 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
   -H "Content-Type: application/json" \
   -d '{
     "cancel_at_period_end": true,
-    "reason": "Switching to annual plan"
+    "cancellation_reason": "Switching to annual plan"
   }'
 ```
 
@@ -461,12 +480,12 @@ curl -X POST https://api.zendfi.tech/api/v1/subscriptions/sub_xyz789abc123/cance
 
 | Status | Description | Action |
 |--------|-------------|--------|
-| `trialing` | In free trial period | Grant full access, remind of trial end date |
-| `active` | Billing normally | Grant full access |
-| `past_due` | Last payment failed | Show payment reminder, limited grace period |
-| `paused` | Temporarily paused | Limited or no access |
-| `cancelled` | Cancelled by customer/merchant | Revoke access, offer win-back incentives |
-| `expired` | Reached max_cycles or natural end | Revoke access, offer renewal |
+| `Trialing` | In free trial period | Grant full access, remind of trial end date |
+| `Active` | Billing normally | Grant full access |
+| `PastDue` | Last payment failed | Show payment reminder, limited grace period |
+| `Paused` | Temporarily paused | Limited or no access |
+| `Cancelled` | Cancelled by customer/merchant | Revoke access, offer win-back incentives |
+| `Expired` | Reached max_cycles or natural end | Revoke access, offer renewal |
 
 
 ## Automatic Billing
@@ -476,9 +495,9 @@ ZendFi handles all subscription billing automatically. Our background worker:
 1. Runs every hour to check for subscriptions with `next_payment_attempt` due
 2. Creates a payment for the billing amount
 3. Generates a payment link for the customer
-4. Sends webhook event `subscription.payment_due`
-5. On successful payment: Advances billing cycle and sends `subscription.renewed`
-6. On failed payment: Marks subscription `past_due` and retries later
+4. Sends webhook event `SubscriptionPaymentFailed` if payment fails
+5. On successful payment: Advances billing cycle and sends `SubscriptionRenewed`
+6. On failed payment: Marks subscription `PastDue` and retries later
 
 :::tip No Manual Work Required
 You just create subscriptions and we handle everything else!
@@ -489,29 +508,29 @@ You just create subscriptions and we handle everything else!
 
 | Event | Description |
 |-------|-------------|
-| `subscription.created` | Customer subscribed to a plan |
-| `subscription.renewed` | Successful billing cycle payment |
-| `subscription.payment_failed` | Payment failed |
-| `subscription.cancelled` | Subscription cancelled |
+| `SubscriptionCreated` | Customer subscribed to a plan |
+| `SubscriptionRenewed` | Successful billing cycle payment |
+| `SubscriptionPaymentFailed` | Payment failed |
+| `SubscriptionCancelled` | Subscription cancelled |
 
 ### Example Webhook Payload
 
 ```json
 {
-  "event": "subscription.renewed",
+  "event_type": "SubscriptionRenewed",
   "timestamp": "2025-11-09T12:10:05Z",
-  "data": {
-    "subscription": {
-      "id": "sub_xyz789abc123",
-      "plan_id": "plan_abc123def456",
-      "plan_name": "Pro Plan - Monthly",
-      "customer_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-      "status": "active",
-      "current_period_start": "2025-11-09T12:10:00Z",
-      "current_period_end": "2025-12-09T12:10:00Z",
-      "cycles_completed": 1
-    },
-    "payment_id": "pay_renewal_abc123"
+  "subscription": {
+    "id": "sub_xyz789abc123",
+    "plan_id": "plan_abc123def456",
+    "plan_name": "Pro Plan - Monthly",
+    "customer_wallet": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+    "status": "Active",
+    "current_period_start": "2025-11-09T12:10:00Z",
+    "current_period_end": "2025-12-09T12:10:00Z",
+    "cycles_completed": 1,
+    "next_payment_attempt": "2025-12-09T12:10:00Z",
+    "trial_end": null,
+    "created_at": "2025-10-26T12:10:00Z"
   }
 }
 ```

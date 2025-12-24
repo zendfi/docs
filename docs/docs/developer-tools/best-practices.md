@@ -19,7 +19,7 @@ Production-ready patterns for building secure, performant, and scalable ZendFi i
 
 ```typescript
 // NEVER expose API keys in client-side code
-const zendfi = new ZendFi({
+const zendfi = new ZendFiClient({
   apiKey: 'zfi_live_abc123...' // Visible in browser!
 });
 ```
@@ -31,13 +31,16 @@ const zendfi = new ZendFi({
 
 ```typescript
 // app/api/payments/route.ts (Server-side)
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi(); // Reads from server env vars
+const zendfi = new ZendFiClient(); // Reads from server env vars
 
 export async function POST(request: Request) {
-  const payment = await zendfi.payments.create({...});
-  return Response.json({ paymentUrl: payment.paymentUrl });
+  const payment = await zendfi.createPayment({
+    amount: 100,
+    currency: 'USD',
+  });
+  return Response.json({ payment_url: payment.payment_url });
 }
 ```
 
@@ -53,8 +56,8 @@ export function CheckoutButton() {
       body: JSON.stringify({ amount: 99 })
     });
     
-    const { paymentUrl } = await response.json();
-    window.location.href = paymentUrl;
+    const { payment_url } = await response.json();
+    window.location.href = payment_url;
   }
   
   return <button onClick={handleCheckout}>Pay Now</button>;
@@ -67,14 +70,17 @@ export function CheckoutButton() {
 ```typescript
 // server.ts (Server-side only)
 import express from 'express';
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
 const app = express();
-const zendfi = new ZendFi(); // Server-side only
+const zendfi = new ZendFiClient(); // Server-side only
 
 app.post('/api/payments', async (req, res) => {
-  const payment = await zendfi.payments.create({...});
-  res.json({ paymentUrl: payment.paymentUrl });
+  const payment = await zendfi.createPayment({
+    amount: 100,
+    currency: 'USD',
+  });
+  res.json({ payment_url: payment.payment_url });
 });
 ```
 
@@ -101,34 +107,60 @@ ZENDFI_WEBHOOK_SECRET=whsec_xyz789...
 Always verify webhook signatures to prevent spoofing:
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient();
 
 export async function POST(request: Request) {
   const body = await request.text();
-  const signature = request.headers.get('zendfi-signature');
+  const signature = request.headers.get('x-zendfi-signature');
   
   if (!signature) {
     return new Response('Missing signature', { status: 401 });
   }
   
   try {
-    // Verifies signature automatically
-    const event = zendfi.webhooks.constructEvent(
-      body,
+    // Verify signature
+    const isValid = zendfi.verifyWebhook({
+      payload: body,
       signature,
-      process.env.ZENDFI_WEBHOOK_SECRET!
-    );
+      secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+    });
+    
+    if (!isValid) {
+      return new Response('Invalid signature', { status: 401 });
+    }
+    
+    // Parse verified webhook
+    const event = JSON.parse(body);
     
     // Process verified event
     await handleEvent(event);
     
     return new Response('OK', { status: 200 });
   } catch (err) {
-    console.error('Invalid webhook signature:', err);
+    console.error('Webhook verification failed:', err);
     return new Response('Invalid signature', { status: 401 });
   }
+}
+```
+
+Or use the helper function for Next.js:
+
+```typescript
+import { verifyNextWebhook } from '@zendfi/sdk/webhooks';
+
+export async function POST(request: Request) {
+  const webhook = await verifyNextWebhook(request);
+  
+  if (!webhook) {
+    return new Response('Invalid signature', { status: 401 });
+  }
+  
+  // Process verified webhook
+  await handleEvent(webhook);
+  
+  return new Response('OK', { status: 200 });
 }
 ```
 
@@ -138,7 +170,7 @@ Don't store sensitive data in metadata - it may be logged or visible in dashboar
 
 ❌ **Don't do this:**
 ```typescript
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 100,
   metadata: {
     credit_card: '4242-4242-4242-4242', // ❌ Never!
@@ -150,7 +182,7 @@ const payment = await zendfi.payments.create({
 
 ✅ **Do this instead:**
 ```typescript
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 100,
   metadata: {
     order_id: 'order_12345',
@@ -197,8 +229,8 @@ export async function POST(request: Request) {
   // Validate input
   const validated = PaymentSchema.parse(body);
   
-  const payment = await zendfi.payments.create(validated);
-  return Response.json({ paymentUrl: payment.paymentUrl });
+  const payment = await zendfi.createPayment(validated);
+  return Response.json({ payment_url: payment.payment_url });
 }
 ```
 
@@ -208,17 +240,17 @@ export async function POST(request: Request) {
 ### Use Try-Catch Blocks
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient();
 
 try {
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount: 100,
     currency: 'USD'
   });
   
-  return { success: true, paymentUrl: payment.paymentUrl };
+  return { success: true, payment_url: payment.payment_url };
 } catch (error) {
   // Log error for debugging
   console.error('Payment creation failed:', error);
@@ -234,25 +266,28 @@ try {
 ### Handle Specific Error Types
 
 ```typescript
-import { ZendFi, ZendFiError } from '@zendfi/sdk';
+import { ZendFiClient, ZendFiError } from '@zendfi/sdk';
+
+const zendfi = new ZendFiClient();
 
 try {
-  const payment = await zendfi.payments.create({...});
+  const payment = await zendfi.createPayment({ amount: 100 });
 } catch (error) {
   if (error instanceof ZendFiError) {
     // Handle ZendFi-specific errors
-    switch (error.code) {
-      case 'invalid_api_key':
-        console.error('API key is invalid');
-        break;
-      case 'rate_limit_exceeded':
-        console.error('Rate limit exceeded, retry after:', error.retryAfter);
-        break;
-      case 'payment_failed':
-        console.error('Payment failed:', error.message);
-        break;
-      default:
-        console.error('ZendFi error:', error.message);
+    console.error('ZendFi error:', error.code, error.message);
+    
+    if (error.type === 'authentication_error') {
+      console.error('API key is invalid');
+    } else if (error.type === 'rate_limit_error') {
+      console.error('Rate limit exceeded');
+    } else if (error.type === 'payment_error') {
+      console.error('Payment failed:', error.message);
+    }
+    
+    // Log suggestion if available
+    if (error.suggestion) {
+      console.log('Suggestion:', error.suggestion);
     }
   } else {
     // Handle other errors (network, etc.)
@@ -263,19 +298,30 @@ try {
 
 ### Implement Retry Logic
 
-```typescript
-import { ZendFi } from '@zendfi/sdk';
+The SDK has built-in retry logic:
 
-const zendfi = new ZendFi({
-  retries: 3, // Automatically retry failed requests
+```typescript
+import { ZendFiClient } from '@zendfi/sdk';
+
+const zendfi = new ZendFiClient({
+  retries: 3, // Automatically retry failed requests (5xx errors)
   timeout: 30000 // 30 second timeout
 });
 
-// Or implement custom retry logic
+// SDK will automatically retry on 5xx errors with exponential backoff
+const payment = await zendfi.createPayment({
+  amount: 100,
+  currency: 'USD',
+});
+```
+
+Or implement custom retry logic:
+
+```typescript
 async function createPaymentWithRetry(params: any, maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
     try {
-      return await zendfi.payments.create(params);
+      return await zendfi.createPayment(params);
     } catch (error) {
       if (i === maxRetries - 1) throw error;
       
@@ -292,8 +338,8 @@ async function createPaymentWithRetry(params: any, maxRetries = 3) {
 ```typescript
 export async function POST(request: Request) {
   try {
-    const payment = await zendfi.payments.create({...});
-    return Response.json({ paymentUrl: payment.paymentUrl });
+    const payment = await zendfi.createPayment({ amount: 100 });
+    return Response.json({ payment_url: payment.payment_url });
   } catch (error) {
     // Log error for investigation
     console.error('Payment creation failed:', error);
@@ -319,26 +365,26 @@ export async function POST(request: Request) {
 Cache data that doesn't change frequently:
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
-let cachedPlans: any[] | null = null;
+const zendfi = new ZendFiClient();
+let cachedPlan: any | null = null;
 let cacheTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-async function getSubscriptionPlans() {
+async function getSubscriptionPlan(planId: string) {
   const now = Date.now();
   
   // Return cached data if still valid
-  if (cachedPlans && (now - cacheTime) < CACHE_DURATION) {
-    return cachedPlans;
+  if (cachedPlan && (now - cacheTime) < CACHE_DURATION) {
+    return cachedPlan;
   }
   
   // Fetch fresh data
-  cachedPlans = await zendfi.subscriptions.listPlans();
+  cachedPlan = await zendfi.getSubscriptionPlan(planId);
   cacheTime = now;
   
-  return cachedPlans;
+  return cachedPlan;
 }
 ```
 
@@ -348,23 +394,23 @@ For large datasets, always use pagination:
 
 ```typescript
 // ❌ Don't fetch everything at once
-const allPayments = await zendfi.payments.list({ limit: 10000 });
+const allPayments = await zendfi.listPayments({ limit: 10000 });
 
 // ✅ Paginate through results
 async function getAllPayments() {
   const payments = [];
+  let page = 1;
   let hasMore = true;
-  let offset = 0;
   
   while (hasMore) {
-    const page = await zendfi.payments.list({
+    const result = await zendfi.listPayments({
       limit: 100,
-      offset
+      page
     });
     
-    payments.push(...page.data);
-    hasMore = page.hasMore;
-    offset += 100;
+    payments.push(...result.data);
+    hasMore = result.has_more;
+    page++;
   }
   
   return payments;
@@ -378,13 +424,13 @@ Group operations when possible:
 ```typescript
 // ❌ Slow: Individual requests
 for (const order of orders) {
-  await zendfi.payments.create({ amount: order.total });
+  await zendfi.createPayment({ amount: order.total });
 }
 
 // ✅ Fast: Create payment links in batch
 const links = await Promise.all(
   orders.map(order =>
-    zendfi.paymentLinks.create({
+    zendfi.createPaymentLink({
       amount: order.total,
       metadata: { order_id: order.id }
     })
@@ -397,20 +443,15 @@ const links = await Promise.all(
 Return 200 immediately, process asynchronously:
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
-
-const zendfi = new ZendFi();
+import { verifyNextWebhook } from '@zendfi/sdk/webhooks';
 
 export async function POST(request: Request) {
-  const body = await request.text();
-  const signature = request.headers.get('zendfi-signature');
-  
   // Verify webhook
-  const event = zendfi.webhooks.constructEvent(
-    body,
-    signature!,
-    process.env.ZENDFI_WEBHOOK_SECRET!
-  );
+  const event = await verifyNextWebhook(request);
+  
+  if (!event) {
+    return new Response('Invalid signature', { status: 401 });
+  }
   
   // Return 200 immediately
   const response = new Response('OK', { status: 200 });
@@ -425,7 +466,7 @@ export async function POST(request: Request) {
 
 async function processWebhookAsync(event: any) {
   // Heavy processing here
-  if (event.event === 'payment.completed') {
+  if (event.event === 'payment.confirmed') {
     await updateDatabase(event.data);
     await sendConfirmationEmail(event.data);
     await updateInventory(event.data);
@@ -439,17 +480,17 @@ Set realistic timeouts based on operation:
 
 ```typescript
 // Fast operations (retrieve existing data)
-const quickClient = new ZendFi({
+const quickClient = new ZendFiClient({
   timeout: 10000 // 10 seconds
 });
 
-// Slow operations (create, process payments)
-const standardClient = new ZendFi({
-  timeout: 30000 // 30 seconds
+// Standard operations (create, process payments)
+const standardClient = new ZendFiClient({
+  timeout: 30000 // 30 seconds (default)
 });
 
-// Very slow operations (reports, bulk operations)
-const slowClient = new ZendFi({
+// Slow operations (reports, bulk operations)
+const slowClient = new ZendFiClient({
   timeout: 60000 // 60 seconds
 });
 ```
@@ -457,25 +498,24 @@ const slowClient = new ZendFi({
 
 ## Scalability
 
-### Use Idempotency Keys
+### Use Idempotency
 
-Prevent duplicate payments during retries:
+The SDK automatically handles idempotency with headers when enabled:
 
 ```typescript
-import { v4 as uuidv4 } from 'uuid';
-
-// Generate unique idempotency key per operation
-const idempotencyKey = uuidv4();
-
-const payment = await zendfi.payments.create({
-  amount: 100,
-  currency: 'USD',
-  idempotencyKey // Prevents duplicates if request is retried
+const zendfi = new ZendFiClient({
+  idempotencyEnabled: true // Automatically adds Idempotency-Key header
 });
 
-// If this request is retried with same key, 
-// you'll get the same payment back instead of creating a duplicate
+// SDK will add unique Idempotency-Key header automatically
+// If request is retried, same key = same response (no duplicate payment)
+const payment = await zendfi.createPayment({
+  amount: 100,
+  currency: 'USD',
+});
 ```
+
+Or manually set idempotency key via headers in your HTTP client.
 
 ### Implement Database Transactions
 
@@ -494,7 +534,7 @@ try {
   });
   
   // Create payment with ZendFi
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount: order.total,
     currency: 'USD',
     metadata: {
@@ -544,7 +584,7 @@ Track SDK performance metrics:
 const startTime = Date.now();
 
 try {
-  const payment = await zendfi.payments.create({...});
+  const payment = await zendfi.createPayment({ amount: 100 });
   
   const duration = Date.now() - startTime;
   console.log('Payment creation took:', duration, 'ms');
@@ -580,7 +620,7 @@ await paymentQueue.add({
 paymentQueue.process(async (job) => {
   const { amount, userId, orderId } = job.data;
   
-  const payment = await zendfi.payments.create({
+  const payment = await zendfi.createPayment({
     amount,
     currency: 'USD',
     metadata: { user_id: userId, order_id: orderId }
@@ -597,13 +637,13 @@ paymentQueue.process(async (job) => {
 
 ```typescript
 // services/payment.service.ts
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
 export class PaymentService {
-  private zendfi: ZendFi;
+  private zendfi: ZendFiClient;
   
   constructor() {
-    this.zendfi = new ZendFi();
+    this.zendfi = new ZendFiClient();
   }
   
   async createPayment(params: {
@@ -611,7 +651,7 @@ export class PaymentService {
     description: string;
     metadata?: Record<string, any>;
   }) {
-    return await this.zendfi.payments.create({
+    return await this.zendfi.createPayment({
       amount: params.amount,
       currency: 'USD',
       description: params.description,
@@ -620,11 +660,11 @@ export class PaymentService {
   }
   
   async getPayment(paymentId: string) {
-    return await this.zendfi.payments.retrieve(paymentId);
+    return await this.zendfi.getPayment(paymentId);
   }
   
   async listPayments(filters?: { status?: string; limit?: number }) {
-    return await this.zendfi.payments.list(filters);
+    return await this.zendfi.listPayments(filters);
   }
 }
 
@@ -641,7 +681,7 @@ export async function POST(request: Request) {
     description
   });
   
-  return Response.json({ paymentUrl: payment.paymentUrl });
+  return Response.json({ payment_url: payment.payment_url });
 }
 ```
 
@@ -649,17 +689,17 @@ export async function POST(request: Request) {
 
 ```typescript
 // config/zendfi.config.ts
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
 export const zendfiConfig = {
   apiKey: process.env.ZENDFI_API_KEY!,
-  webhookSecret: process.env.ZENDFI_WEBHOOK_SECRET!,
-  debug: process.env.NODE_ENV === 'development',
   timeout: 30000,
-  retries: 3
+  retries: 3,
+  debug: process.env.NODE_ENV === 'development',
+  idempotencyEnabled: true,
 };
 
-export const zendfi = new ZendFi(zendfiConfig);
+export const zendfi = new ZendFiClient(zendfiConfig);
 
 // Use throughout your app
 import { zendfi } from './config/zendfi.config';
@@ -677,7 +717,7 @@ export interface OrderMetadata {
 }
 
 // Use in your code
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 100,
   currency: 'USD',
   metadata: {
@@ -731,16 +771,17 @@ import { describe, it, expect } from 'vitest';
 import { POST } from './api/webhooks/route';
 
 describe('Webhook Handler', () => {
-  it('processes payment completed event', async () => {
+  it('processes payment confirmed event', async () => {
     const mockRequest = new Request('http://localhost/api/webhooks', {
       method: 'POST',
       headers: {
-        'zendfi-signature': 'mock_signature',
+        'x-zendfi-signature': 'mock_signature',
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        event: 'payment.completed',
+        event: 'payment.confirmed',
         timestamp: new Date().toISOString(),
+        merchant_id: 'merch_123',
         data: { id: 'pay_123', amount: 100 }
       })
     });
@@ -761,7 +802,7 @@ import pino from 'pino';
 
 const logger = pino();
 
-const payment = await zendfi.payments.create({
+const payment = await zendfi.createPayment({
   amount: 100,
   currency: 'USD'
 });
@@ -775,27 +816,43 @@ logger.info({
 });
 ```
 
+### Enable Debug Mode
+
+```typescript
+import { ZendFiClient } from '@zendfi/sdk';
+
+const zendfi = new ZendFiClient({
+  debug: true // Logs all requests and responses
+});
+
+// Will log:
+// [ZendFi] POST /api/v1/payments
+// [ZendFi] Request: { amount: 100, currency: 'USD' }
+// [ZendFi] ✓ 200 OK (342ms)
+// [ZendFi] Response: { id: 'pay_123', ... }
+```
+
 ### Track Business Metrics
 
 ```typescript
-import { ZendFi } from '@zendfi/sdk';
+import { ZendFiClient } from '@zendfi/sdk';
 
-const zendfi = new ZendFi();
+const zendfi = new ZendFiClient();
 
 // Track payment volume
 async function trackPaymentMetrics() {
-  const payments = await zendfi.payments.list({
-    status: 'completed',
+  const payments = await zendfi.listPayments({
+    status: 'confirmed',
     limit: 100
   });
   
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-  const averagePayment = totalRevenue / payments.length;
+  const totalRevenue = payments.data.reduce((sum, p) => sum + p.amount, 0);
+  const averagePayment = totalRevenue / payments.data.length;
   
   // Send to analytics
   analytics.track('revenue_metrics', {
     total_revenue: totalRevenue,
-    payment_count: payments.length,
+    payment_count: payments.data.length,
     average_payment: averagePayment,
     timestamp: new Date()
   });
@@ -825,8 +882,8 @@ async function trackPaymentMetrics() {
 export async function GET() {
   try {
     // Verify ZendFi connection
-    const zendfi = new ZendFi();
-    await zendfi.payments.list({ limit: 1 });
+    const zendfi = new ZendFiClient();
+    await zendfi.listPayments({ limit: 1 });
     
     return Response.json({ status: 'healthy' });
   } catch (error) {

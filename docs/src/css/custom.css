@@ -659,7 +659,7 @@ code {
   font-size: 0.875rem;
   border-radius: 6px;
   padding: 0.15rem 0.4rem;
-  background: var(--ifm-background-surface-color);
+  background: #ffffff;
   border: 1px solid var(--ifm-color-emphasis-200);
 }
 
@@ -670,7 +670,7 @@ pre {
   padding: 0.875rem 1rem;
   margin: 0;
   border: none;
-  background: var(--prism-background-color, #f6f8fa) !important;
+  background: #ffffff !important;
 }
 
 pre code {
@@ -691,7 +691,7 @@ div[class*='codeBlockContainer'] {
   overflow: hidden;
   border: 1px solid var(--ifm-color-emphasis-200);
   margin: 0.875rem 0;
-  background: var(--prism-background-color, #f6f8fa) !important;
+  background: #ffffff !important;
 }
 
 [data-theme='dark'] div[class*='codeBlockContainer'] {

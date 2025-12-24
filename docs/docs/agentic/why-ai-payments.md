@@ -97,7 +97,7 @@ await agent.orderCoffee(); // Uses session token internally
 ```typescript
 const session = await zendfi.agent.createSession({
   limits: { max_per_transaction: 5, max_per_month: 50 },
-  allowed_categories: ['in_game_items'],
+  allowed_merchants: ['game_merchant_id'],
 });
 ```
 
@@ -107,7 +107,7 @@ const session = await zendfi.agent.createSession({
 
 ```typescript
 const session = await zendfi.agent.createSession({
-  limits: { max_per_transaction: 100, max_per_year: 1200 },
+  limits: { max_per_transaction: 100, max_per_month: 1200 },
   allowed_merchants: ['saas_platform_merchant_id'],
 });
 ```

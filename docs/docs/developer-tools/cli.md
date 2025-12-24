@@ -146,10 +146,13 @@ Forward webhooks to your local machine during development:
 
 ```bash
 # Listen on default port (3000)
-zendfi webhooks listen
+zendfi webhooks
+
+# Specify port
+zendfi webhooks --port 4000
 
 # Forward to specific endpoint
-zendfi webhooks listen --forward-to http://localhost:3000/api/webhooks
+zendfi webhooks --forward-to http://localhost:3000/api/webhooks
 ```
 
 **Output:**
@@ -185,63 +188,81 @@ zendfi keys create
 zendfi keys create --name "Production Key" --mode live
 ```
 
-
-## AI Features (Optional)
-
-:::tip Not Building AI Agents?
-These commands are for autonomous AI agent payments. Most users won't need them. [Learn more about AI payments →](/agentic)
-:::
-
-### AI Agent Keys & Sessions
+### Rotate API Key
 
 ```bash
-# Create an AI agent API key
-zendfi ai keys create --name "Shopping Bot"
-
-# List all agent keys
-zendfi ai keys list
-
-# Revoke an agent key
-zendfi ai keys revoke <key-id>
-
-# Create session with spending limits
-zendfi ai sessions create \
-  --wallet Hx7B...abc \
-  --max-per-day 100 \
-  --max-per-transaction 25 \
-  --duration 24
-
-# List all sessions
-zendfi ai sessions list
-
-# Revoke a session
-zendfi ai sessions revoke <session-id>
+zendfi keys rotate <key-id>
 ```
 
-### Payment Intents
+
+## Smart Payments
+
+Smart payments automatically apply optimizations like PPP pricing and agent sessions:
+
+```bash
+# Create smart payment
+zendfi smart create \
+  --amount 99.99 \
+  --wallet Hx7B...abc \
+  --country BR \
+  --ppp
+
+# Simulate smart payment (preview pricing)
+zendfi smart simulate --amount 99.99 --country BR
+```
+
+**Options:**
+- `--amount <number>` - Amount in USD
+- `--wallet <address>` - Payer wallet address
+- `--merchant <id>` - Merchant ID
+- `--description <text>` - Payment description
+- `--country <code>` - 2-letter country code for PPP
+- `--ppp` - Enable PPP pricing
+- `--agent-id <id>` - Agent ID for session payments
+- `--use-session` - Use existing agent session
+
+
+## Payment Intents
+
+Two-phase payment flow for complex scenarios:
 
 ```bash
 # Create a payment intent
-zendfi ai intents create --amount 99.99
-
-# Confirm an intent
-zendfi ai intents confirm <intent-id> --wallet Hx7B...abc
+zendfi intents create --amount 99.99
 
 # List all intents
-zendfi ai intents list
+zendfi intents list
+
+# Get intent details
+zendfi intents get <intent-id>
+
+# Confirm an intent
+zendfi intents confirm <intent-id> --wallet Hx7B...abc
 
 # Cancel an intent
-zendfi ai intents cancel <intent-id>
+zendfi intents cancel <intent-id>
 ```
 
-### PPP Pricing
+**Create Options:**
+- `--amount <number>` - Amount in USD
+- `--currency <code>` - Currency code (default: USD)
+- `--description <text>` - Payment description
+- `--capture <method>` - Capture method: automatic or manual
+
+
+## PPP Pricing
+
+Purchasing Power Parity pricing tools:
 
 ```bash
 # Get PPP factor for a country
-zendfi ai ppp check BR --price 99.99
+zendfi ppp check BR --price 99.99
 
 # List all PPP factors
-zendfi ai ppp factors --sort discount
+zendfi ppp factors --sort discount
+
+# Calculate localized price
+zendfi ppp calculate --price 99.99 --country BR
 ```
 
 **Output:**
@@ -252,23 +273,105 @@ zendfi ai ppp factors --sort discount
   PPP Factor: 0.35
   Discount: 65%
   
-  Example: $100 → $35.00
+  Original Price: $99.99
+  Localized Price: $35.00
 ```
 
-### Autonomous Delegation
+
+## Autonomous Delegation
+
+Enable autonomous signing for session keys:
 
 ```bash
 # Enable autonomy
-zendfi ai autonomy enable \
+zendfi autonomy enable \
   --wallet Hx7B...abc \
+  --agent-id my-agent \
   --max-per-day 100 \
-  --max-per-transaction 25
+  --max-per-transaction 25 \
+  --duration 24
 
 # Check status
-zendfi ai autonomy status <wallet-address>
+zendfi autonomy status <wallet-address>
 
 # Revoke delegation
-zendfi ai autonomy revoke <delegate-id>
+zendfi autonomy revoke <delegate-id>
+
+# List all delegates
+zendfi autonomy delegates --wallet Hx7B...abc
+```
+
+**Enable Options:**
+- `--wallet <address>` - User Solana wallet address
+- `--agent-id <id>` - Agent identifier
+- `--max-per-day <amount>` - Max spending per day in USD
+- `--max-per-transaction <amount>` - Max per transaction in USD
+- `--duration <hours>` - Delegation duration in hours
+- `--merchants <ids>` - Comma-separated allowed merchant IDs
+- `--categories <names>` - Comma-separated allowed categories
+
+
+## AI Agent Features
+
+:::tip Optional Features
+These commands are for building AI agents. Most users won't need them. [Learn more about AI payments →](/agentic)
+:::
+
+### Agent API Keys
+
+```bash
+# Create an AI agent API key
+zendfi ai keys create \
+  --name "Shopping Bot" \
+  --agent-id shopping-assistant \
+  --scopes create_payments,read_analytics
+
+# List all agent keys
+zendfi ai keys list
+
+# Revoke an agent key
+zendfi ai keys revoke <key-id>
+```
+
+**Create Options:**
+- `--name <name>` - Agent name
+- `--agent-id <id>` - Unique agent identifier
+- `--scopes <scopes>` - Comma-separated scopes
+- `--rate-limit <limit>` - Rate limit per hour
+
+### Agent Sessions
+
+```bash
+# Create session with spending limits
+zendfi ai sessions create \
+  --agent-id shopping-bot \
+  --wallet Hx7B...abc \
+  --max-per-day 100 \
+  --max-per-transaction 25 \
+  --duration 24
+
+# List all sessions
+zendfi ai sessions list
+
+# Get session details
+zendfi ai sessions get <session-id>
+
+# Revoke a session
+zendfi ai sessions revoke <session-id>
+```
+
+**Create Options:**
+- `--agent-id <id>` - Agent identifier
+- `--wallet <address>` - User Solana wallet address
+- `--max-per-day <amount>` - Max spending per day in USD
+- `--max-per-transaction <amount>` - Max per transaction in USD
+- `--duration <hours>` - Session duration in hours
+
+### Agent Analytics
+
+```bash
+# View agent analytics and metrics
+zendfi ai analytics
 ```
 
 
@@ -281,19 +384,42 @@ Core Commands:
   init                      Add ZendFi to an existing project
   payment create            Create test payments
   payment status <id>       Check payment status  
-  webhooks listen           Forward webhooks locally
+  webhooks                  Forward webhooks locally
   keys list                 List API keys
   keys create               Create new API key
+  keys rotate <id>          Rotate an API key
+  
+Smart Payments:
+  smart create              Create smart payment with optimizations
+  smart simulate            Simulate smart payment (preview pricing)
+  
+Payment Intents:
+  intents create            Create payment intent
+  intents list              List all intents
+  intents get <id>          Get intent details
+  intents confirm <id>      Confirm payment intent
+  intents cancel <id>       Cancel payment intent
+
+PPP Pricing:
+  ppp check <country>       Check PPP pricing for country
+  ppp factors               List all PPP factors
+  ppp calculate             Calculate localized price
+
+Autonomous Delegation:
+  autonomy enable           Enable autonomous delegation
+  autonomy status <wallet>  Check autonomy status
+  autonomy revoke <id>      Revoke delegation
+  autonomy delegates        List all delegates
   
 AI Features (Optional):
   ai keys create            Create AI agent API key
   ai keys list              List agent keys
+  ai keys revoke <id>       Revoke agent key
   ai sessions create        Create agent session with limits
   ai sessions list          List all sessions
-  ai intents create         Create payment intent
-  ai intents confirm <id>   Confirm payment intent
-  ai ppp check <country>    Check PPP pricing
-  ai autonomy enable        Enable autonomous delegation
+  ai sessions get <id>      Get session details
+  ai sessions revoke <id>   Revoke session
+  ai analytics              View agent analytics
 
 Options:
   -V, --version             Show version number
@@ -317,7 +443,7 @@ Options:
 Enable verbose output for debugging:
 
 ```bash
-# Use verbose flag
+# Use verbose flag (if available)
 zendfi payment create --amount 10 --verbose
 
 # Or set DEBUG environment variable
