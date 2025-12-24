@@ -981,3 +981,62 @@ a[target="_blank"] svg,
 [class*="iconExternalLink"] {
   display: none !important;
 }
+
+/* ===== Tabs - Compact & Sleek Styling ===== */
+/* Make SDK/REST API tabs more compact and professional */
+.tabs-container {
+  margin: 1rem 0 1.25rem;
+}
+
+.tabs {
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  margin-bottom: 0 !important;
+}
+
+.tabs__item {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 0.375rem 0.875rem !important;
+  margin-right: 0.5rem;
+  border-radius: 4px 4px 0 0 !important;
+  color: var(--ifm-font-color-secondary) !important;
+  background: transparent !important;
+  border: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.tabs__item:hover {
+  background: var(--ifm-background-surface-color) !important;
+  color: var(--ifm-font-color-base) !important;
+}
+
+.tabs__item--active {
+  color: var(--ifm-color-primary) !important;
+  background: transparent !important;
+  border-bottom: 2px solid var(--ifm-color-primary) !important;
+  margin-bottom: -1px !important;
+}
+
+.tabs__item--active:hover {
+  background: transparent !important;
+}
+
+/* Tab content styling */
+.margin-top--md {
+  margin-top: 0 !important;
+}
+
+/* Make tab panels blend seamlessly */
+[role="tabpanel"] {
+  padding-top: 0.75rem;
+}
+
+/* Code blocks within tabs */
+.tabs-container pre {
+  margin-top: 0 !important;
+  border-radius: 0 6px 6px 6px;
+}
+
+.tabs-container .prism-code {
+  font-size: 13px;
+}
