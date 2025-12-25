@@ -106,6 +106,27 @@ export async function POST(request: Request) {
 }
 ```
 
+:::tip Use Helper Utilities
+For a simpler setup with auto-caching and PIN management, use the [`SessionKeyLifecycle`](../developer-tools/helper-utilities.md#session-key-lifecycle) helper:
+
+```typescript
+import { SessionKeyLifecycle, QuickCaches } from '@zendfi/sdk/helpers';
+
+const lifecycle = new SessionKeyLifecycle(zendfi, {
+  cache: QuickCaches.persistent(),
+  autoCleanup: true,
+});
+
+await lifecycle.createAndFund({
+  userWallet: wallet.address,
+  agentId: 'shopping-bot-v1',
+  limitUsdc: 100,
+});
+```
+
+See the [Helper Utilities Guide](../developer-tools/helper-utilities.md) for more details.
+:::
+
 
 ## Step 3: User Interface for Granting Permission
 
@@ -114,28 +135,43 @@ export async function POST(request: Request) {
 'use client';
 
 import { useState } from 'react';
+import { WalletConnector } from '@zendfi/sdk/helpers';
 
 export function AIShoppingSetup() {
   const [maxPerTransaction, setMaxPerTransaction] = useState(15);
   const [maxPerDay, setMaxPerDay] = useState(50);
   const [maxPerMonth, setMaxPerMonth] = useState(200);
   const [durationHours, setDurationHours] = useState(720); // 30 days in hours
+  const [connecting, setConnecting] = useState(false);
   
   async function handleEnable() {
-    const res = await fetch('/api/ai/create-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        agent_id: 'shopping-bot-v1',
-        max_per_transaction: maxPerTransaction,
-        max_per_day: maxPerDay,
-        max_per_month: maxPerMonth,
-        duration_hours: durationHours,
-      }),
-    });
+    setConnecting(true);
     
-    const { session_id, expires_at } = await res.json();
-    alert(`AI shopping enabled! Session expires: ${new Date(expires_at).toLocaleDateString()}`);
+    try {
+      // Use WalletConnector helper to auto-detect wallet
+      const wallet = await WalletConnector.detectAndConnect();
+      
+      const res = await fetch('/api/ai/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agent_id: 'shopping-bot-v1',
+          user_wallet: wallet.address,
+          max_per_transaction: maxPerTransaction,
+          max_per_day: maxPerDay,
+          max_per_month: maxPerMonth,
+          duration_hours: durationHours,
+        }),
+      });
+      
+      const { session_id, expires_at } = await res.json();
+      alert(`AI shopping enabled! Session expires: ${new Date(expires_at).toLocaleDateString()}`);
+    } catch (error) {
+      console.error('Failed to enable AI shopping:', error);
+      alert('Failed to connect wallet or create session');
+    } finally {
+      setConnecting(false);
+    }
   }
   
   return (
@@ -191,11 +227,17 @@ export function AIShoppingSetup() {
         </ul>
       </div>
       
-      <button onClick={handleEnable}>Enable AI Shopping</button>
+      <button onClick={handleEnable} disabled={connecting}>
+        {connecting ? 'Connecting wallet...' : 'Enable AI Shopping'}
+      </button>
     </div>
   );
 }
 ```
+
+:::tip Wallet Integration Made Easy
+The [`WalletConnector`](../developer-tools/helper-utilities.md#wallet-connector) helper auto-detects and connects to Phantom, Solflare, Backpack, and other Solana wallets with zero configuration.
+:::
 
 
 ## Step 4: AI Makes Autonomous Purchase
@@ -205,6 +247,7 @@ The AI agent can now make purchases without asking for approval each time:
 ```typescript
 // AI agent code (runs on your server or AI platform)
 import { ZendFi } from '@zendfi/sdk';
+import { RetryStrategy, TransactionPoller } from '@zendfi/sdk/helpers';
 
 // Use agent API key (created via /api/v1/agent-keys)
 const zendfi = new ZendFi({
@@ -223,29 +266,52 @@ async function checkAndRestock(userId: string, productId: string) {
     // 3. Get user's AI session from your database
     const session = await getUserAgentSession(userId);
     
-    // 4. Create smart payment using session token
+    // 4. Create smart payment with retry logic
     try {
-      const payment = await zendfi.smart.execute({
-        session_token: session.session_token, // Session validates spending limits
-        agent_id: 'shopping-bot-v1',
-        user_wallet: session.user_wallet,
-        amount_usd: product.price,
-        auto_detect_gasless: true, // ZendFi covers gas fees if needed
-        instant_settlement: true,
-        description: `Auto-restock: ${product.name}`,
-        metadata: {
-          user_id: userId,
-          product_id: product.id,
-          product_name: product.name,
-          autonomous: true,
-          agent_decision: 'inventory-low',
+      const payment = await RetryStrategy.withRetry(
+        async () => {
+          return await zendfi.smart.execute({
+            session_token: session.session_token,
+            agent_id: 'shopping-bot-v1',
+            user_wallet: session.user_wallet,
+            amount_usd: product.price,
+            auto_detect_gasless: true,
+            instant_settlement: true,
+            description: `Auto-restock: ${product.name}`,
+            metadata: {
+              user_id: userId,
+              product_id: product.id,
+              product_name: product.name,
+              autonomous: true,
+              agent_decision: 'inventory-low',
+            },
+          });
         },
-      });
+        {
+          maxAttempts: 3,
+          initialDelay: 1000,
+          backoff: 'exponential',
+          onRetry: (error, attempt) => {
+            console.log(`Retry attempt ${attempt}: ${error.message}`);
+          },
+        }
+      );
       
       console.log(`✅ Autonomous purchase: ${payment.payment_id}`);
       console.log(`Receipt: ${payment.receipt_url}`);
       
-      // 5. Notify user
+      // 5. Wait for blockchain confirmation (optional but recommended)
+      if (payment.transaction_signature) {
+        const poller = new TransactionPoller({ 
+          connection: solanaConnection,
+          timeout: 60000,
+        });
+        
+        const result = await poller.waitForConfirmation(payment.transaction_signature);
+        console.log(`Transaction confirmed in slot ${result.slot}`);
+      }
+      
+      // 6. Notify user
       await notifyUser({
         userId,
         title: 'AI Purchase Complete',
@@ -259,14 +325,12 @@ async function checkAndRestock(userId: string, productId: string) {
       console.error('Autonomous payment failed:', error);
       
       if (error.message.includes('limit exceeded')) {
-        // User hit spending limit
         await notifyUser({
           userId,
           title: '⚠️ AI Spending Limit Reached',
           message: 'Please increase your AI shopping limits to continue auto-restocking.',
         });
       } else if (error.message.includes('expired')) {
-        // Session expired
         await notifyUser({
           userId,
           title: 'AI Session Expired',
@@ -289,6 +353,14 @@ setInterval(async () => {
   }
 }, 24 * 60 * 60 * 1000); // Daily check
 ```
+
+:::tip Error Handling & Confirmation
+The example above uses two helper utilities:
+- [`RetryStrategy`](../developer-tools/helper-utilities.md#error-recovery) - Automatic retries with exponential backoff for network failures
+- [`TransactionPoller`](../developer-tools/helper-utilities.md#transaction-polling) - Wait for Solana transaction confirmation with smart polling
+
+See the [Helper Utilities Guide](../developer-tools/helper-utilities.md) for more resilient patterns.
+:::
 
 
 ## Step 5: Process AI Purchases via Webhooks
@@ -427,9 +499,18 @@ export default async function AISpendingPage() {
 For high-value purchases, require user approval:
 
 ```typescript
+import { PaymentIntentParser } from '@zendfi/sdk/helpers';
+
 // AI agent checks if approval needed
-async function createPurchaseIntent(userId: string, product: any) {
+async function createPurchaseIntent(userId: string, product: any, userMessage?: string) {
   const session = await getUserAgentSession(userId);
+  
+  // Optional: Parse user's natural language message
+  let parsedIntent;
+  if (userMessage) {
+    parsedIntent = PaymentIntentParser.parse(userMessage);
+    console.log(`User intent confidence: ${parsedIntent.confidence}`);
+  }
   
   // If over threshold, require approval
   if (product.price > session.limits.max_per_transaction) {
@@ -462,6 +543,17 @@ async function createPurchaseIntent(userId: string, product: any) {
   return await createAutonomousPayment(session, product);
 }
 ```
+
+:::tip Natural Language Understanding
+The [`PaymentIntentParser`](../developer-tools/helper-utilities.md#ai-payment-parser) helper can extract payment details from natural language:
+
+```typescript
+const intent = PaymentIntentParser.parse("Order coffee subscription for $9.99");
+// { action: 'payment', amount: 9.99, description: 'coffee subscription', confidence: 0.9 }
+```
+
+For more advanced AI understanding, use the OpenAI/Anthropic/Gemini adapters. See [Helper Utilities](../developer-tools/helper-utilities.md) for details.
+:::
 
 
 ## Security Best Practices
@@ -514,17 +606,24 @@ console.log('Agent API Key:', agentKey.full_key); // zai_test_...
 ### Step 2: Test Session Creation
 
 ```bash
-# Using the SDK
+# Using the SDK with helper utilities
 import { ZendFi } from '@zendfi/sdk';
+import { DevTools } from '@zendfi/sdk/helpers';
+
+// Enable debug mode to see all API calls
+DevTools.enableDebugMode();
 
 const zendfi = new ZendFi({
   apiKey: process.env.ZENDFI_AGENT_API_KEY, // Use agent key
   mode: 'test',
 });
 
+// Generate test data
+const testData = DevTools.generateTestData();
+
 const session = await zendfi.agent.createSession({
   agent_id: 'shopping-bot-v1',
-  user_wallet: 'YOUR_WALLET_ADDRESS',
+  user_wallet: testData.userWallet,
   limits: {
     max_per_transaction: 15,
     max_per_day: 50,
@@ -532,8 +631,18 @@ const session = await zendfi.agent.createSession({
   duration_hours: 24,
 });
 
-console.log('Session Token:', session.session_token); // zai_session_...
+console.log('Session Token:', session.session_token);
 ```
+
+:::tip Testing Utilities
+The [`DevTools`](../developer-tools/helper-utilities.md#development-tools) helper provides:
+- Debug mode to log all API requests/responses
+- Test data generators (realistic mock addresses, IDs)
+- Mock wallet (no real wallet needed for testing)
+- Performance monitoring and benchmarks
+
+See [Testing & Debugging](../developer-tools/testing-and-debugging.md) for more testing strategies.
+:::
 
 ### Step 3: Test Smart Payment
 
@@ -579,11 +688,13 @@ console.log('Remaining this week:', activeSession.remaining.this_week);
 
 ## Learn More
 
+- **[Helper Utilities](../developer-tools/helper-utilities.md)** - Production-ready helpers for common patterns
 - [Payments API](../api/payments.md) - Core payment functionality
 - [Payment Links](../api/payment-links.md) - Shareable payment links
 - [Subscriptions](../api/subscriptions.md) - Recurring payments
 - [Invoices](../api/invoices.md) - Professional invoicing
 - [Webhooks](../features/webhooks.md) - Process payment events
+- [Testing & Debugging](../developer-tools/testing-and-debugging.md) - Debug strategies
 
 
 ## Need Help?
