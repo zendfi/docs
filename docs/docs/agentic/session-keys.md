@@ -17,7 +17,12 @@ Session Keys differ from Agent Sessions in a key way:
 | **Funding** | Virtual limits on user's wallet | Pre-funded dedicated wallet |
 | **User Signature** | Required per payment | One-time approval only |
 | **Best For** | Interactive flows | Fully autonomous agents |
+| **Agent Scoping** | Agent-specific | Agent-specific (cross-app compatible) |
 | **Can Link Together** | Yes | Yes |
+
+:::tip Cross-App Compatibility
+**Session keys are agent-scoped**, not merchant-scoped. When a user authorizes a session key for an agent (e.g., "shopping-assistant-v1"), that **same session key works across all apps** using that agent. This eliminates liquidity fragmentation—no more $100 in App A, $100 in App B, $100 in App C for the same agent!
+:::
 
 **Note:** Agent Sessions can optionally use Lit Protocol PKPs for on-chain identity when `mint_pkp: true` is set. Session Keys are simpler pre-funded wallets without PKP integration.
 :::tip Defense in Depth
@@ -53,13 +58,16 @@ import { zendfi } from '@zendfi/sdk';
 // Step 1: Create a session key
 const key = await zendfi.sessionKeys.create({
   user_wallet: 'Hx7B...abc',
+  agent_id: 'shopping-assistant-v1',  // Required: unique agent identifier
+  agent_name: 'AI Shopping Assistant', // Optional: human-readable name
   limit_usdc: 100,          // $100 spending limit
   duration_days: 7,         // Valid for 7 days (default)
   device_fingerprint: fp,   // Required for security
 });
 
 console.log(`Session Key ID: ${key.session_key_id}`);
-console.log(`User Wallet: ${key.user_wallet}`);
+console.log(`Agent ID: ${key.agent_id}`);
+console.log(`Cross-app compatible: ${key.cross_app_compatible}`);
 console.log(`Limit: $${key.limit_usdc}`);
 console.log(`Expires: ${key.expires_at}`);
 ```
@@ -70,8 +78,11 @@ console.log(`Expires: ${key.expires_at}`);
 |-------|-------------|
 | `session_key_id` | Unique identifier for the session key |
 | `user_wallet` | User's main wallet address |
+| `agent_id` | Agent identifier (e.g., "shopping-assistant-v1") |
+| `agent_name` | Human-readable agent name (optional) |
 | `limit_usdc` | Maximum spending limit in USDC |
 | `expires_at` | Expiration timestamp (ISO 8601) |
+| `cross_app_compatible` | Whether key works across multiple apps (true for agent-scoped keys) |
 | `requires_approval` | Whether user must sign approval transaction |
 | `approval_transaction` | Base64 encoded transaction for user to sign |
 | `instructions` | Step-by-step setup instructions |
@@ -97,6 +108,48 @@ const status = await zendfi.sessionKeys.getStatus(key.session_key_id);
 console.log(`Active: ${status.is_active}`);
 ```
 
+## Cross-App Behavior
+
+### First App Creates Session Key
+
+```typescript
+// App A (Amazon) creates session key
+const keyAppA = await zendfi.sessionKeys.create({
+  user_wallet: 'Hx7B...abc',
+  agent_id: 'shopping-assistant-v1',
+  limit_usdc: 500,
+  duration_days: 7,
+  device_fingerprint: fp,
+});
+
+console.log(`Session Key ID: ${keyAppA.session_key_id}`);
+console.log(`Requires Approval: ${keyAppA.requires_approval}`); // true
+// User signs approval transaction → Session key active with $500
+```
+
+### Second App Reuses Existing Session Key
+
+```typescript
+// App B (Walmart) tries to create session key for SAME agent
+const keyAppB = await zendfi.sessionKeys.create({
+  user_wallet: 'Hx7B...abc',  // Same user
+  agent_id: 'shopping-assistant-v1',  // Same agent!
+  limit_usdc: 500,  // Ignored - uses existing limit
+  duration_days: 7,
+  device_fingerprint: fp,
+});
+
+console.log(`Session Key ID: ${keyAppB.session_key_id}`);
+// → Returns SAME session_key_id as App A!
+
+console.log(`Requires Approval: ${keyAppB.requires_approval}`); // false
+// → Already approved! No duplicate funding needed.
+
+// App B is automatically authorized to use the existing $500 balance
+```
+
+**Result**: User authorizes once, agent works everywhere. No liquidity fragmentation! 🎉
+
 ## Checking Session Key Status
 
 ```typescript
@@ -104,6 +157,7 @@ const status = await zendfi.sessionKeys.getStatus(key.session_key_id);
 
 console.log(`Active: ${status.is_active}`);
 console.log(`Approved: ${status.is_approved}`);
+console.log(`Agent ID: ${status.agent_id}`);
 console.log(`Limit: $${status.limit_usdc}`);
 console.log(`Used: $${status.used_amount_usdc}`);
 console.log(`Remaining: $${status.remaining_usdc}`);
@@ -340,8 +394,73 @@ Choose the right approach for your use case:
 4. **Handle exhaustion** - Prompt user for top-up when limits are low
 5. **Revoke unused keys** - Clean up inactive session keys
 
+## API Reference
+
+### Create Session Key
+
+```
+POST /api/v1/ai/session-keys/create
+```
+
+**Request Body:**
+```json
+{
+  "user_wallet": "Hx7B...abc",
+  "agent_id": "shopping-assistant-v1",
+  "agent_name": "AI Shopping Assistant",
+  "limit_usdc": 100.0,
+  "duration_days": 7,
+  "device_fingerprint": "device_abc123"
+}
+```
+
+**Response:**
+```json
+{
+  "session_key_id": "sk_abc123",
+  "user_wallet": "Hx7B...abc",
+  "agent_id": "shopping-assistant-v1",
+  "agent_name": "AI Shopping Assistant",
+  "limit_usdc": 100.0,
+  "expires_at": "2025-01-01T00:00:00Z",
+  "cross_app_compatible": true,
+  "requires_approval": true,
+  "approval_transaction": "base64_encoded_tx...",
+  "instructions": {
+    "step_1": "Sign the approval transaction with your wallet",
+    "step_2": "Submit the signed transaction using submitApproval()",
+    "step_3": "Session key will be active and ready to use"
+  }
+}
+```
+
+**Note:** If a session key already exists for the same `(user_wallet, agent_id)`, the existing session key will be returned with `requires_approval: false` and the current merchant will be automatically authorized to use it.
+
+### Create Device-Bound Session Key
+
+```
+POST /api/v1/ai/session-keys/device-bound/create
+```
+
+**Request Body:**
+```json
+{
+  "user_wallet": "Hx7B...abc",
+  "agent_id": "shopping-assistant-v1",
+  "agent_name": "AI Shopping Assistant",
+  "encrypted_keypair": "base64_encrypted_data...",
+  "session_wallet_address": "9xY...def",
+  "nonce": "base64_nonce...",
+  "device_fingerprint": "device_abc123",
+  "limit_usdc": 100.0,
+  "duration_days": 7,
+  "recovery_qr_data": "optional_qr_data..."
+}
+```
+
 ## Next Steps
 
 - [Agent Sessions](/agentic/sessions) - For interactive payment flows
 - [Smart Payments](/agentic/smart-payments) - AI-optimized payment execution
 - [Autonomous Delegation](/agentic/autonomous-delegation) - Alternative for trusted agents
+- [Deep Dive: Agent-Scoped Implementation](/docs/AGENT_SCOPED_DEEP_DIVE.md) - Technical details

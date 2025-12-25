@@ -53,6 +53,8 @@ import { DeviceBoundSessionKey } from '@zendfi/sdk';
 // Step 1: Create session key client-side
 const sessionKey = await DeviceBoundSessionKey.create({
   pin: '123456',              // 6-digit PIN
+  agentId: 'shopping-assistant-v1',  // Required: agent identifier
+  agentName: 'AI Shopping Assistant', // Optional: human-readable name
   limitUSDC: 100,             // Spending limit
   durationDays: 7,            // Session duration
   userWallet: 'Hx7B...abc',   // User's main wallet
@@ -69,6 +71,8 @@ const manager = new ZendFiSessionKeyManager(
 
 const result = await manager.createSessionKey({
   userWallet: 'Hx7B...abc',
+  agentId: 'shopping-assistant-v1',  // Required: agent identifier
+  agentName: 'AI Shopping Assistant', // Optional: human-readable name
   limitUSDC: 100,
   durationDays: 7,
   pin: '123456',
@@ -182,6 +186,8 @@ POST /api/v1/ai/session-keys/device-bound/create
 ```json
 {
   "user_wallet": "Hx7B...abc",
+  "agent_id": "shopping-assistant-v1",
+  "agent_name": "AI Shopping Assistant",
   "limit_usdc": 100,
   "duration_days": 7,
   "encrypted_session_key": "base64_encrypted_data",
@@ -199,9 +205,12 @@ POST /api/v1/ai/session-keys/device-bound/create
   "mode": "device_bound",
   "is_custodial": false,
   "user_wallet": "Hx7B...abc",
+  "agent_id": "shopping-assistant-v1",
+  "agent_name": "AI Shopping Assistant",
   "session_wallet": "7xKN...xyz",
   "limit_usdc": 100,
   "expires_at": "2025-12-30T12:00:00Z",
+  "cross_app_compatible": true,
   "requires_client_signing": true,
   "security_info": {
     "encryption_type": "Argon2id + AES-256-GCM",
@@ -254,6 +263,8 @@ const manager = new ZendFiSessionKeyManager(
 // 1. Create session key
 const result = await manager.createSessionKey({
   userWallet: '7xKNH6ttXQfJpAoDW1p7zGMKS7kGvXZ4XG7fCcUjU86Y',
+  agentId: 'shopping-assistant-v1',
+  agentName: 'AI Shopping Assistant',
   limitUSDC: 100,
   durationDays: 7,
   pin: '123456',
