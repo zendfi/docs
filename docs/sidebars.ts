@@ -119,6 +119,7 @@ const sidebars: SidebarsConfig = {
         'developer-tools/cli',
         'developer-tools/testing-and-debugging',
         'developer-tools/typescript-guide',
+        'developer-tools/helper-utilities',
         'developer-tools/best-practices',
       ],
     },
