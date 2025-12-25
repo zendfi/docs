@@ -460,7 +460,8 @@ POST /api/v1/ai/session-keys/device-bound/create
 
 ## Next Steps
 
-- [Agent Sessions](/agentic/sessions) - For interactive payment flows
-- [Smart Payments](/agentic/smart-payments) - AI-optimized payment execution
-- [Autonomous Delegation](/agentic/autonomous-delegation) - Alternative for trusted agents
-- [Deep Dive: Agent-Scoped Implementation](/docs/AGENT_SCOPED_DEEP_DIVE.md) - Technical details
+- [Agent Sessions](./sessions) - For interactive payment flows
+- [Smart Payments](./smart-payments) - AI-optimized payment execution
+- [Autonomous Delegation](./autonomous-delegation) - Alternative for trusted agents
+- [Security Best Practices](./security) - Secure your AI payments
+- [Helper Utilities](../developer-tools/helper-utilities) - Simplify common patterns
