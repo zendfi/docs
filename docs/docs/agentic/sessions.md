@@ -216,31 +216,31 @@ zendfi agent sessions revoke sess_abc123
 
 ## Session Lifecycle
 
-```
-User Approves Session
-        │
-        ▼
-┌───────────────┐
-│  Session      │
-│  Created      │
-│  (Active)     │
-└───────┬───────┘
-        │
-        ├──────────────┬──────────────┐
-        ▼              ▼              ▼
-   ┌─────────┐   ┌──────────┐   ┌─────────┐
-   │ Payment │   │  Limit   │   │ Manual  │
-   │ Success │   │ Reached  │   │ Revoke  │
-   └────┬────┘   └────┬─────┘   └────┬────┘
-        │             │              │
-        ▼             ▼              ▼
-   Continue      Session         Session
-   (if limits    Paused          Ended
-    remain)
-        │
-        ▼
-   Session Expires
-   (auto after duration)
+```mermaid
+graph TD
+    Approve[User Approves Session]
+    Created[Session<br/>Created<br/>Active]
+    
+    PaymentSuccess[Payment<br/>Success]
+    LimitReached[Limit<br/>Reached]
+    ManualRevoke[Manual<br/>Revoke]
+    
+    Continue[Continue<br/>if limits remain]
+    Paused[Session<br/>Paused]
+    Ended[Session<br/>Ended]
+    
+    Expires[Session Expires<br/>auto after duration]
+    
+    Approve --> Created
+    Created --> PaymentSuccess
+    Created --> LimitReached
+    Created --> ManualRevoke
+    
+    PaymentSuccess --> Continue
+    LimitReached --> Paused
+    ManualRevoke --> Ended
+    
+    Continue --> Expires
 ```
 
 ## Best Practices

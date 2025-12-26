@@ -1,157 +1,117 @@
 ---
 title: Overview
-description: Let AI agents make payments autonomously with spending limits and cryptographic security
+description: AI-powered autonomous payment capabilities with the Agentic Intent Protocol
 sidebar_position: 1
 ---
 
-# AI-Ready Payments
+# Agentic Payments
 
-**Enable AI agents to make payments autonomously—safely and securely.**
+Enable AI agents to make payments autonomously with scoped permissions, spending limits, and complete audit trails.
 
-Traditional payments require a human to click "Pay" for every transaction. AI agents need autonomy with guardrails.
-
-:::tip Not Sure If You Need This?
-**Use traditional payments if:** User clicks "Pay" for each purchase (e-commerce, SaaS checkout)
-
-**Use AI features if:** Building AI agents that make purchases autonomously (shopping bots, auto-subscriptions, gaming agents)
-
-**[Learn more: Why AI Payments? →](./why-ai-payments)**
+:::tip What is the Agentic Intent Protocol?
+The Agentic Intent Protocol (AIP) is ZendFi's framework for enabling AI agents to handle payments on behalf of users. It provides:
+- **Scoped API keys** with limited permissions
+- **Spending limits** per transaction, per day, per week, and per month
+- **Time-bound sessions** that auto-expire
+- **Device-bound session keys** for non-custodial signing
+- **Autonomous delegates** for hands-free operation
+- **Cryptographic attestations** for verifiable spending limit enforcement
+- **PKP session identity** (optional on-chain audit trail via Lit Protocol)
+- **PPP pricing** for global reach
+- **Complete audit trails** for compliance
 :::
-
 
 ## Quick Start
 
 ```typescript
 import { zendfi } from '@zendfi/sdk';
 
-// 1. Create agent key with limited permissions
+// 1. Create an agent key (requires agent_id)
 const agentKey = await zendfi.agent.createKey({
   name: 'Shopping Assistant',
   agent_id: 'shopping-assistant-v1',
-  scopes: ['create_payments'], // Can't withdraw or full access
+  scopes: ['create_payments'],
 });
 
-// 2. User approves spending session (one-time)
+console.log('Save this key:', agentKey.full_key); // zai_test_...
+
+// 2. Create a session with spending limits
 const session = await zendfi.agent.createSession({
   agent_id: 'shopping-assistant-v1',
   user_wallet: 'Hx7B...abc',
   limits: {
-    max_per_transaction: 50,  // $50 max per payment
-    max_per_day: 200,         // $200 daily cap
+    max_per_transaction: 50,
+    max_per_day: 200,
   },
-  duration_hours: 24,          // Auto-expires
+  duration_hours: 24,
 });
 
-// 3. AI agent makes payments autonomously (within limits)
+// 3. Make payments within limits
 const payment = await zendfi.agent.pay({
   session_token: session.session_token,
   amount: 25.00,
-  description: 'Coffee order',
+  description: 'Widget purchase',
 });
 
 console.log('Payment confirmed:', payment.transaction_signature);
-// ser approved once, AI paid within limits
+
+// Or use Payment Intents for two-phase flow
+const intent = await zendfi.intents.create({
+  amount: 25.00,
+  description: 'Coffee purchase',
+});
+
+// 4. Confirm when customer is ready to pay
+const confirmed = await zendfi.intents.confirm(intent.id, {
+  client_secret: intent.client_secret,
+  customer_wallet: 'Hx7B...abc',
+});
 ```
 
-**That's it.** No manual approval for each transaction. Limits enforced cryptographically.
+## Core Concepts
 
-
-## How It Works
-![How do agentic payments work?](/images/how-agentic-payments-work.png)
-
-
-## Core Features
-
-| Feature | Description | Learn More |
+| Concept | Description | Learn More |
 |---------|-------------|------------|
-| **Agent Keys** | Scoped API keys with limited permissions | [Agent Keys →](./agent-keys) |
+| **Agent Keys** | Scoped API keys for AI agents | [Agent Keys →](./agent-keys) |
 | **Sessions** | Time-bound spending limits | [Sessions →](./sessions) |
-| **Session Keys** | Pre-funded wallets for agents (advanced) | [Session Keys →](./session-keys) |
+| **Session Keys** | Pre-funded wallets for autonomous agents | [Session Keys →](./session-keys) |
 | **Payment Intents** | Two-phase commit for reliable payments | [Payment Intents →](./payment-intents) |
-| **PPP Pricing** | Auto-adjust prices for 27+ countries | [PPP Pricing →](./ppp-pricing) |
+| **PPP Pricing** | Purchasing power parity for global markets | [PPP Pricing →](./ppp-pricing) |
 | **Autonomous Delegation** | User-granted spending authority | [Delegation →](./autonomous-delegation) |
 | **Smart Payments** | AI-optimized payment execution | [Smart Payments →](./smart-payments) |
-| **Security** | Cryptographic attestations & audit trails | [Security →](./security) |
-
-
-## Security Model
-
-### Scoped Permissions
-
-```typescript
-// Agent can ONLY create payments (not withdraw or access wallet)
-const key = await zendfi.agent.createKey({
-  scopes: ['create_payments'], // Limited scope
-  rate_limit_per_hour: 100,
-});
-```
-
-### Spending Limits
-
-```typescript
-// Enforced cryptographically
-const session = await zendfi.agent.createSession({
-  limits: {
-    max_per_transaction: 50,   // Per-payment cap
-    max_per_day: 200,          // Daily total
-    max_per_week: 500,         // Weekly total (optional)
-    max_per_month: 1000,       // Monthly total (optional)
-  },
-});
-```
-
-### Time Bounds
-
-```typescript
-// Sessions auto-expire
-const session = await zendfi.agent.createSession({
-  duration_hours: 24, // Expires in 24 hours
-});
-```
-
-### Audit Trail
-
-- Every transaction logged
-- Cryptographic attestations
-- Optional on-chain audit (Lit Protocol PKP)
-- Compliance-ready
-
-
-## Real-World Examples
-
-### Shopping Bot
-
-```typescript
-// "Order coffee every morning"
-const session = await zendfi.agent.createSession({
-  limits: { max_per_transaction: 10, max_per_day: 50 },
-  allowed_merchants: ['cafe_merchant_id'],
-  duration_hours: 168, // 1 week
-});
-```
-
-### Gaming Agent
-
-```typescript
-// "Buy power-ups when needed"
-const session = await zendfi.agent.createSession({
-  limits: { max_per_transaction: 5, max_per_month: 50 },
-});
-```
-
-### Auto-Upgrade
-
-```typescript
-// "Upgrade my SaaS plan when usage hits 80%"
-const session = await zendfi.agent.createSession({
-  limits: { max_per_transaction: 100, max_per_year: 1200 },
-});
-```
-
+| **Device-Bound Keys** | Hardware-secured signing keys | [Device Keys →](./device-bound-keys) |
+| **Security** | Best practices and controls | [Security →](./security) |
 
 ## Architecture
 
-![Agentic Intent Protocol Architecture](/images/agentic-architecture.png)
+```mermaid
+graph TD
+    subgraph Agent["Your AI Agent"]
+        SDK[ZendFi SDK]
+    end
+    
+    subgraph Features["SDK Features"]
+        AgentKeys[Agent Keys<br/>Scoped]
+        Sessions[Sessions<br/>Limits]
+        SessionKeys[Session Keys<br/>Pre-funded]
+        SmartPayments[Smart<br/>Payments]
+    end
+    
+    subgraph Platform["ZendFi Platform"]
+        Solana[Solana]
+        Lit[Lit Protocol]
+        Webhooks[Webhooks]
+        Analytics[Analytics]
+    end
+    
+    SDK --> Features
+    Features --> Platform
+    
+    AgentKeys -.-> Platform
+    Sessions -.-> Platform
+    SessionKeys -.-> Platform
+    SmartPayments -.-> Platform
+```
 
 ## Features at a Glance
 
@@ -225,36 +185,38 @@ const delegation = await zendfi.agent.createDelegation({
 
 </div>
 
+---
 
 ## CLI Quick Reference
 
 ```bash
 # Agent Keys
-zendfi ai keys create --agent-id my-agent --name "My Agent"
-zendfi ai keys list
-zendfi ai keys revoke <key-id>
+zendfi agent keys create --name "My Agent"
+zendfi agent keys list
+zendfi agent keys revoke <key-id>
 
 # Agent Sessions
-zendfi ai sessions create --agent-id my-agent --wallet Hx7B...
-zendfi ai sessions list
+zendfi agent sessions create --agent-id my-agent --wallet Hx7B...
+zendfi agent sessions list
 
 # Payment Intents
-zendfi ai intents create --amount 99.99
-zendfi ai intents confirm <intent-id> --wallet Hx7B...
+zendfi intents create --amount 99.99
+zendfi intents confirm <intent-id> --wallet Hx7B...
 
 # PPP Pricing
-zendfi ai ppp check BR
-zendfi ai ppp calculate --price 99.99 --country IN
+zendfi ppp check BR
+zendfi ppp calculate --price 99.99 --country IN
 
 # Smart Payments
 zendfi smart pay --to <wallet> --amount 99.99
 ```
 
+---
 
 ## Resources
 
-- [Getting Started](/) - Quick start guide with SDK setup
-- [TypeScript Guide](/developer-tools/typescript-guide) - Type-safe SDK patterns
+- [SDK Examples](/developer-tools/sdk-examples) - Complete code examples
+- [SDK Reference](/developer-tools/sdks) - SDK documentation
 - [CLI Reference](/developer-tools/cli) - CLI command reference
 - [Webhooks](/features/webhooks) - Handle payment events
 - [API Reference](/api/payments) - REST API documentation

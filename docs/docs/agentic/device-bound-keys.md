@@ -23,26 +23,31 @@ Device-Bound Session Keys provide truly non-custodial payment sessions where pri
 
 ## How It Works
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   User's Device (Client)                     │
-├─────────────────────────────────────────────────────────────┤
-│  1. Generate Solana keypair                                  │
-│  2. Encrypt with PIN + Device Fingerprint                    │
-│     (Argon2id + AES-256-GCM)                                │
-│  3. Send encrypted blob to backend                          │
-│                                                              │
-│  Later: Decrypt with PIN for each payment                   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                  ZendFi Backend (Server)                     │
-├─────────────────────────────────────────────────────────────┤
-│  - Stores encrypted blob only                               │
-│  - Cannot decrypt (no PIN, no device fingerprint)           │
-│  - Returns encrypted blob when requested                    │
-│  - Client decrypts locally for signing                      │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Client["User's Device (Client)"]
+        Step1[1. Generate Solana keypair]
+        Step2[2. Encrypt with PIN + Device Fingerprint<br/>Argon2id + AES-256-GCM]
+        Step3[3. Send encrypted blob to backend]
+        Step4[Later: Decrypt with PIN for each payment]
+        
+        Step1 --> Step2
+        Step2 --> Step3
+    end
+    
+    subgraph Backend["ZendFi Backend (Server)"]
+        Store[- Stores encrypted blob only]
+        Cannot[- Cannot decrypt no PIN, no device fingerprint]
+        Returns[- Returns encrypted blob when requested]
+        Decrypt[- Client decrypts locally for signing]
+        
+        Store --> Cannot
+        Cannot --> Returns
+        Returns --> Decrypt
+    end
+    
+    Step3 -.->|Encrypted blob| Store
+    Returns -.->|Encrypted blob| Step4
 ```
 
 ## Creating a Device-Bound Session Key

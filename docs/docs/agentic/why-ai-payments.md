@@ -140,19 +140,29 @@ const session = await zendfi.agent.createSession({
 
 ### AI Agent Payment Flow
 
-```
-1. User approves session (ONE TIME)
-   ├─ Sets spending limits
-   ├─ Sets duration
-   └─ Gets session token
-
-2. AI agent makes payments (AUTONOMOUS)
-   ├─ Uses session token
-   ├─ Backend checks limits
-   ├─ Signs with session key OR user delegation
-   └─ Payment confirmed
-
-3. Session expires automatically
+```mermaid
+graph TD
+    subgraph Step1["1. User approves session (ONE TIME)"]
+        S1A[Sets spending limits]
+        S1B[Sets duration]
+        S1C[Gets session token]
+    end
+    
+    subgraph Step2["2. AI agent makes payments (AUTONOMOUS)"]
+        S2A[Uses session token]
+        S2B[Backend checks limits]
+        S2C[Signs with session key OR user delegation]
+        S2D[Payment confirmed]
+        
+        S2A --> S2B
+        S2B --> S2C
+        S2C --> S2D
+    end
+    
+    Step3[3. Session expires automatically]
+    
+    Step1 --> Step2
+    Step2 --> Step3
 ```
 
 **Benefit:** User approves once, agent pays autonomously (within limits).

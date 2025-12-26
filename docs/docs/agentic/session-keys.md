@@ -31,23 +31,28 @@ For maximum security, **link a session key to a session**. The session key provi
 
 ## The Session Key Flow
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Session Key Lifecycle                     │
-└─────────────────────────────────────────────────────────────┘
-
-1. CREATE          2. APPROVE           3. SPEND            4. TOP-UP
-   Agent             User signs           Agent makes         (Optional)
-   requests →        approval    →        payments     →      Add more
-   session key       transaction          autonomously        funds
-
-     ┌──────┐          ┌────────┐          ┌────────┐          ┌────────┐
-     │ Agent│   ───▶   │   User │   ───▶   │ Pay    │   ───▶   │ +$$    │
-     └──────┘          └────────┘          └────────┘          └────────┘
-       │                 │                   │                   │
-       ▼                 ▼                   ▼                   ▼
-   pending_approval   active              active              active
-                                      (limit decreases)   (limit increases)
+```mermaid
+graph LR
+    subgraph Lifecycle["Session Key Lifecycle"]
+        Create["1. CREATE<br/>Agent<br/>requests<br/>session key"]
+        Approve["2. APPROVE<br/>User signs<br/>approval<br/>transaction"]
+        Spend["3. SPEND<br/>Agent makes<br/>payments<br/>autonomously"]
+        TopUp["4. TOP-UP<br/>(Optional)<br/>Add more<br/>funds"]
+        
+        Create -->|Agent| Approve
+        Approve -->|User| Spend
+        Spend -->|Pay| TopUp
+        
+        StatePending["pending_approval"]
+        StateActive1["active"]
+        StateActive2["active<br/>(limit decreases)"]
+        StateActive3["active<br/>(limit increases)"]
+        
+        Create -.-> StatePending
+        Approve -.-> StateActive1
+        Spend -.-> StateActive2
+        TopUp -.-> StateActive3
+    end
 ```
 
 ## Creating a Session Key
@@ -266,21 +271,28 @@ For **defense in depth**, you can link a session key to an AI session. This prov
 1. **Session Key Balance** - Hard cap on total spending (what's funded)
 2. **Session Policy Limits** - Granular limits (per-tx, daily, weekly, monthly)
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    LINKED SESSION KEY + SESSION                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│   Session Key (Execution Layer)     Session (Policy Layer)                  │
-│   ─────────────────────────────     ──────────────────────                  │
-│   • Pre-funded wallet: $500         • max_per_transaction: $25              │
-│   • Signing capability              • max_per_day: $100                     │
-│   • Hard spending cap               • max_per_month: $1000                  │
-│                                                                             │
-│   When linked, BOTH limits are checked before each payment.                 │
-│   Payment succeeds only if it satisfies BOTH constraints.                   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph LinkedSystem["LINKED SESSION KEY + SESSION"]
+        subgraph SessionKey["Session Key (Execution Layer)"]
+            SK1["• Pre-funded wallet: $500"]
+            SK2["• Signing capability"]
+            SK3["• Hard spending cap"]
+        end
+        
+        subgraph Session["Session (Policy Layer)"]
+            S1["• max_per_transaction: $25"]
+            S2["• max_per_day: $100"]
+            S3["• max_per_month: $1000"]
+        end
+        
+        Check["When linked, BOTH limits are checked<br/>before each payment"]
+        Success["Payment succeeds only if it satisfies<br/>BOTH constraints"]
+        
+        SessionKey --> Check
+        Session --> Check
+        Check --> Success
+    end
 ```
 
 ### Linking a Session Key to a Session
