@@ -79,7 +79,8 @@ const config: Config = {
       items: [
         // Left side - main navigation tabs
         {
-          to: '/',
+          type: 'doc',
+          docId: 'getting-started',
           position: 'left',
           label: 'Get started',
         },
