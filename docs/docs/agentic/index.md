@@ -215,8 +215,8 @@ zendfi smart pay --to <wallet> --amount 99.99
 
 ## Resources
 
-- [SDK Examples](/developer-tools/sdk-examples) - Complete code examples
-- [SDK Reference](/developer-tools/sdks) - SDK documentation
+- [Helper Utilities](/developer-tools/helper-utilities) - Complete code examples and utilities
+- [TypeScript Guide](/developer-tools/typescript-guide) - SDK documentation and TypeScript usage
 - [CLI Reference](/developer-tools/cli) - CLI command reference
 - [Webhooks](/features/webhooks) - Handle payment events
 - [API Reference](/api/payments) - REST API documentation
