@@ -1,192 +1,203 @@
 ---
-title: Autonomous Delegation  
-description: Enable AI agents to sign transactions automatically with session keys
+title: Autonomous Delegation
+description: Enable AI agents to spend on behalf of users with controlled autonomy
 sidebar_position: 6
 ---
 
 # Autonomous Delegation
 
-Autonomous Delegation enables AI agents to sign transactions on behalf of users without requiring approval for each payment. Users delegate signing authority to session keys with spending limits, and agents can then make payments fully autonomously.
+Autonomous Delegation enables AI agents to make payments on behalf of users without requiring approval for each transaction. Users set spending limits, and agents operate freely within those constraints.
 
 ## Overview
 
-Autonomous Delegation is a feature of **Session Keys** that upgrades them from "device-bound" (user must sign each payment) to "autonomous" (agent can sign automatically).
+Traditional payment flows require user approval for every transaction. Autonomous Delegation flips this model:
 
-| Device-Bound Session Key | Autonomous Session Key |
-|--------------------------|------------------------|
-| User signs each payment | Agent signs automatically |
+| Traditional | Autonomous Delegation |
+|-------------|----------------------|
+| User approves each payment | Agent pays within limits |
+| Slow, requires interaction | Fast, fully automated |
 | User must be present | Agent works 24/7 |
-| PIN required | No user interaction |
-| Moderate friction | Zero friction |
+| High friction | Zero friction |
 
 ## How It Works
 
-```
-┌─────────────┐
-│    User     │
-│  Creates    │
-│ Session Key │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────┐
-│  User Enables   │
-│   Autonomy      │
-│ (Signs delegate │
-│    message)     │
-└──────┬──────────┘
-       │
-       ▼
-┌──────────────────┐
-│   Agent Signs    │
-│   Payments       │
-│   Automatically  │
-└──────┬───────────┘
-       │
-       ▼
-┌─────────────┐
-│  Spending   │
-│   Limits    │
-│  Enforced   │
-└─────────────┘
+```mermaid
+graph TD
+    User[User<br/>Sets Limits]
+    ZendFi[ZendFi<br/>Enforces]
+    Agent[Agent<br/>Spends]
+    Merchant[Merchant<br/>Receives]
+    
+    User -->|Create Session<br/>+ Set Limits| ZendFi
+    ZendFi -->|Validate &<br/>Execute| Agent
+    Agent -.->|Transaction| ZendFi
+    ZendFi -->|Payment| Merchant
 ```
 
+## Creating an Autonomous Session
 
-## Prerequisites
-
-1. **Create a device-bound session key first**:
+Use `createSession` with spending limits to enable autonomous agent payments:
 
 ```typescript
 import { zendfi } from '@zendfi/sdk';
 
-const sessionKey = await zendfi.sessionKeys.create({
-  user_wallet: 'Hx7B...abc',
-  limit_usdc: 100,
-  duration_days: 7,
-  device_fingerprint: 'device_abc123',
+// Create a session with spending limits
+const session = await zendfi.agent.createSession({
+  agent_id: 'shopping-assistant-v1',
+  agent_name: 'Shopping Assistant',
+  user_wallet: 'Hx7B2kLLpWchsG5d3TqxPvBdEQg6kEHnxT1111111111',
+  
+  // Spending controls
+  limits: {
+    max_per_transaction: 100,   // Max $100 per payment
+    max_per_day: 500,           // Max $500/day
+    max_per_week: 1500,         // Max $1500/week
+    max_per_month: 5000,        // Max $5000/month
+  },
+  
+  // Duration
+  duration_hours: 24,
+  
+  // Optional: Enable on-chain identity via Lit Protocol
+  mint_pkp: true,
 });
 
-console.log(`Session Key ID: ${sessionKey.session_key_id}`);
+console.log(`Session ID: ${session.id}`);
+console.log(`Session Token: ${session.session_token}`);
+console.log(`PKP Address: ${session.pkp_address}`); // If mint_pkp: true
 ```
 
-2. **Generate and sign delegation message**:
+## Spending Limits
+
+Configure precise spending controls:
 
 ```typescript
-// Generate the exact message format
-const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+const session = await zendfi.agent.createSession({
+  agent_id: 'finance-agent',
+  user_wallet: userWallet,
+  
+  limits: {
+    // Transaction limits
+    max_per_transaction: 50,     // Max $50 per payment
+    
+    // Time-based limits
+    max_per_day: 500,            // Max $500/day
+    max_per_week: 2000,          // Max $2000/week
+    max_per_month: 5000,         // Max $5000/month
+    
+    // Approval threshold
+    require_approval_above: 100, // Require approval for tx > $100
+  },
+  
+  duration_hours: 168, // 1 week
+});
+```
+
+## Checking Remaining Budget
+
+The session response includes remaining budgets:
+
+```typescript
+const session = await zendfi.agent.getSession(sessionId);
+
+console.log('Budget Status:');
+console.log(`  Today remaining: $${session.remaining_today}`);
+console.log(`  Week remaining: $${session.remaining_this_week}`);
+console.log(`  Month remaining: $${session.remaining_this_month}`);
+console.log(`  Active: ${session.is_active}`);
+console.log(`  Expires: ${session.expires_at}`);
+```
+
+## Agent Making Payments
+
+With an active session, agents use the session token to make payments:
+
+```typescript
+// Agent code - uses session token for authentication
+const payment = await zendfi.payments.create({
+  amount: 45.00,
+  currency: 'USD',
+  description: 'Weekly groceries',
+  recipient_wallet: merchantWallet,
+}, {
+  headers: {
+    'X-Session-Token': session.session_token,
+  },
+});
+
+console.log(`Payment status: ${payment.status}`);
+```
+
+## Revoking a Session
+
+Revoke a session to immediately stop all autonomous payments:
+
+```typescript
+// Revoke the session
+await zendfi.agent.revokeSession(sessionId);
+
+// Future payments with this session token will fail
+```
+
+## List Active Sessions
+
+```typescript
+const sessions = await zendfi.agent.listSessions();
+
+for (const session of sessions) {
+  console.log(`${session.agent_id}: $${session.remaining_today} remaining today`);
+}
+```
+
+## Advanced: Session Key Autonomy
+
+For even more autonomous operation, use the Autonomy API with device-bound session keys:
+
+```typescript
+// 1. Create a session key
+const sessionKey = await zendfi.sessionKeys.create({
+  name: 'AI Agent Key',
+  pin: userPin,
+});
+
+// 2. Generate delegation message
 const message = zendfi.autonomy.createDelegationMessage(
-  sessionKey.session_key_id,
+  sessionKey.id,
   100, // $100 max
-  expiresAt
+  '2024-12-31T23:59:59Z'
 );
 
-// User signs this message with their session key
+// 3. Have user sign the delegation
 const signature = await signWithSessionKey(message, userPin);
-```
 
-3. **Enable autonomous mode**:
-
-```typescript
-const delegate = await zendfi.autonomy.enable(sessionKey.session_key_id, {
+// 4. Enable autonomous mode
+const delegate = await zendfi.autonomy.enable(sessionKey.id, {
   max_amount_usd: 100,
   duration_hours: 24,
   delegation_signature: signature,
 });
 
-console.log(`Autonomous delegate created:`);
-console.log(`  Delegate ID: ${delegate.delegate_id}`);
-console.log(`  Max spending: $${delegate.max_amount_usd}`);
-console.log(`  Expires: ${delegate.expires_at}`);
+console.log(`Autonomous mode enabled until ${delegate.expires_at}`);
 ```
 
-## Spending Limits
+### Auditing Spending Attestations
 
-Autonomous delegates have a **total spending limit**, not per-transaction or per-day:
-
-```typescript
-const delegate = await zendfi.autonomy.enable(sessionKeyId, {
-  max_amount_usd: 100,        // Total $100 can be spent
-  duration_hours: 24,         // Valid for 24 hours
-  delegation_signature: sig,
-});
-
-// After spending $30, remaining is $70
-// After spending another $70, delegate is exhausted
-```
-
-:::warning
-Unlike agent sessions (which have max_per_day, max_per_week, max_per_month), autonomous delegates have a **single total limit** for the entire duration.
-:::
-
-## Checking Autonomy Status
+Every autonomous payment generates a cryptographically signed attestation that ZendFi stores as an immutable audit trail. These attestations prove spending limits were enforced correctly:
 
 ```typescript
-const status = await zendfi.autonomy.getStatus(sessionKeyId);
-
-if (status.autonomous_mode_enabled && status.delegate) {
-  console.log(`Autonomous mode: ACTIVE`);
-  console.log(`  Remaining: $${status.delegate.remaining_usd}`);
-  console.log(`  Used: $${status.delegate.used_amount_usd}`);
-  console.log(`  Limit: $${status.delegate.max_amount_usd}`);
-  console.log(`  Expires: ${status.delegate.expires_at}`);
-  console.log(`  Active: ${status.delegate.is_active}`);
-} else {
-  console.log('Autonomous mode not enabled');
-}
-```
-
-## Agent Making Payments
-
-Once autonomous mode is enabled, payments using this session key are **automatically signed**:
-
-```typescript
-// Payment using autonomous session key
-const payment = await zendfi.smart.execute({
-  session_token: 'session_key_linked_session_token', // If linked to agent session
-  agent_id: 'my-agent',
-  user_wallet: userWallet,
-  amount_usd: 29.99,
-});
-
-// With autonomous delegate: requires_signature = false
-// Payment is automatically signed by the agent
-console.log(`Auto-signed: ${!payment.requires_signature}`);
-console.log(`Signature: ${payment.transaction_signature}`);
-```
-
-## Revoking Autonomy
-
-Revoke autonomous mode to stop automatic signing:
-
-```typescript
-await zendfi.autonomy.revoke(sessionKeyId, 'User requested revocation');
-
-// Future payments will require user signature again
-```
-
-:::info
-Revoking autonomy does NOT delete the session key. The session key remains valid for device-bound payments (user must sign each transaction).
-:::
-
-## Cryptographic Attestations
-
-Every autonomous payment generates a cryptographically signed attestation proving the spending limit was enforced:
-
-```typescript
-const audit = await zendfi.autonomy.getAttestations(delegate.delegate_id);
+// Get all attestations for a delegate
+const audit = await zendfi.autonomy.getAttestations(delegate.id);
 
 console.log(`Found ${audit.attestation_count} attestations`);
 console.log(`ZendFi public key: ${audit.zendfi_attestation_public_key}`);
 
+// Each attestation contains:
 for (const signed of audit.attestations) {
-  const att = signed.attestation;
-  
-  console.log(`Payment ${att.payment_id}:`);
-  console.log(`  Spent before: $${att.spent_usd}`);
-  console.log(`  Requested: $${att.requested_usd}`);
-  console.log(`  Remaining after: $${att.remaining_after_usd}`);
-  console.log(`  Timestamp: ${new Date(att.timestamp_ms)}`);
-  console.log(`  Signature: ${signed.signature}`);
+  console.log(`Payment: ${signed.attestation.payment_id}`);
+  console.log(`  Spent before: $${signed.attestation.spent_usd}`);
+  console.log(`  Requested: $${signed.attestation.requested_usd}`);
+  console.log(`  Remaining after: $${signed.attestation.remaining_after_usd}`);
+  console.log(`  Timestamp: ${new Date(signed.attestation.timestamp_ms)}`);
   
   // Verify signature independently with nacl.sign.detached.verify()
   // using ZendFi's published public key
@@ -195,162 +206,64 @@ for (const signed of audit.attestations) {
 
 See [Cryptographic Attestations](/agentic/security#cryptographic-attestations) for verification details.
 
-## Lit Protocol Integration
+## PKP (Programmable Key Pair)
 
-For true serverless autonomy, provide Lit Protocol-encrypted keypair:
-
-```typescript
-// Encrypt keypair with Lit Protocol
-const litEncrypted = await litClient.encrypt({
-  dataToEncrypt: sessionKeypair.secretKey,
-  accessControlConditions: [...], // Define access rules
-});
-
-// Enable autonomy with Lit encryption
-const delegate = await zendfi.autonomy.enable(sessionKeyId, {
-  max_amount_usd: 100,
-  duration_hours: 24,
-  delegation_signature: signature,
-  lit_encrypted_keypair: litEncrypted.ciphertext,
-  lit_data_hash: litEncrypted.dataToEncryptHash,
-});
-
-console.log(`Lit Protocol enabled: ${delegate.lit_protocol_enabled}`);
-```
-
-With Lit Protocol, ZendFi can request threshold decryption from Lit nodes to sign transactions autonomously.
-
-## CLI Commands
-
-```bash
-# Enable autonomy for a wallet
-zendfi autonomy enable \
-  --wallet <wallet-address> \
-  --agent-id shopping-bot \
-  --max-per-day 200 \
-  --duration 24
-
-# Check autonomy status
-zendfi autonomy status <wallet-address>
-
-# List all delegates
-zendfi autonomy delegates --wallet <wallet-address>
-
-# Revoke a delegate
-zendfi autonomy revoke <delegate-id>
-```
-
-## Complete Example
+When `mint_pkp: true`, ZendFi creates an on-chain identity via Lit Protocol:
 
 ```typescript
-import { zendfi } from '@zendfi/sdk';
-
-// 1. Create session key
-const sessionKey = await zendfi.sessionKeys.create({
+const session = await zendfi.agent.createSession({
+  agent_id: 'autonomous-agent',
   user_wallet: userWallet,
-  limit_usdc: 100,
-  duration_days: 7,
-  device_fingerprint: 'device_abc',
+  limits: { max_per_day: 500 },
+  mint_pkp: true,
 });
 
-// 2. User approves spending limit (submit approval transaction)
-await zendfi.sessionKeys.submitApproval(sessionKey.session_key_id, {
-  signed_transaction: approvalTx,
-});
-
-// 3. Generate delegation message
-const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-const message = zendfi.autonomy.createDelegationMessage(
-  sessionKey.session_key_id,
-  100,
-  expiresAt
-);
-
-// 4. User signs delegation
-const signature = await signWithSessionKey(message, userPin);
-
-// 5. Enable autonomous mode
-const delegate = await zendfi.autonomy.enable(sessionKey.session_key_id, {
-  max_amount_usd: 100,
-  duration_hours: 24,
-  delegation_signature: signature,
-});
-
-console.log(` Autonomous mode enabled!`);
-console.log(`   Agent can now spend up to $${delegate.max_amount_usd}`);
-
-// 6. Agent makes payments automatically (no user interaction)
-const payment = await zendfi.smart.execute({
-  agent_id: 'my-agent',
-  user_wallet: userWallet,
-  amount_usd: 29.99,
-});
-
-console.log(`Payment auto-signed: ${!payment.requires_signature}`);
+// PKP provides cryptographic enforcement of spending rules
+console.log(`PKP Address: ${session.pkp_address}`);
 ```
+
+The PKP:
+- Acts as an on-chain identity for the session
+- Enables cryptographic enforcement of spending limits
+- Can sign transactions within the authorized limits
+- Automatically expires with the session
 
 ## Error Handling
 
 ```typescript
 try {
-  const delegate = await zendfi.autonomy.enable(sessionKeyId, {
-    max_amount_usd: 100,
-    duration_hours: 24,
-    delegation_signature: signature,
+  const session = await zendfi.agent.createSession({
+    agent_id: 'my-agent',
+    user_wallet: userWallet,
+    limits: { max_per_day: 500 },
   });
 } catch (error) {
   switch (error.code) {
-    case 'INVALID_SIGNATURE':
-      console.log('Delegation signature is invalid');
-      break;
-    case 'SESSION_KEY_NOT_FOUND':
-      console.log('Session key does not exist');
-      break;
-    case 'ALREADY_ENABLED':
-      console.log('Autonomous mode already enabled for this key');
+    case 'INVALID_WALLET':
+      console.log('Invalid wallet address');
       break;
     case 'LIMIT_TOO_HIGH':
       console.log('Requested limit exceeds maximum allowed');
       break;
+    case 'AGENT_NOT_FOUND':
+      console.log('Agent ID not registered');
+      break;
     default:
-      console.log('Failed to enable autonomy:', error.message);
+      console.log('Session creation failed:', error.message);
   }
 }
 ```
 
-## Security Considerations
-
-1. **Total Limit** - Autonomous delegates have a single total spending limit, not per-day/week/month
-2. **Time Bounds** - Delegates automatically expire after duration_hours
-3. **Revocation** - Can be revoked immediately at any time
-4. **Attestations** - Every payment creates a signed attestation for audit
-5. **Lit Protocol** - Optional threshold cryptography for enhanced security
-
-## Comparison: Agent Sessions vs Autonomous Delegation
-
-| Feature | Agent Sessions | Autonomous Delegation |
-|---------|---------------|----------------------|
-| **Purpose** | Limit agent spending with session tokens | Enable auto-signing with session keys |
-| **User Action** | Approve session limits | Sign delegation message |
-| **Per Payment** | Pass session_token | No user action |
-| **Limits** | Per-transaction, per-day, per-week, per-month | Total spending limit |
-| **Signing** | User signs OR custodial/delegate signs | Delegate always signs |
-| **Use Case** | Spending control with manual OR auto signing | Fully autonomous payments |
-
-:::tip
-You can **combine** both: Create an agent session, link a session key to it, and enable autonomy on that session key. This gives you both session-level limits (day/week/month) AND autonomous signing!
-:::
-
 ## Best Practices
 
-1. **Start small** - Begin with low max_amount_usd and short duration_hours
-2. **Monitor attestations** - Regularly check audit trail with getAttestations()
-3. **Use Lit Protocol** - For high-value autonomous operations
-4. **Revoke promptly** - Call revoke() when autonomy is no longer needed
-5. **Combine with sessions** - Link session keys to agent sessions for layered limits
+1. **Start with low limits** - Increase as trust builds
+2. **Use time expiration** - Set appropriate `duration_hours`
+3. **Monitor spending** - Check `remaining_*` fields regularly
+4. **Enable PKP for high-value** - Use `mint_pkp: true` for crypto enforcement
+5. **Revoke promptly** - Call `revokeSession()` when no longer needed
 
 ## Next Steps
 
-- [Session Keys](/agentic/session-keys) - Create and manage session keys
-- [Agent Sessions](/agentic/sessions) - Session-level spending limits
+- [Agent Sessions](/agentic/sessions) - Deep dive into session management
+- [Device-Bound Keys](/agentic/device-bound-keys) - Secure key storage
 - [Security](/agentic/security) - Security best practices
