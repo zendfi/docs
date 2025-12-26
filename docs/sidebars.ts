@@ -29,6 +29,7 @@ const sidebars: SidebarsConfig = {
       label: 'Features',
       collapsed: false,
       items: [
+        'features/embedded-checkout',
         'features/payment-splits',
         'features/webhooks',
         'features/wallet-management',

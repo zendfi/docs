@@ -213,13 +213,15 @@ export async function POST(request: Request) {
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { ZendFiEmbeddedCheckout } from '@zendfi/sdk';
 
 export function SubscribeButton({ tier }) {
   const { data: session } = useSession();
   const { publicKey } = useWallet();
   const [loading, setLoading] = useState(false);
+  const [showEmbedded, setShowEmbedded] = useState(false);
   
-  async function handleSubscribe() {
+  async function handleSubscribe(useEmbedded = true) {
     if (!session) {
       window.location.href = '/login?redirect=/pricing';
       return;
@@ -242,8 +244,38 @@ export function SubscribeButton({ tier }) {
         }),
       });
       
-      const { subscriptionUrl } = await res.json();
-      window.location.href = subscriptionUrl;
+      const { subscriptionUrl, linkCode } = await res.json();
+      
+      if (useEmbedded && linkCode) {
+        // Option A: Use embedded checkout
+        setShowEmbedded(true);
+        
+        const checkout = new ZendFiEmbeddedCheckout({
+          linkCode,
+          containerId: 'subscription-checkout',
+          mode: 'live',
+          
+          onSuccess: (payment) => {
+            // Subscription activated!
+            window.location.href = '/dashboard?upgrade=success';
+          },
+          
+          onError: (error) => {
+            alert('Subscription failed: ' + error.message);
+            setShowEmbedded(false);
+          },
+          
+          theme: {
+            primaryColor: '#0066ff',
+            borderRadius: '12px',
+          },
+        });
+        
+        await checkout.mount();
+      } else {
+        // Option B: Redirect to hosted checkout
+        window.location.href = subscriptionUrl;
+      }
     } catch (error) {
       console.error('Subscription error:', error);
       alert('Failed to create subscription');
@@ -257,10 +289,47 @@ export function SubscribeButton({ tier }) {
   }
   
   return (
-    <button onClick={handleSubscribe} disabled={loading}>
-      {loading ? 'Loading...' : `Subscribe to ${tier.name}`}
-    </button>
+    <>
+      <button onClick={() => handleSubscribe(true)} disabled={loading}>
+        {loading ? 'Loading...' : `Subscribe to ${tier.name}`}
+      </button>
+      
+      {showEmbedded && (
+        <div className="checkout-modal">
+          <div id="subscription-checkout" />
+        </div>
+      )}
+    </>
   );
+}
+```
+
+**Update the backend to return linkCode:**
+
+```typescript
+// app/api/subscribe/route.ts (updated)
+export async function POST(request: Request) {
+  // ... existing code ...
+  
+  // Create subscription
+  const subscription = await zendfi.createSubscription({
+    plan_id: planId,
+    customer_wallet: walletAddress,
+    customer_email: session.user.email,
+    metadata: {
+      user_id: session.user.id,
+      tier_id: tierId,
+    },
+  });
+  
+  // Extract link code from subscription URL
+  const linkCode = subscription.payment_url.split('/').pop();
+  
+  return Response.json({ 
+    subscriptionUrl: subscription.payment_url,
+    linkCode: linkCode,  // For embedded checkout
+    subscriptionId: subscription.id,
+  });
 }
 ```
 

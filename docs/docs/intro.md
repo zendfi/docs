@@ -40,6 +40,7 @@ Add advanced features as you grow. No architecture changes needed.
 
 - **Subscriptions** — Recurring billing with trials and webhooks
 - **Payment Links** — Reusable checkout pages for social/email
+- **Embedded Checkout** — Accept payments directly in your app, no redirects
 - **Installments** — Buy now, pay later flows
 - **Invoices** — Professional invoicing with email delivery
 - **Payment Splits** — Revenue sharing for marketplaces
@@ -74,6 +75,7 @@ Building AI agents? We've got you covered with native autonomous payment support
 |----------|-------------|
 | [Get Started](/) | Create your first payment in 5 minutes |
 | [Payments API](/api/payments) | Complete API reference |
+| [Embedded Checkout](/features/embedded-checkout) | Accept payments in your app |
 | [Subscriptions](/api/subscriptions) | Recurring billing |
 | [AI-Ready Features](/agentic) | Autonomous agent payments |
 | [Getting Started](/) | Quick start guide with SDK setup |
@@ -87,6 +89,9 @@ One-time payment requests. Customer scans QR code or clicks payment link. Funds 
 
 ### Payment Links
 Reusable checkout pages. Share one link with multiple customers. Perfect for social media and email.
+
+### Embedded Checkout
+Accept payments directly in your website or app—no redirects required. Seamless user experience with full customization.
 
 ### Subscriptions
 Recurring billing with flexible intervals. Free trials, automatic payments, webhook notifications.

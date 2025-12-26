@@ -58,6 +58,10 @@ export const zendfi = new ZendFi({
 
 ## Step 2: Create Checkout Flow
 
+### Option A: Hosted Checkout (Redirect)
+
+Redirect customers to ZendFi's hosted checkout page:
+
 ### Product Page
 
 ```typescript
@@ -135,6 +139,173 @@ export async function POST(request: Request) {
   return Response.json({ paymentUrl: checkoutUrl });
 }
 ```
+
+### Option B: Embedded Checkout (No Redirect)
+
+Keep customers on your site with embedded checkout:
+
+```typescript
+// app/products/[id]/page.tsx
+'use client';
+import { ZendFiEmbeddedCheckout } from '@zendfi/sdk';
+import { useState } from 'react';
+
+export default function ProductPage({ product }: { product: Product }) {
+  const [checkoutVisible, setCheckoutVisible] = useState(false);
+  const [checkoutMounted, setCheckoutMounted] = useState(false);
+  
+  async function handleBuyNow() {
+    // Create payment link via API route
+    const response = await fetch('/api/checkout/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productId: product.id,
+        amount: product.price,
+        description: product.name,
+      }),
+    });
+    
+    const { linkCode } = await response.json();
+    
+    // Show checkout container
+    setCheckoutVisible(true);
+    
+    // Mount embedded checkout
+    if (!checkoutMounted) {
+      const checkout = new ZendFiEmbeddedCheckout({
+        linkCode,
+        containerId: 'checkout-container',
+        mode: 'live',
+        
+        onSuccess: async (payment) => {
+          // Hide checkout
+          setCheckoutVisible(false);
+          
+          // Redirect to success page
+          window.location.href = `/orders/success?paymentId=${payment.paymentId}`;
+        },
+        
+        onError: (error) => {
+          alert(`Payment failed: ${error.message}`);
+        },
+        
+        theme: {
+          primaryColor: '#0066ff',
+          borderRadius: '12px',
+        },
+      });
+      
+      await checkout.mount();
+      setCheckoutMounted(true);
+    }
+  }
+  
+  return (
+    <div>
+      <h1>{product.name}</h1>
+      <p>${product.price}</p>
+      <img src={product.image} alt={product.name} />
+      
+      <button onClick={handleBuyNow}>Buy Now</button>
+      
+      {checkoutVisible && (
+        <div id="checkout-container" className="checkout-modal" />
+      )}
+    </div>
+  );
+}
+```
+
+**Backend API route for creating payment link:**
+
+```typescript
+// app/api/checkout/create/route.ts
+import { zendfi } from '@/lib/zendfi';
+
+export async function POST(request: Request) {
+  const { productId, amount, description } = await request.json();
+  
+  const link = await zendfi.createPaymentLink({
+    amount,
+    currency: 'USD',
+    token: 'USDC',
+    description,
+    metadata: { product_id: productId },
+  });
+  
+  return Response.json({ linkCode: link.link_code });
+}
+```
+
+**Shopping cart embedded checkout:**
+
+```typescript
+// app/cart/page.tsx
+'use client';
+import { ZendFiEmbeddedCheckout } from '@zendfi/sdk';
+
+export default function CartPage({ cart }: { cart: Cart }) {
+  const [showCheckout, setShowCheckout] = useState(false);
+  
+  async function handleCheckout() {
+    const total = cart.items.reduce(
+      (sum, item) => sum + item.price * item.quantity, 
+      0
+    );
+    
+    // Create payment link
+    const response = await fetch('/api/checkout/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: total,
+        description: 'Shopping Cart Order',
+        metadata: {
+          cartId: cart.id,
+          items: cart.items,
+        },
+      }),
+    });
+    
+    const { linkCode } = await response.json();
+    
+    // Show embedded checkout
+    setShowCheckout(true);
+    
+    const checkout = new ZendFiEmbeddedCheckout({
+      linkCode,
+      containerId: 'checkout-container',
+      mode: 'live',
+      onSuccess: (payment) => {
+        window.location.href = `/orders/success?paymentId=${payment.paymentId}`;
+      },
+    });
+    
+    await checkout.mount();
+  }
+  
+  return (
+    <div>
+      <h1>Shopping Cart</h1>
+      {/* Cart items */}
+      <button onClick={handleCheckout}>Proceed to Checkout</button>
+      {showCheckout && <div id="checkout-container" />}
+    </div>
+  );
+}
+```
+
+**When to use each:**
+
+| Scenario | Best Choice |
+|----------|-------------|
+| Product pages | ✅ Embedded (Option B) |
+| Shopping cart | ✅ Embedded (Option B) |
+| Email campaigns | Hosted (Option A) |
+| Social media | Hosted (Option A) |
+| Simple setup | Hosted (Option A) |
+| Custom branding | Embedded (Option B) |
+
 
 ## Step 3: Handle Webhooks
 

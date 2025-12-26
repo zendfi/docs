@@ -44,6 +44,44 @@ console.log('Payment URL:', payment.payment_url);
 
 **Done!** Customer scans QR code or clicks link. Funds arrive in your wallet instantly.
 
+### Alternative: Embed Checkout in Your App
+
+Want customers to pay without leaving your site? Use embedded checkout:
+
+```typescript
+import { ZendFiClient, ZendFiEmbeddedCheckout } from '@zendfi/sdk';
+
+// 1. Create payment link (backend)
+const client = new ZendFiClient({ apiKey: process.env.ZENDFI_API_KEY });
+const link = await client.createPaymentLink({
+  amount: 50,
+  description: 'Premium subscription',
+  currency: 'USD',
+  token: 'USDC',
+});
+
+// 2. Embed checkout (frontend)
+const checkout = new ZendFiEmbeddedCheckout({
+  linkCode: link.link_code,
+  containerId: 'checkout-container', // HTML element ID
+  mode: 'test',
+  
+  onSuccess: (payment) => {
+    console.log('Payment successful!', payment);
+    // Show success message, unlock features, etc.
+  },
+});
+
+await checkout.mount();
+```
+
+Add container in your HTML:
+```html
+<div id="checkout-container"></div>
+```
+
+The checkout appears directly in your app—no redirects! **[Learn more →](/features/embedded-checkout)**
+
 
 ## Detailed Setup (API)
 
