@@ -21,34 +21,16 @@ Autonomous Delegation is a feature of **Session Keys** that upgrades them from "
 
 ## How It Works
 
-```
-┌─────────────┐
-│    User     │
-│  Creates    │
-│ Session Key │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────────┐
-│  User Enables   │
-│   Autonomy      │
-│ (Signs delegate │
-│    message)     │
-└──────┬──────────┘
-       │
-       ▼
-┌──────────────────┐
-│   Agent Signs    │
-│   Payments       │
-│   Automatically  │
-└──────┬───────────┘
-       │
-       ▼
-┌─────────────┐
-│  Spending   │
-│   Limits    │
-│  Enforced   │
-└─────────────┘
+```mermaid
+graph TD
+    User[User<br/>Creates<br/>Session Key]
+    Enable[User Enables<br/>Autonomy<br/>Signs delegate<br/>message]
+    Agent[Agent Signs<br/>Payments<br/>Automatically]
+    Limits[Spending<br/>Limits<br/>Enforced]
+    
+    User --> Enable
+    Enable --> Agent
+    Agent --> Limits
 ```
 
 
