@@ -60,21 +60,27 @@ graph LR
 ```typescript
 import { zendfi } from '@zendfi/sdk';
 
-// Step 1: Create a session key
+// Create a device-bound session key with PIN encryption
 const key = await zendfi.sessionKeys.create({
-  user_wallet: 'Hx7B...abc',
-  agent_id: 'shopping-assistant-v1',  // Required: unique agent identifier
-  agent_name: 'AI Shopping Assistant', // Optional: human-readable name
-  limit_usdc: 100,          // $100 spending limit
-  duration_days: 7,         // Valid for 7 days (default)
-  device_fingerprint: fp,   // Required for security
+  userWallet: 'Hx7B...abc',  // Required: user's main wallet
+  agentId: 'shopping-assistant-v1',  // Required: unique agent identifier
+  agentName: 'AI Shopping Assistant', // Optional: human-readable name
+  limitUSDC: 100,           // $100 spending limit
+  durationDays: 7,          // Valid for 7 days (default: 30)
+  pin: '123456',            // Required: 6-digit PIN for encryption
+  generateRecoveryQR: true, // Optional: enable QR recovery
 });
 
-console.log(`Session Key ID: ${key.session_key_id}`);
-console.log(`Agent ID: ${key.agent_id}`);
-console.log(`Cross-app compatible: ${key.cross_app_compatible}`);
-console.log(`Limit: $${key.limit_usdc}`);
-console.log(`Expires: ${key.expires_at}`);
+console.log(`Session Key ID: ${key.sessionKeyId}`);
+console.log(`Session Wallet: ${key.sessionWallet}`);
+console.log(`Agent ID: ${key.agentId}`);
+console.log(`Limit: $${key.limitUSDC}`);
+console.log(`Expires: ${key.expiresAt}`);
+
+// IMPORTANT: Save recovery QR code securely
+if (key.recoveryQR) {
+  console.log('Recovery QR:', key.recoveryQR);
+}
 ```
 
 ### Response Fields
@@ -92,26 +98,23 @@ console.log(`Expires: ${key.expires_at}`);
 | `approval_transaction` | Base64 encoded transaction for user to sign |
 | `instructions` | Step-by-step setup instructions |
 
-## Submitting User Approval
+## Unlocking for Payments
 
-After creating a session key, the user must sign the approval transaction:
+After creating a session key, unlock it with the PIN to enable autonomous payments:
 
 ```typescript
-// The user's wallet signs the transaction
-const signedTx = await userWallet.signTransaction(
-  key.approval_transaction
-);
+// Unlock the session key (required before first payment)
+await zendfi.sessionKeys.unlock(key.sessionKeyId, '123456');
 
-// Submit the signed approval
-await zendfi.sessionKeys.submitApproval({
-  session_key_id: key.session_key_id,
-  signed_transaction: signedTx,
-});
-
-// Session key is now active!
-const status = await zendfi.sessionKeys.getStatus(key.session_key_id);
-console.log(`Active: ${status.is_active}`);
+// Session key is now ready for payments!
+const status = await zendfi.sessionKeys.getStatus(key.sessionKeyId);
+console.log(`Remaining: $${status.remainingUSDC}`);
+console.log(`Expires: ${status.expiresAt}`);
 ```
+
+:::tip Auto-Signing After Unlock
+After unlocking, the keypair is cached in memory. Subsequent payments don't require the PIN until the process restarts or the session expires.
+:::
 
 ## Cross-App Behavior
 
@@ -120,34 +123,31 @@ console.log(`Active: ${status.is_active}`);
 ```typescript
 // App A (Amazon) creates session key
 const keyAppA = await zendfi.sessionKeys.create({
-  user_wallet: 'Hx7B...abc',
-  agent_id: 'shopping-assistant-v1',
-  limit_usdc: 500,
-  duration_days: 7,
-  device_fingerprint: fp,
+  userWallet: 'Hx7B...abc',
+  agentId: 'shopping-assistant-v1',
+  limitUSDC: 500,
+  durationDays: 7,
+  pin: '123456',
 });
 
-console.log(`Session Key ID: ${keyAppA.session_key_id}`);
-console.log(`Requires Approval: ${keyAppA.requires_approval}`); // true
-// User signs approval transaction → Session key active with $500
+console.log(`Session Key ID: ${keyAppA.sessionKeyId}`);
+console.log(`Created new session key with $500 balance`);
+// Session key is active immediately after creation
 ```
 
 ### Second App Reuses Existing Session Key
 
 ```typescript
-// App B (Walmart) tries to create session key for SAME agent
-const keyAppB = await zendfi.sessionKeys.create({
-  user_wallet: 'Hx7B...abc',  // Same user
-  agent_id: 'shopping-assistant-v1',  // Same agent!
-  limit_usdc: 500,  // Ignored - uses existing limit
-  duration_days: 7,
-  device_fingerprint: fp,
+// App B (Walmart) loads existing session key for SAME agent
+const keyAppB = await zendfi.sessionKeys.load({
+  userWallet: 'Hx7B...abc',  // Same user
+  agentId: 'shopping-assistant-v1',  // Same agent!
 });
 
-console.log(`Session Key ID: ${keyAppB.session_key_id}`);
+console.log(`Session Key ID: ${keyAppB.sessionKeyId}`);
 // → Returns SAME session_key_id as App A!
 
-console.log(`Requires Approval: ${keyAppB.requires_approval}`); // false
+console.log(`Existing Balance: $${keyAppB.remainingUSDC}`);
 // → Already approved! No duplicate funding needed.
 
 // App B is automatically authorized to use the existing $500 balance
@@ -158,81 +158,45 @@ console.log(`Requires Approval: ${keyAppB.requires_approval}`); // false
 ## Checking Session Key Status
 
 ```typescript
-const status = await zendfi.sessionKeys.getStatus(key.session_key_id);
+const status = await zendfi.sessionKeys.getStatus(key.sessionKeyId);
 
-console.log(`Active: ${status.is_active}`);
-console.log(`Approved: ${status.is_approved}`);
-console.log(`Agent ID: ${status.agent_id}`);
-console.log(`Limit: $${status.limit_usdc}`);
-console.log(`Used: $${status.used_amount_usdc}`);
-console.log(`Remaining: $${status.remaining_usdc}`);
-console.log(`Expires: ${status.expires_at}`);
-console.log(`Days until expiry: ${status.days_until_expiry}`);
+console.log(`Active: ${status.isActive}`);
+console.log(`Agent ID: ${status.agentId}`);
+console.log(`Limit: $${status.limitUSDC}`);
+console.log(`Used: $${status.usedAmountUSDC}`);
+console.log(`Remaining: $${status.remainingUSDC}`);
+console.log(`Expires: ${status.expiresAt}`);
+console.log(`Days until expiry: ${status.daysUntilExpiry}`);
 
 // Security information
-if (status.security_status) {
-  console.log(`Device matched: ${status.security_status.device_fingerprint_matched}`);
-  console.log(`Last used: ${status.security_status.last_used_at}`);
+if (status.securityStatus) {
+  console.log(`Last used: ${status.securityStatus.lastUsedAt}`);
 }
 ```
 
 ### Session Key Statuses
 
 Session keys don't have explicit "status" strings. Instead, check:
-- `is_active`: Whether the key can be used
-- `is_approved`: Whether the approval transaction was confirmed
-- `remaining_usdc > 0`: Whether funds remain
-- Compare `expires_at` with current time for expiration
+- `isActive`: Whether the key can be used
+- `remainingUSDC > 0`: Whether funds remain
+- Compare `expiresAt` with current time for expiration
 
 ## Making Payments with Session Keys
 
 Once a session key is active, agents can make payments autonomously:
 
 ```typescript
-// Use the smart payment endpoint with session context
-const payment = await zendfi.smart.execute({
-  agent_id: 'shopping-assistant',
-  user_wallet: key.session_key_address,  // Use session key address
-  amount_usd: 29.99,
-  description: 'Premium widget',
-  auto_detect_gasless: true,
+// After unlocking, make autonomous payments
+const payment = await zendfi.sessionKeys.makePayment(key.sessionKeyId, {
+  recipientWallet: 'merchant_wallet_address',
+  amountUSD: 29.99,
+  description: 'Premium widget purchase',
 });
 
-console.log(`Payment ID: ${payment.payment_id}`);
+console.log(`Payment ID: ${payment.paymentId}`);
 console.log(`Status: ${payment.status}`);
-console.log(`Transaction: ${payment.transaction_signature}`);
-```
-
-## Topping Up a Session Key
-
-Add more funds to an existing session key:
-
-```typescript
-// Step 1: Request a top-up
-const topUp = await zendfi.sessionKeys.topUp(key.session_key_id, {
-  user_wallet: 'Hx7B...abc',
-  amount_usdc: 50,          // Add $50 more
-  device_fingerprint: fp,
-});
-
-console.log(`Previous limit: $${topUp.previous_limit}`);
-console.log(`New limit: $${topUp.new_limit}`);
-console.log(`Added: $${topUp.added_amount}`);
-
-// Step 2: User signs the top-up transaction
-const signedTopUp = await userWallet.signTransaction(
-  topUp.top_up_transaction
-);
-
-// Step 3: Submit the signed top-up
-await zendfi.sessionKeys.submitTopUp(
-  key.session_key_id,
-  signedTopUp
-);
-
-// Verify the new limit
-const updated = await zendfi.sessionKeys.getStatus(key.session_key_id);
-console.log(`Updated limit: $${updated.limit_usdc}`);
+console.log(`Transaction: ${payment.transactionSignature}`);
+console.log(`Remaining: $${payment.remainingUSDC}`);
 ```
 
 ## Revoking a Session Key
@@ -240,7 +204,7 @@ console.log(`Updated limit: $${updated.limit_usdc}`);
 Immediately invalidate a session key:
 
 ```typescript
-await zendfi.sessionKeys.revoke(key.session_key_id);
+await zendfi.sessionKeys.revoke(key.sessionKeyId);
 console.log('Session key revoked - no further payments possible');
 ```
 
@@ -264,110 +228,15 @@ result.session_keys.forEach(key => {
 });
 ```
 
-## Linking Session Keys to Sessions
-
-For **defense in depth**, you can link a session key to an AI session. This provides two layers of protection:
-
-1. **Session Key Balance** - Hard cap on total spending (what's funded)
-2. **Session Policy Limits** - Granular limits (per-tx, daily, weekly, monthly)
-
-```mermaid
-graph TD
-    subgraph LinkedSystem["LINKED SESSION KEY + SESSION"]
-        subgraph SessionKey["Session Key (Execution Layer)"]
-            SK1["• Pre-funded wallet: $500"]
-            SK2["• Signing capability"]
-            SK3["• Hard spending cap"]
-        end
-        
-        subgraph Session["Session (Policy Layer)"]
-            S1["• max_per_transaction: $25"]
-            S2["• max_per_day: $100"]
-            S3["• max_per_month: $1000"]
-        end
-        
-        Check["When linked, BOTH limits are checked<br/>before each payment"]
-        Success["Payment succeeds only if it satisfies<br/>BOTH constraints"]
-        
-        SessionKey --> Check
-        Session --> Check
-        Check --> Success
-    end
-```
-
-### Linking a Session Key to a Session
-
-```typescript
-// 1. Create a session with granular limits
-const session = await zendfi.agent.createSession({
-  agent_id: 'shopping-bot',
-  user_wallet: userWallet,
-  limits: {
-    max_per_transaction: 25,   // $25 max per payment
-    max_per_day: 100,          // $100 daily limit
-    max_per_month: 1000,       // $1000 monthly limit
-  },
-  duration_hours: 168,  // 7 days
-});
-
-// 2. Create and fund a session key
-const key = await zendfi.sessionKeys.create({
-  user_wallet: userWallet,
-  limit_usdc: 500,  // Fund with $500
-  duration_days: 7,
-  device_fingerprint: fp,
-});
-
-// User approves...
-await zendfi.sessionKeys.submitApproval(key.session_key_id, { signed_transaction: signedTx });
-
-// 3. Link them together
-await zendfi.sessionKeys.linkSession(key.session_key_id, session.id);
-
-// Now payments will check BOTH:
-// - Session key balance ($500 funded)
-// - Session limits ($25 per tx, $100 per day)
-```
-
-### Pre-Checking Payment Affordability
-
-Before making a payment, check if it's allowed:
-
-```typescript
-const check = await zendfi.sessionKeys.canAfford(key.session_key_id, 50);
-
-if (check.allowed) {
-  console.log(`Payment allowed. Effective limit: $${check.effective_limit}`);
-  // Proceed with payment...
-} else {
-  console.log(`Payment blocked: ${check.reason}`);
-  console.log(`Session key remaining: $${check.session_key_remaining}`);
-  console.log(`Session remaining today: $${check.session_remaining_today}`);
-}
-```
-
-### Unlinking a Session
-
-If you need to remove the policy layer:
-
-```typescript
-await zendfi.sessionKeys.unlinkSession(key.session_key_id);
-// Now only session key balance limits apply
-```
-
-### Why Link Them?
-
-| Scenario | Session Key Only | Linked |
-|----------|------------------|--------|
-| Agent tries $500 payment |  Allowed (has balance) | Blocked (exceeds $25 per-tx limit) |
-| Agent makes 5x $50 payments/day |  Allowed ($250 total) | Blocked after 2nd (exceeds $100/day) |
-| Compromised agent tries to drain | Can spend full $500 | Capped at policy limits |
-
-**Recommendation:** Always link session keys to sessions for production AI agents.
-
 ## Session Keys vs Agent Sessions
 
 Choose the right approach for your use case:
+
+### Use Session Keys When:
+- Agent operates fully autonomously (no user present)
+- You need dedicated pre-funded wallets
+- Agent makes frequent payments without user interaction
+- Non-custodial security is required
 
 ### Use Agent Sessions When:
 - User is present and can approve payments
@@ -375,15 +244,9 @@ Choose the right approach for your use case:
 - Payments go through the user's existing wallet
 - You need real-time limit adjustments
 
-### Use Session Keys When:
-- Agent operates fully autonomously (no user present)
-- You need dedicated pre-funded wallets
-- You want on-chain identity (PKP) for every session
-- Agent makes frequent payments without user interaction
-
 ## Security Considerations
 
-### Encrypted Storage
+### Device-Bound Encryption
 - Session key private keys are encrypted using AES-256-GCM
 - Keys are stored securely in the backend database
 - Device fingerprinting adds an extra security layer

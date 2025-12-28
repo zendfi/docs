@@ -53,10 +53,10 @@ graph TD
 ## Creating a Device-Bound Session Key
 
 ```typescript
-import { DeviceBoundSessionKey } from '@zendfi/sdk';
+import { zendfi } from '@zendfi/sdk';
 
-// Step 1: Create session key client-side
-const sessionKey = await DeviceBoundSessionKey.create({
+// Create a device-bound session key (all-in-one)
+const sessionKey = await zendfi.sessionKeys.create({
   pin: '123456',              // 6-digit PIN
   agentId: 'shopping-assistant-v1',  // Required: agent identifier
   agentName: 'AI Shopping Assistant', // Optional: human-readable name
@@ -66,31 +66,13 @@ const sessionKey = await DeviceBoundSessionKey.create({
   generateRecoveryQR: true,   // Enable recovery
 });
 
-// Step 2: Register with backend
-import { ZendFiSessionKeyManager } from '@zendfi/sdk';
+console.log('Session ID:', sessionKey.sessionKeyId);
+console.log('Session Wallet:', sessionKey.sessionWallet);
+console.log('Expires:', sessionKey.expiresAt);
 
-const manager = new ZendFiSessionKeyManager(
-  process.env.ZENDFI_API_KEY,
-  'https://api.zendfi.tech'
-);
-
-const result = await manager.createSessionKey({
-  userWallet: 'Hx7B...abc',
-  agentId: 'shopping-assistant-v1',  // Required: agent identifier
-  agentName: 'AI Shopping Assistant', // Optional: human-readable name
-  limitUSDC: 100,
-  durationDays: 7,
-  pin: '123456',
-  generateRecoveryQR: true,
-});
-
-console.log('Session ID:', result.sessionKeyId);
-console.log('Session Wallet:', result.sessionWallet);
-console.log('Expires:', result.expiresAt);
-
-// Save recovery QR (IMPORTANT!)
-if (result.recoveryQR) {
-  console.log('Recovery QR:', result.recoveryQR);
+// IMPORTANT: Save recovery QR code securely
+if (sessionKey.recoveryQR) {
+  console.log('Recovery QR:', sessionKey.recoveryQR);
   // Display QR to user or save securely
 }
 ```
@@ -123,31 +105,40 @@ Generates unique fingerprint from:
 
 ## Making Payments
 
-### First Payment (Requires PIN)
+### Unlock and Make Payments
 
 ```typescript
-import { Transaction } from '@solana/web3.js';
+// Unlock the session key (required before first payment)
+await zendfi.sessionKeys.unlock(sessionKey.sessionKeyId, '123456');
 
-// Decrypt and sign (requires PIN on first use)
-const signedTx = await sessionKey.signTransaction(
-  transaction,
-  '123456',  // PIN
-  true       // Cache keypair
+// Make a payment
+const payment = await zendfi.sessionKeys.makePayment(
+  sessionKey.sessionKeyId,
+  {
+    recipientWallet: 'merchant_wallet_address',
+    amountUSD: 29.99,
+    description: 'Premium widget purchase',
+  }
 );
 
-// Submit to blockchain
-const signature = await connection.sendRawTransaction(
-  signedTx.serialize()
-);
+console.log(`Payment ID: ${payment.paymentId}`);
+console.log(`Status: ${payment.status}`);
+console.log(`Remaining: $${payment.remainingUSDC}`);
 ```
 
 ### Subsequent Payments (Auto-Signing)
 
 ```typescript
-// Cached keypair - no PIN needed!
-const signedTx = await sessionKey.signTransaction(
-  transaction
-  // No PIN needed - uses cached keypair
+// After unlock, keypair is cached - no PIN needed!
+const payment2 = await zendfi.sessionKeys.makePayment(
+  sessionKey.sessionKeyId,
+  {
+    recipientWallet: 'another_merchant',
+    amountUSD: 15.00,
+    description: 'Another purchase',
+  }
+);
+// No PIN required - uses cached keypair
 );
 
 // Cache expires after 30 minutes (configurable)
@@ -179,74 +170,94 @@ await manager.recoverSessionKey({
 });
 ```
 
-## API Reference
+## API Methods
 
-### Create Device-Bound Session Key
+### `zendfi.sessionKeys.create(options)`
 
-```
-POST /api/v1/ai/session-keys/device-bound/create
-```
+Create a new device-bound session key.
 
-**Request:**
-```json
+**Parameters:**
+- `pin` (string): 6-digit PIN for encryption
+- `agentId` (string): Unique agent identifier
+- `agentName` (string, optional): Human-readable agent name
+- `limitUSDC` (number): Spending limit in USDC
+- `durationDays` (number): Session duration (default: 30)
+- `userWallet` (string): User's main wallet address
+- `generateRecoveryQR` (boolean, optional): Generate recovery QR code
+
+**Returns:**
+```typescript
 {
-  "user_wallet": "Hx7B...abc",
-  "agent_id": "shopping-assistant-v1",
-  "agent_name": "AI Shopping Assistant",
-  "limit_usdc": 100,
-  "duration_days": 7,
-  "encrypted_session_key": "base64_encrypted_data",
-  "nonce": "base64_nonce",
-  "session_public_key": "public_key_base58",
-  "device_fingerprint": "sha256_hash",
-  "recovery_qr_data": "optional_recovery_data"
+  sessionKeyId: string;
+  sessionWallet: string;
+  agentId: string;
+  limitUSDC: number;
+  expiresAt: string;
+  isActive: boolean;
+  recoveryQR?: string;
 }
 ```
 
-**Response:**
-```json
+### `zendfi.sessionKeys.load(options)`
+
+Load an existing session key for the same agent.
+
+**Parameters:**
+- `userWallet` (string): User's main wallet address
+- `agentId` (string): Agent identifier
+
+**Returns:** Same as create()
+
+### `zendfi.sessionKeys.unlock(sessionKeyId, pin)`
+
+Unlock a session key for making payments.
+
+**Parameters:**
+- `sessionKeyId` (string): Session key ID
+- `pin` (string): 6-digit PIN
+
+### `zendfi.sessionKeys.makePayment(sessionKeyId, payment)`
+
+Make a payment with an unlocked session key.
+
+**Parameters:**
+- `sessionKeyId` (string): Session key ID
+- `payment` (object):
+  - `recipientWallet` (string): Recipient's wallet address
+  - `amountUSD` (number): Payment amount in USD
+  - `description` (string): Payment description
+
+**Returns:**
+```typescript
 {
-  "session_key_id": "sk_abc123",
-  "mode": "device_bound",
-  "is_custodial": false,
-  "user_wallet": "Hx7B...abc",
-  "agent_id": "shopping-assistant-v1",
-  "agent_name": "AI Shopping Assistant",
-  "session_wallet": "7xKN...xyz",
-  "limit_usdc": 100,
-  "expires_at": "2025-12-30T12:00:00Z",
-  "cross_app_compatible": true,
-  "requires_client_signing": true,
-  "security_info": {
-    "encryption_type": "Argon2id + AES-256-GCM",
-    "device_bound": true,
-    "backend_can_decrypt": false,
-    "recovery_qr_saved": true
-  }
+  paymentId: string;
+  status: string;
+  transactionSignature: string;
+  remainingUSDC: number;
 }
 ```
 
-### Get Encrypted Session Key
+### `zendfi.sessionKeys.getStatus(sessionKeyId)`
 
+Get session key status and balance.
+
+**Returns:**
+```typescript
+{
+  sessionKeyId: string;
+  isActive: boolean;
+  agentId: string;
+  limitUSDC: number;
+  usedAmountUSDC: number;
+  remainingUSDC: number;
+  expiresAt: string;
+  daysUntilExpiry: number;
+}
 ```
-POST /api/v1/ai/session-keys/device-bound/get-encrypted
-```
 
-Retrieve encrypted session key from server (requires device fingerprint match).
+### `zendfi.sessionKeys.revoke(sessionKeyId)`
 
-### Recover on New Device
-
-```
-POST /api/v1/ai/session-keys/device-bound/:id/recover
-```
-
-Register new device fingerprint for existing session key.
-
-### Submit Signed Transaction
-
-```
-POST /api/v1/ai/payments/:payment_id/submit-signed
-```
+Revoke a session key immediately.
 
 Submit client-signed transaction to blockchain.
 
