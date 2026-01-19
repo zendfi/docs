@@ -246,20 +246,6 @@ const subscription = await zendfi.createSubscription({
 
 **[Subscriptions Guide →](/api/subscriptions)**
 
-### Try AI Features
-
-Building AI agents? Enable autonomous payments:
-
-```typescript
-const session = await zendfi.agent.createSession({
-  agent_id: 'shopping-bot-v1',
-  user_wallet: 'Hx7B...abc',
-  limits: { max_per_day: 200 },
-});
-```
-
-**[AI Payments Guide →](/agentic)**
-
 
 ## Test vs Live Mode
 
@@ -286,7 +272,7 @@ const session = await zendfi.agent.createSession({
 - **Email:** [support@zendfi.tech](mailto:support@zendfi.tech)
 - **Docs:** [Full API Reference →](/api/payments)
 
-**Ready to scale?** Check out [Payment Links](/api/payment-links), [Subscriptions](/api/subscriptions), and [AI Features](/agentic).
+**Ready to scale?** Check out [Payment Links](/api/payment-links) and [Subscriptions](/api/subscriptions).
 
 ### Example Request
 

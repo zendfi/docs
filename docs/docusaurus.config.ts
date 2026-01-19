@@ -96,12 +96,6 @@ const config: Config = {
           position: 'left',
           label: 'Developer resources',
         },
-        {
-          type: 'docSidebar',
-          sidebarId: 'agenticSidebar',
-          position: 'left',
-          label: 'Agentic Payments',
-        },
         // Right side
         {
           type: 'search',

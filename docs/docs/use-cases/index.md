@@ -46,17 +46,6 @@ Accept tips and donations from supporters with custom amounts and messages.
 - Supporter leaderboard
 - Stream alerts
 
-### [AI Shopping Bot](/use-cases/ai-shopping-bot) (Advanced)
-Build an AI agent that makes autonomous purchases on behalf of users.
-
-**Best for:** AI assistants, automation platforms, smart home apps
-
-**Key Features:**
-- Autonomous payments
-- Spending limits
-- Session-based permissions
-- Real-time notifications
-
 </div>
 
 ## Quick Comparison
@@ -66,7 +55,6 @@ Build an AI agent that makes autonomous purchases on behalf of users.
 | Creator Tips | ⭐ Easy | 1-2 hours | Payment Links |
 | E-commerce | ⭐⭐ Medium | 2-4 hours | SDK Integration |
 | SaaS | ⭐⭐⭐ High | 4-8 hours | SDK + Subscriptions |
-| AI Shopping Bot | ⭐⭐⭐⭐ Advanced | 1-2 days | SDK + Session Keys |
 
 ## Not Sure Which to Choose?
 
@@ -87,12 +75,6 @@ Build an AI agent that makes autonomous purchases on behalf of users.
 - Building a platform with usage limits
 - Need recurring billing
 - Want tiered pricing plans
-
-### Try AI Shopping Bot if you're:
-- Building AI-powered applications
-- Creating autonomous agents
-- Implementing smart automation
-- Need programmable payments with spending controls
 
 ## Need More Examples?
 

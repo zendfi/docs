@@ -6,7 +6,7 @@ title: Introduction
 
 # Welcome to ZendFi
 
-Accept SOL, USDC, and USDT payments in 7 lines of code. Built for e-commerce. Ready for AI agents.
+Accept SOL, USDC, and USDT payments in 7 lines of code. Built for e-commerce.
 
 ```typescript
 import { zendfi } from '@zendfi/sdk';
@@ -19,7 +19,7 @@ const payment = await zendfi.createPayment({
 console.log(payment.payment_url); // Send customer here
 ```
 
-That's it. Works for traditional payments AND AI agents. Same API.
+That's it. Same simple API for all your payment needs.
 
 
 ## Why ZendFi?
@@ -45,18 +45,6 @@ Add advanced features as you grow. No architecture changes needed.
 - **Invoices** — Professional invoicing with email delivery
 - **Payment Splits** — Revenue sharing for marketplaces
 
-### AI-Ready (When You Need It)
-
-Building AI agents? We've got you covered with native autonomous payment support.
-
-- **Agent Keys** — Scoped API keys with spending limits
-- **Session Keys** — Pre-funded wallets for agents
-- **Autonomous Payments** — User approves once, AI pays within limits
-- **PPP Pricing** — Auto-adjust prices for 27+ countries
-- **Cryptographic Security** — Lit Protocol + attestations
-
-**Don't need AI features? Ignore them.** The SDK works perfectly for traditional payments.
-
 
 ## What Can You Build?
 
@@ -66,7 +54,6 @@ Building AI agents? We've got you covered with native autonomous payment support
 | **SaaS Platform** | Payments, Subscriptions, Webhooks |
 | **Marketplace** | Payments, Payment Splits, Invoices |
 | **Creator Tools** | Payment Links, Subscriptions |
-| **AI Agent Apps** | Agent Keys, Session Keys, PPP Pricing |
 
 
 ## Quick Links
@@ -77,8 +64,6 @@ Building AI agents? We've got you covered with native autonomous payment support
 | [Payments API](/api/payments) | Complete API reference |
 | [Embedded Checkout](/features/embedded-checkout) | Accept payments in your app |
 | [Subscriptions](/api/subscriptions) | Recurring billing |
-| [AI-Ready Features](/agentic) | Autonomous agent payments |
-| [Getting Started](/) | Quick start guide with SDK setup |
 | [Webhooks](/features/webhooks) | Real-time notifications |
 
 
