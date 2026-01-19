@@ -62,11 +62,6 @@ const config: Config = {
     ],
   ],
 
-  markdown: {
-    mermaid: true,
-  },
-  themes: ['@docusaurus/theme-mermaid'],
-
   themeConfig: {
     // Replace with your project's social card
     image: 'img/zendfi-social-card.jpg',
