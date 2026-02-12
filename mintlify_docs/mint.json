@@ -1,0 +1,114 @@
+{
+  "name": "ZendFi Documentation",
+  "logo": {
+    "light": "/assets/logo.png",
+    "dark": "/assets/logo.png"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#635bff",
+    "light": "#7a73ff",
+    "dark": "#5851ea",
+    "anchors": "#5851ea"
+  },
+  "globalCss": [
+    "global.css"
+  ],
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:support@zendfi.tech"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Dashboard",
+    "url": "https://dashboard.zendfi.tech"
+  },
+  "tabs": [
+    {
+      "name": "Payment Guide",
+      "url": "api"
+    },
+    {
+      "name": "Developer Tools",
+      "url": "developer-tools"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Github",
+      "icon": "github",
+      "url": "https://github.com/zendfi"
+    },
+    {
+      "name": "Community",
+      "icon": "discord",
+      "url": "https://discord.gg/zendfi"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Welcome",
+      "pages": [
+        "intro",
+        "getting-started"
+      ]
+    },
+    {
+      "group": "Core Features",
+      "pages": [
+        "features/embedded-checkout",
+        "features/payment-splits",
+        "features/wallet-management",
+        "features/webhooks"
+      ]
+    },
+    {
+      "group": "Use Cases",
+      "pages": [
+        "use-cases/index",
+        "use-cases/ecommerce-store",
+        "use-cases/saas-subscriptions",
+        "use-cases/creator-tips"
+      ]
+    },
+    {
+      "group": "ZendFi CLI",
+      "pages": [
+        "developer-tools/cli"
+      ]
+    },
+    {
+      "group": "ZendFi SDK",
+      "pages": [
+        "developer-tools/sdk-reference"
+      ]
+    },
+    {
+      "group": "Framework Guides",
+      "pages": [
+        "developer-tools/nextjs-integration",
+        "developer-tools/express-integration",
+        "developer-tools/typescript-guide",
+        "developer-tools/helper-utilities",
+        "developer-tools/testing-and-debugging",
+        "developer-tools/best-practices"
+      ]
+    },
+    {
+      "group": "Payment Guide",
+      "pages": [
+        "api/payments",
+        "api/subscriptions",
+        "api/payment-links",
+        "api/invoices",
+        "api/installments"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "x": "https://twitter.com/zendfi",
+    "github": "https://github.com/zendfi",
+    "linkedin": "https://linkedin.com/company/zendfi"
+  }
+}
