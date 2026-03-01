@@ -1,8 +1,0 @@
-{
-  "label": "Developer Tools",
-  "position": 5,
-  "link": {
-    "type": "generated-index",
-    "description": "Framework guides, CLI reference, testing tools, and best practices for building with ZendFi."
-  }
-}
