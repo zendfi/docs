@@ -1,0 +1,157 @@
+---
+title: API Overview
+description: Base URL, versioning, request format, error handling, and pagination for the ZendFi API.
+---
+
+# API Overview
+
+The ZendFi API is a REST API that accepts JSON request bodies and returns JSON responses. All endpoints are versioned under `/api/v1/`.
+
+## Base URL
+
+```
+https://api.zendfi.tech/api/v1
+```
+
+Both test and live modes share the same base URL. The API key in your `Authorization` header determines which Solana network is used.
+
+## Request Format
+
+All requests must include:
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `Authorization` | `Bearer zfi_test_...` or `Bearer zfi_live_...` | Yes (protected routes) |
+| `Content-Type` | `application/json` | Yes (POST/PUT/PATCH) |
+| `Idempotency-Key` | UUID or unique string | Optional (recommended for POST) |
+
+## Authentication
+
+Protected endpoints require a valid API key as a Bearer token:
+
+```bash
+curl https://api.zendfi.tech/api/v1/payments \
+  -H "Authorization: Bearer zfi_test_your_key"
+```
+
+See [Authentication](/authentication) for details on key formats and management.
+
+## Idempotency
+
+For write operations (`POST`, `PUT`, `PATCH`), you can include an `Idempotency-Key` header to ensure the request is processed exactly once. If a request with the same idempotency key is received again, the API returns the original response without re-processing.
+
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/payments \
+  -H "Authorization: Bearer zfi_test_your_key" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order_12345_payment" \
+  -d '{"amount": 50, "currency": "USD"}'
+```
+
+The SDK generates idempotency keys automatically when `idempotencyEnabled` is `true` (the default).
+
+## Error Format
+
+All errors follow a consistent structure:
+
+```json
+{
+  "error": "Human-readable error message",
+  "code": "machine_readable_error_code",
+  "details": {}
+}
+```
+
+### HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `201` | Resource created |
+| `400` | Bad request -- invalid parameters |
+| `401` | Unauthorized -- invalid or missing API key |
+| `404` | Resource not found |
+| `409` | Conflict -- resource already exists or idempotency conflict |
+| `422` | Unprocessable entity -- validation error |
+| `429` | Rate limit exceeded |
+| `500` | Internal server error |
+
+### Common Error Codes
+
+| Code | Description |
+|------|-------------|
+| `authentication_failed` | Invalid or expired API key |
+| `validation_failed` | Request body failed validation |
+| `missing_required_field` | A required field is missing |
+| `invalid_parameter` | A parameter has an invalid value |
+| `rate_limit_exceeded` | Too many requests |
+| `payment_expired` | Payment window has elapsed |
+| `insufficient_balance` | Wallet balance too low |
+
+## Rate Limits
+
+Requests are rate-limited per merchant account:
+
+| Category | Limit | Window |
+|----------|-------|--------|
+| Payment endpoints | 50 requests | 1 hour |
+| Dashboard endpoints | 200 requests | 1 hour |
+| All other endpoints | 100 requests | 1 hour |
+
+Rate limit information is included in response headers:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1709312400
+```
+
+When the limit is exceeded, the API returns `429` with a JSON body indicating when to retry.
+
+## Pagination
+
+List endpoints support pagination via query parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | 20 | Number of items per page (max 100) |
+| `offset` | integer | 0 | Number of items to skip |
+
+```bash
+curl "https://api.zendfi.tech/api/v1/payments?limit=10&offset=20" \
+  -H "Authorization: Bearer zfi_test_your_key"
+```
+
+## Correlation IDs
+
+Every API request is assigned a unique correlation ID, available in the response headers:
+
+```
+X-Correlation-Id: 550e8400-e29b-41d4-a716-446655440000
+```
+
+Include this ID when contacting support to help trace issues quickly.
+
+## Mode Header
+
+Every response includes a header indicating which mode processed the request:
+
+```
+X-ZendFi-Mode: test
+```
+
+This helps verify that your application is hitting the expected network (devnet or mainnet).
+
+## Supported Currencies and Tokens
+
+| Currency | Description |
+|----------|-------------|
+| `USD` | US Dollar (default) |
+| `EUR` | Euro |
+| `GBP` | British Pound |
+
+| Token | Network |
+|-------|---------|
+| `USDC` | SPL Token (default) |
+| `USDT` | SPL Token |
+| `SOL` | Native SOL |

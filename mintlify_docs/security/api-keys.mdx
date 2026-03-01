@@ -1,0 +1,194 @@
+---
+title: "API Key Security"
+description: "How API keys are protected, stored, and managed throughout their lifecycle."
+---
+
+API keys are the gateway to your ZendFi account. Understanding how they work and how to protect them is critical for a secure integration.
+
+## Key Anatomy
+
+Every ZendFi API key follows a predictable format:
+
+```
+zfi_test_sk_8f3k9x2m4n7p...
+│   │    │  └─ Secret portion (random bytes)
+│   │    └──── Key type indicator
+│   └───────── Mode (test or live)
+└───────────── ZendFi prefix
+```
+
+| Prefix | Mode | Environment |
+|---|---|---|
+| `zfi_test_` | Test | Solana Devnet |
+| `zfi_live_` | Live | Solana Mainnet |
+
+The prefix serves a dual purpose: it lets you instantly identify the mode of a key, and it allows security scanners (like GitHub's secret scanning) to detect accidentally committed keys.
+
+## Key Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Created: keys create
+    Created --> Active: Key is used
+    Active --> Active: Normal usage
+    Active --> Rotated: keys rotate
+    Rotated --> Active: New key activated
+    Rotated --> Invalidated: Old key stops working
+    Active --> Revoked: Manual revocation
+    Invalidated --> [*]
+    Revoked --> [*]
+```
+
+### Creation
+
+When a key is created, the full key value is returned exactly once. After that, only the prefix is available through the API or CLI.
+
+```bash
+zendfi keys create --name "Production" --mode live
+
+# Output includes the full key - save it immediately
+# zfi_live_sk_8f3k9x2m4n7p...
+```
+
+### Storage on the Server
+
+ZendFi never stores your raw API key:
+
+1. The key prefix is stored in plaintext for display purposes.
+2. A SHA-256 hash is stored for fast lookup during authentication.
+3. An Argon2id hash is stored for brute-force-resistant verification.
+
+This means even a complete database breach would not expose usable API keys.
+
+### Rotation
+
+Rotation generates a new key and immediately invalidates the old one:
+
+```bash
+zendfi keys rotate key_abc123
+```
+
+The rotation is atomic -- there is no window where both keys are valid simultaneously. Plan your rotation to minimize downtime:
+
+1. Generate the new key
+2. Update all services and environments
+3. Verify the new key works
+4. The old key is already invalid
+
+### Revocation
+
+Keys can be permanently revoked through the dashboard or API. Revoked keys cannot be restored.
+
+## Storage Best Practices
+
+### Environment Variables
+
+The simplest and most portable approach:
+
+```bash
+# .env (local development)
+ZENDFI_API_KEY=zfi_test_sk_your_key_here
+
+# Production (set via your deployment platform)
+export ZENDFI_API_KEY=zfi_live_sk_your_key_here
+```
+
+The SDK auto-detects `ZENDFI_API_KEY` from the environment. No configuration code needed.
+
+### Secrets Managers
+
+For production deployments, use a dedicated secrets manager:
+
+| Platform | Service |
+|---|---|
+| AWS | AWS Secrets Manager or SSM Parameter Store |
+| GCP | Google Secret Manager |
+| Azure | Azure Key Vault |
+| Kubernetes | Kubernetes Secrets |
+| Vercel | Environment Variables (encrypted at rest) |
+| Railway | Variables (encrypted at rest) |
+
+### What NOT to Do
+
+<Warning>
+Never do any of the following:
+
+- Hardcode API keys in source code
+- Commit keys to version control (even in private repos)
+- Log API keys in application output
+- Share keys over email, Slack, or other messaging
+- Store keys in client-side code (browser JavaScript)
+- Use the same key for test and production
+</Warning>
+
+## Key Scoping
+
+Keys can be scoped to limit their permissions. This follows the principle of least privilege:
+
+| Scope | Permissions |
+|---|---|
+| `full_access` | All operations (default) |
+| `payments_read` | Read payment data only |
+| `payments_write` | Create and manage payments |
+| `webhooks_manage` | Manage webhook endpoints |
+| `keys_manage` | Manage API keys |
+
+Scoped keys are created through the dashboard or the API. The CLI creates full-access keys by default.
+
+### Example: Read-Only Key for Analytics
+
+Create a key that can only read payment data for your analytics dashboard:
+
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/keys \
+  -H "Authorization: Bearer zfi_live_your_admin_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Analytics Dashboard",
+    "mode": "live",
+    "scopes": ["payments_read"]
+  }'
+```
+
+This key can call `GET /payments` and `GET /payments/:id` but will receive a `403 Forbidden` if it tries to create a payment.
+
+## Rate Limits
+
+API key operations have their own rate limits, separate from general API limits:
+
+| Operation | Limit | Window |
+|---|---|---|
+| List keys | 30 requests | 1 minute |
+| Create key | 10 requests | 1 minute |
+| Rotate key | 5 requests | 1 minute |
+| Payment API | 50 requests | 1 hour |
+| Dashboard API | 200 requests | 1 hour |
+| Other API | 100 requests | 1 hour |
+
+When you hit a rate limit, the API returns `429 Too Many Requests` with headers indicating when you can retry:
+
+| Header | Description |
+|---|---|
+| `X-RateLimit-Limit` | Maximum requests per window |
+| `X-RateLimit-Remaining` | Requests remaining in current window |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+
+## Audit Trail
+
+Every key operation is logged in the audit trail:
+
+- Key creation (who, when, name, mode)
+- Key rotation (who, when, key ID)
+- Key usage (timestamp, endpoint, IP address, response status)
+
+Access the audit log through the ZendFi Dashboard under Settings > API Keys > Activity Log.
+
+## Incident Response
+
+If you suspect a key has been compromised:
+
+1. **Rotate immediately:** `zendfi keys rotate <key-id>`
+2. **Check the audit log** for any unauthorized usage
+3. **Update all services** with the new key
+4. **Review access** to determine how the key was exposed
+5. **Harden storage** based on findings (move to secrets manager, add IP restrictions, etc.)

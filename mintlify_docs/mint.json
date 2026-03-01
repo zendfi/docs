@@ -1,44 +1,72 @@
 {
+  "$schema": "https://mintlify.com/schema.json",
   "name": "ZendFi Documentation",
   "logo": {
-    "light": "/assets/logo.png",
-    "dark": "/assets/logo.png"
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
   },
-  "favicon": "/favicon.png",
+  "favicon": "/favicon.svg",
   "colors": {
-    "primary": "#635bff",
-    "light": "#7a73ff",
-    "dark": "#5851ea",
-    "anchors": "#5851ea"
+    "primary": "#667eea",
+    "light": "#818cf8",
+    "dark": "#4f46e5",
+    "anchors": {
+      "from": "#667eea",
+      "to": "#764ba2"
+    },
+    "background": {
+      "dark": "#0f0f17",
+      "light": "#ffffff"
+    }
   },
-  "globalCss": [
-    "global.css"
-  ],
+  "font": {
+    "headings": {
+      "family": "Inter",
+      "weight": 700
+    },
+    "body": {
+      "family": "Inter",
+      "weight": 400
+    }
+  },
   "topbarLinks": [
     {
-      "name": "Support",
-      "url": "mailto:support@zendfi.tech"
+      "name": "API Status",
+      "url": "https://api.zendfi.tech/status"
     }
   ],
   "topbarCtaButton": {
     "name": "Dashboard",
-    "url": "https://dashboard.zendfi.tech"
+    "url": "https://app.zendfi.tech"
   },
   "tabs": [
     {
-      "name": "Payment Guide",
-      "url": "api"
+      "name": "API Reference",
+      "url": "api-reference"
     },
     {
-      "name": "Developer Tools",
-      "url": "developer-tools"
+      "name": "SDK",
+      "url": "sdk"
+    },
+    {
+      "name": "CLI",
+      "url": "cli"
+    },
+    {
+      "name": "Guides",
+      "url": "guides"
     }
   ],
   "anchors": [
     {
-      "name": "Github",
+      "name": "GitHub",
       "icon": "github",
       "url": "https://github.com/zendfi"
+    },
+    {
+      "name": "NPM",
+      "icon": "npm",
+      "url": "https://www.npmjs.com/package/@zendfi/sdk"
     },
     {
       "name": "Community",
@@ -48,67 +76,100 @@
   ],
   "navigation": [
     {
-      "group": "Welcome",
+      "group": "Getting Started",
       "pages": [
-        "intro",
-        "getting-started"
+        "introduction",
+        "quickstart",
+        "authentication",
+        "environments",
+        "architecture"
       ]
     },
     {
-      "group": "Core Features",
+      "group": "Security",
       "pages": [
-        "features/embedded-checkout",
-        "features/payment-splits",
-        "features/wallet-management",
-        "features/webhooks"
+        "security/overview",
+        "security/api-keys",
+        "security/webhooks",
+        "security/best-practices"
       ]
     },
     {
-      "group": "Use Cases",
+      "group": "API Reference",
       "pages": [
-        "use-cases/index",
-        "use-cases/ecommerce-store",
-        "use-cases/saas-subscriptions",
-        "use-cases/creator-tips"
+        "api-reference/overview",
+        "api-reference/payments",
+        "api-reference/payment-intents",
+        "api-reference/payment-links",
+        "api-reference/subscriptions",
+        "api-reference/invoices",
+        "api-reference/installments",
+        "api-reference/splits",
+        "api-reference/webhooks",
+        "api-reference/customer-wallets",
+        "api-reference/session-keys",
+        "api-reference/api-keys"
       ]
     },
     {
-      "group": "ZendFi CLI",
+      "group": "SDK",
       "pages": [
-        "developer-tools/cli"
+        "sdk/overview",
+        "sdk/client",
+        "sdk/types",
+        "sdk/errors",
+        "sdk/interceptors",
+        "sdk/webhook-handlers",
+        "sdk/embedded-checkout",
+        "sdk/helpers",
+        "sdk/configuration"
       ]
     },
     {
-      "group": "ZendFi SDK",
+      "group": "CLI",
       "pages": [
-        "developer-tools/sdk-reference"
+        "cli/overview",
+        "cli/init",
+        "cli/payments",
+        "cli/keys",
+        "cli/webhooks",
+        "cli/advanced"
       ]
     },
     {
-      "group": "Framework Guides",
+      "group": "Guides",
       "pages": [
-        "developer-tools/nextjs-integration",
-        "developer-tools/express-integration",
-        "developer-tools/typescript-guide",
-        "developer-tools/helper-utilities",
-        "developer-tools/testing-and-debugging",
-        "developer-tools/best-practices"
-      ]
-    },
-    {
-      "group": "Payment Guide",
-      "pages": [
-        "api/payments",
-        "api/subscriptions",
-        "api/payment-links",
-        "api/invoices",
-        "api/installments"
+        "guides/nextjs",
+        "guides/express",
+        "guides/embedded-checkout",
+        "guides/subscriptions",
+        "guides/payment-splits",
+        "guides/onramp"
       ]
     }
   ],
   "footerSocials": {
-    "x": "https://twitter.com/zendfi",
+    "x": "https://x.com/AltcoinBuzz_",
     "github": "https://github.com/zendfi",
-    "linkedin": "https://linkedin.com/company/zendfi"
-  }
+    "discord": "https://discord.gg/zendfi"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true
+  },
+  "modeToggle": {
+    "default": "dark"
+  },
+  "seo": {
+    "indexHiddenPages": false
+  },
+  "analytics": {},
+  "api": {
+    "baseUrl": "https://api.zendfi.tech",
+    "auth": {
+      "method": "bearer",
+      "name": "Authorization"
+    }
+  },
+  "openapi": []
 }

@@ -1,0 +1,174 @@
+---
+title: "API Keys"
+description: "List, create, and rotate API keys from the terminal."
+---
+
+Manage your ZendFi API keys without leaving the terminal. List existing keys, create new ones, and rotate compromised keys.
+
+## keys list
+
+Display all API keys associated with your account.
+
+```bash
+zendfi keys list
+```
+
+### Output
+
+Each key shows its name, ID, masked prefix, mode, creation date, and last used timestamp:
+
+```
+✓ Found 3 API keys
+
+1. Production Key
+   ID:       key_abc123
+   Prefix:   zfi_live_8f3k***
+   Mode:     LIVE
+   Created:  12/1/2024, 10:00:00 AM
+   Last Used: 12/15/2024, 2:30:00 PM
+
+2. Development Key
+   ID:       key_def456
+   Prefix:   zfi_test_9x2m***
+   Mode:     TEST
+   Created:  12/1/2024, 10:05:00 AM
+   Last Used: 12/15/2024, 1:15:00 PM
+
+3. CI/CD Key
+   ID:       key_ghi789
+   Prefix:   zfi_test_4n7p***
+   Mode:     TEST
+   Created:  12/10/2024, 3:00:00 PM
+```
+
+<Note>
+Full key values are never displayed after creation. The list only shows the prefix with the rest masked. This is a security measure -- keys are hashed with SHA-256 and Argon2 on the server side and cannot be retrieved.
+</Note>
+
+---
+
+## keys create
+
+Create a new API key with an interactive wizard.
+
+```bash
+zendfi keys create [options]
+```
+
+### Options
+
+| Flag | Description | Default |
+|---|---|---|
+| `--name <name>` | Key name | Interactive prompt |
+| `--mode <mode>` | Key mode: `test` or `live` | Interactive prompt |
+
+### Interactive Flow
+
+```bash
+$ zendfi keys create
+
+Create New API Key
+
+? Key name: Production API
+? Key mode: Live - For production use
+? Create LIVE API key named "Production API"? Yes
+
+✓ API key created successfully!
+
+Key Details:
+  Name:  Production API
+  Mode:  LIVE
+  ID:    key_abc123
+
+  Save your API key - it won't be shown again!
+
+  zfi_live_sk_8f3k9x2m4n7p...
+
+? Save to .env file in current directory? Yes
+  ✓ Saved to .env
+```
+
+### .env File Handling
+
+When you choose to save the key, the CLI writes it to `.env` in the current directory:
+
+- If the file already contains `ZENDFI_API_KEY` (for live keys) or `ZENDFI_TEST_API_KEY` (for test keys), it updates the existing value.
+- If the file does not exist, it creates one.
+- Live keys are stored as `ZENDFI_API_KEY`, test keys as `ZENDFI_TEST_API_KEY`.
+
+### Non-Interactive Mode
+
+```bash
+zendfi keys create --name "CI Pipeline" --mode test
+```
+
+You will still be prompted for final confirmation unless you pipe stdout (the safety confirmation cannot be skipped).
+
+---
+
+## keys rotate
+
+Rotate an existing API key. This generates a new key value and invalidates the old one.
+
+```bash
+zendfi keys rotate <key-id>
+```
+
+### Arguments
+
+| Argument | Description | Required |
+|---|---|---|
+| `key-id` | The key ID to rotate (e.g., `key_abc123`) | Yes |
+
+### Example
+
+```bash
+$ zendfi keys rotate key_abc123
+
+Rotating API key key_abc123...
+
+✓ Key rotated successfully!
+
+  New key: zfi_live_sk_new_value_here...
+
+  Update your environment variables with the new key.
+  The old key is now invalid.
+```
+
+<Warning>
+Rotation is immediate and irreversible. The old key stops working as soon as the new key is generated. Update all services using the old key before rotating, or prepare for a brief interruption.
+</Warning>
+
+## Security Notes
+
+- **Key values are shown once.** When you create or rotate a key, the full value is displayed exactly once. After that, only the prefix is available through `keys list`.
+- **Test vs. Live isolation.** Test keys (`zfi_test_`) only work against Devnet. Live keys (`zfi_live_`) only work against Mainnet. They cannot be used interchangeably.
+- **Rate limits apply.** API key operations are rate-limited. See the [API Keys](/api-reference/api-keys) reference for rate limit details.
+- **Scoped keys.** Keys can have scoped permissions (read-only, payments-only, etc.). Scoped key management is available through the dashboard or API. The CLI creates full-access keys by default.
+
+## Workflow Tips
+
+### Multiple environments
+
+Keep separate keys for development, staging, and production:
+
+```bash
+# Create a key for each environment
+zendfi keys create --name "Development" --mode test
+zendfi keys create --name "Staging" --mode test
+zendfi keys create --name "Production" --mode live
+```
+
+### Key rotation schedule
+
+Rotate keys periodically as a security best practice. The CLI makes this straightforward:
+
+```bash
+# List keys to find the ID
+zendfi keys list
+
+# Rotate the target key
+zendfi keys rotate key_abc123
+
+# Update your .env / secrets manager with the new value
+```

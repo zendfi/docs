@@ -1,0 +1,190 @@
+---
+title: Payment Links
+description: Create shareable checkout URLs with hosted pages. No frontend required.
+---
+
+# Payment Links
+
+Payment links are shareable URLs that open a hosted checkout page. Create a link, share it via email, social media, or embed it in a button -- and customers can pay without you building any checkout UI.
+
+## Create a Payment Link
+
+```
+POST /api/v1/payment-links
+```
+
+<ParamField body="amount" type="number" required>
+  Payment amount.
+</ParamField>
+
+<ParamField body="currency" type="string" default="USD">
+  Currency code: `USD`, `EUR`, `GBP`.
+</ParamField>
+
+<ParamField body="token" type="string" default="USDC">
+  Token to accept: `USDC`, `USDT`, `SOL`.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description shown on the checkout page.
+</ParamField>
+
+<ParamField body="max_uses" type="integer">
+  Maximum number of times this link can be used. Omit for unlimited.
+</ParamField>
+
+<ParamField body="expires_at" type="string">
+  ISO 8601 expiration date for the link itself.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Arbitrary key-value pairs.
+</ParamField>
+
+<ParamField body="onramp" type="boolean" default="false">
+  Enable fiat onramp (NGN to USDC) for this link.
+</ParamField>
+
+<ParamField body="amount_ngn" type="number">
+  Original NGN amount for exact conversion. Only relevant when `onramp` is `true`.
+</ParamField>
+
+<ParamField body="payer_service_charge" type="boolean" default="false">
+  When `true` and `onramp` is `true`, a transparent service charge is added for the payer.
+</ParamField>
+
+<ParamField body="collect_customer_info" type="boolean" default="false">
+  When `true`, the checkout shows an expanded form to collect customer details (name, phone, company, billing address) before payment.
+</ParamField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.zendfi.tech/api/v1/payment-links \
+  -H "Authorization: Bearer zfi_test_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 25.00,
+    "description": "Workshop Registration",
+    "max_uses": 50,
+    "metadata": {"event": "solana-workshop-march"}
+  }'
+```
+
+```typescript SDK
+const link = await zendfi.createPaymentLink({
+  amount: 25.00,
+  description: 'Workshop Registration',
+  max_uses: 50,
+  metadata: { event: 'solana-workshop-march' },
+});
+
+console.log(link.url); // https://checkout.zendfi.tech/checkout/abc123xyz
+```
+
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "link_code": "abc123xyz",
+  "description": "Workshop Registration",
+  "amount": 25.00,
+  "currency": "USD",
+  "token": "USDC",
+  "hosted_page_url": "https://checkout.zendfi.tech/checkout/abc123xyz",
+  "payment_url": "https://checkout.zendfi.tech/checkout/abc123xyz",
+  "max_uses": 50,
+  "uses_count": 0,
+  "expires_at": null,
+  "is_active": true,
+  "onramp": false,
+  "payer_service_charge": false,
+  "created_at": "2026-03-01T12:00:00Z"
+}
+```
+
+---
+
+## List Payment Links
+
+```
+GET /api/v1/payment-links
+```
+
+Returns all payment links for the authenticated merchant.
+
+```typescript
+const links = await zendfi.listPaymentLinks();
+```
+
+---
+
+## Get a Payment Link
+
+```
+GET /api/v1/payment-links/{link_code}
+```
+
+Retrieves a specific payment link by its code. This endpoint is **public** -- it does not require authentication. This is how the checkout page loads link data.
+
+<ParamField path="link_code" type="string" required>
+  The unique link code (e.g., `abc123xyz`).
+</ParamField>
+
+```typescript
+const link = await zendfi.getPaymentLink('abc123xyz');
+```
+
+---
+
+## Create a Payment from a Link
+
+```
+POST /api/v1/payment-links/{link_code}/pay
+```
+
+Creates a new payment from a payment link. This is called by the checkout page when a customer opens the link. It is **public** -- no authentication required.
+
+When this endpoint is called, it:
+1. Validates the link is active, not expired, and has remaining uses.
+2. Creates a new payment with the link's parameters.
+3. Returns the payment details including wallet address and QR code.
+
+---
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Invoicing" icon="file-invoice">
+    Create a link and email it to your client. They click, pay, done.
+  </Card>
+  <Card title="Social Commerce" icon="share-nodes">
+    Share payment links on Twitter, Discord, or Telegram. Accept payments from anywhere.
+  </Card>
+  <Card title="Event Registration" icon="ticket">
+    Set `max_uses` to your event capacity. Each registration creates a tracked payment.
+  </Card>
+  <Card title="Donations / Tips" icon="hand-holding-heart">
+    Create an open-ended link for recurring or variable-amount contributions.
+  </Card>
+</CardGroup>
+
+## Payment Links with Fiat Onramp
+
+When `onramp` is set to `true`, the checkout page shows a bank transfer option alongside crypto payment. Customers can pay with Nigerian Naira (NGN) which is converted to USDC and settled to your wallet.
+
+```typescript
+const link = await zendfi.createPaymentLink({
+  amount: 25.00,
+  description: 'Product Purchase',
+  onramp: true,
+  payer_service_charge: true, // Add transparent service charge
+});
+```
+
+See the [Fiat Onramp guide](/guides/onramp) for details on the onramp flow.

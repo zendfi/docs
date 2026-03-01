@@ -1,0 +1,216 @@
+---
+title: Architecture
+description: How ZendFi processes payments on Solana -- from transaction creation to settlement.
+---
+
+# Architecture
+
+This page explains how ZendFi's payment infrastructure works under the hood. Understanding the architecture is optional for integration, but it helps when debugging, optimizing, or building advanced flows.
+
+## System Overview
+
+```mermaid
+graph TB
+    subgraph "Your Infrastructure"
+        App[Your Application]
+        WH[Webhook Endpoint]
+    end
+
+    subgraph "ZendFi Platform"
+        API[API Gateway]
+        Auth[Auth & Rate Limiting]
+        PM[Payment Monitor]
+        WE[Webhook Engine]
+        KM[Key Manager]
+        Cache[RPC Cache]
+    end
+
+    subgraph "Solana"
+        RPC[RPC Nodes]
+        Chain[Blockchain]
+    end
+
+    App -->|API calls| API
+    API --> Auth
+    Auth --> PM
+    PM -->|Monitor txns| RPC
+    RPC --> Chain
+    PM -->|Payment confirmed| WE
+    WE -->|POST event| WH
+    KM -->|Encrypt/decrypt| PM
+    Cache -->|Cache responses| RPC
+```
+
+## Payment Lifecycle
+
+Every payment moves through a well-defined state machine:
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Payment created
+    pending --> confirmed: Transaction verified
+    pending --> expired: Timeout reached
+    pending --> failed: Verification failed
+    confirmed --> [*]
+    expired --> [*]
+    failed --> [*]
+```
+
+### States
+
+| State | Description |
+|-------|-------------|
+| `pending` | Payment created, waiting for customer transaction |
+| `confirmed` | Transaction found on-chain and verified. Funds settled to merchant wallet. |
+| `failed` | Transaction detected but verification failed (wrong amount, wrong token, etc.) |
+| `expired` | Payment window elapsed with no valid transaction |
+
+## Transaction Flow
+
+Here is the full lifecycle of a typical payment:
+
+```mermaid
+sequenceDiagram
+    participant Merchant as Merchant App
+    participant API as ZendFi API
+    participant DB as Database
+    participant Monitor as Payment Monitor
+    participant Solana as Solana RPC
+    participant Webhook as Webhook Engine
+
+    Merchant->>API: POST /api/v1/payments
+    API->>DB: Store payment record
+    API-->>Merchant: Payment ID, checkout URL, QR code
+
+    Note over Monitor: Polling for transactions
+
+    Monitor->>Solana: Check for incoming transfers
+    Solana-->>Monitor: Transaction found
+
+    Monitor->>Monitor: Verify amount, token, recipient
+    Monitor->>DB: Update payment status = confirmed
+    Monitor->>Webhook: Queue payment.confirmed event
+
+    Webhook->>Merchant: POST webhook payload
+    Merchant-->>Webhook: 200 OK
+
+    Note over Webhook: If delivery fails,<br/>retry with exponential backoff
+```
+
+## Gasless Transactions
+
+ZendFi supports gasless payments where the customer does not need SOL for transaction fees. This removes a major friction point in crypto payments.
+
+```mermaid
+sequenceDiagram
+    participant Customer as Customer Wallet
+    participant Checkout as Checkout UI
+    participant API as ZendFi API
+    participant FeePayer as ZendFi Fee Payer
+    participant Solana as Solana
+
+    Customer->>Checkout: Sign transaction (no SOL needed)
+    Checkout->>API: Submit signed transaction
+    API->>FeePayer: Co-sign as fee payer
+    FeePayer->>Solana: Submit fully-signed transaction
+    Solana-->>API: Transaction confirmed
+```
+
+The fee payer keypairs are separate for test and live modes:
+- **Test mode**: Uses a devnet fee payer
+- **Live mode**: Uses a mainnet fee payer with funded SOL balance
+
+## Key Management
+
+ZendFi uses a layered key management system:
+
+| Layer | Purpose |
+|-------|---------|
+| **Master Encryption Key** | Encrypts all stored keypairs at rest |
+| **Merchant Keypairs** | Per-merchant wallet keys, encrypted in the database |
+| **Fee Payer Keypairs** | Separate devnet/mainnet keys for sponsoring gas |
+| **MPC Wallets** | Optional multi-party computation wallets using Lit Protocol |
+| **Session Keys** | Time-limited, budget-capped keys for delegated operations |
+
+All private keys are encrypted with AES-256 before storage. The master encryption key is loaded from the environment and never persisted to disk.
+
+## Resilient RPC Infrastructure
+
+ZendFi does not rely on a single Solana RPC node. The system includes:
+
+- **Multiple RPC endpoints** with automatic failover
+- **Health monitoring** that continuously checks endpoint availability
+- **Response caching** to reduce RPC load and improve latency
+- **Endpoint rotation** that shifts traffic away from degraded nodes
+
+```mermaid
+graph LR
+    API[ZendFi API] --> LB[RPC Load Balancer]
+    LB --> RPC1[RPC Node 1]
+    LB --> RPC2[RPC Node 2]
+    LB --> RPC3[RPC Node 3]
+    Monitor[Health Monitor] --> RPC1
+    Monitor --> RPC2
+    Monitor --> RPC3
+    Monitor -->|Mark unhealthy| LB
+```
+
+## Webhook Delivery
+
+Webhook reliability is critical. ZendFi's webhook engine includes:
+
+- **Automatic retries** with exponential backoff on delivery failure
+- **Dead letter queue** for webhooks that exhaust all retry attempts
+- **HMAC-SHA256 signatures** on every payload for verification
+- **Deduplication** by event ID to prevent double-processing
+- **Correlation IDs** on every request for end-to-end tracing
+
+See the [Webhook Security](/security/webhooks) page for implementation details.
+
+## Background Workers
+
+ZendFi runs several background processes that maintain system health:
+
+| Worker | Interval | Purpose |
+|--------|----------|---------|
+| Payment Monitor | Continuous | Watches Solana for incoming transactions |
+| Subscription Processor | Periodic | Creates payments for due subscriptions |
+| Installment Monitor | Periodic | Checks for due installment payments |
+| Split Processor | Periodic | Processes pending payment split distributions |
+| Webhook Retry Worker | Continuous | Retries failed webhook deliveries |
+| Session Key Cleanup | Hourly | Revokes expired session keys |
+| Payment Intent Expiry | 5 minutes | Expires stale payment intents |
+| Uptime Monitor | Continuous | Tracks system and RPC health |
+| Cache Warming | 45 minutes | Pre-warms MPC wallet caches |
+
+## Data Model
+
+The core entities and their relationships:
+
+```mermaid
+erDiagram
+    MERCHANT ||--o{ PAYMENT : creates
+    MERCHANT ||--o{ PAYMENT_LINK : creates
+    MERCHANT ||--o{ SUBSCRIPTION_PLAN : creates
+    MERCHANT ||--o{ INVOICE : creates
+    MERCHANT ||--o{ INSTALLMENT_PLAN : creates
+    MERCHANT ||--o{ API_KEY : has
+
+    PAYMENT_LINK ||--o{ PAYMENT : generates
+    SUBSCRIPTION_PLAN ||--o{ SUBSCRIPTION : has
+    SUBSCRIPTION ||--o{ PAYMENT : generates
+    INSTALLMENT_PLAN ||--o{ PAYMENT : generates
+    INVOICE ||--o| PAYMENT : links_to
+
+    PAYMENT ||--o{ SPLIT : distributes_to
+    PAYMENT ||--o{ WEBHOOK_EVENT : triggers
+```
+
+## Network Configuration
+
+| Property | Test (Devnet) | Live (Mainnet) |
+|----------|---------------|----------------|
+| USDC Mint | Devnet USDC | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+| Explorer | Solscan (devnet) | Solscan (mainnet) |
+| Confirmation | `confirmed` | `confirmed` |
+| Fee payer | Devnet keypair | Mainnet keypair |

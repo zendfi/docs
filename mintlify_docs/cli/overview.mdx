@@ -1,0 +1,171 @@
+---
+title: "CLI Overview"
+description: "Install and use the ZendFi CLI to manage payments, API keys, webhooks, and more from your terminal."
+---
+
+The ZendFi CLI gives you full control over your payment infrastructure without leaving your terminal. Create payments, manage API keys, test webhooks locally, and scaffold new projects in seconds.
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install -g @zendfi/cli
+```
+
+```bash yarn
+yarn global add @zendfi/cli
+```
+
+```bash pnpm
+pnpm add -g @zendfi/cli
+```
+
+```bash bun
+bun add -g @zendfi/cli
+```
+
+</CodeGroup>
+
+Verify the installation:
+
+```bash
+zendfi --version
+```
+
+## Scaffolding Tool
+
+To create a brand new ZendFi project from a template, use the companion scaffolding package:
+
+```bash
+npx create-zendfi-app my-store
+```
+
+This is a separate entry point that wraps the `create` command with interactive prompts. More details in the [Init and Create](/cli/init) reference.
+
+## Authentication
+
+The CLI reads your API key from the `ZENDFI_API_KEY` environment variable. Set it before running commands:
+
+```bash
+export ZENDFI_API_KEY=zfi_test_your_key_here
+```
+
+Or add it to your shell profile (`~/.bashrc`, `~/.zshrc`) for persistence. You can also store it in a `.env` file in your project root and the CLI will pick it up when running `zendfi init`.
+
+<Note>
+The CLI detects whether your key is a test key (`zfi_test_`) or live key (`zfi_live_`). If you run a payment command with a live key, it will prompt for confirmation before proceeding.
+</Note>
+
+## Command Reference
+
+| Command | Description |
+|---|---|
+| `zendfi init` | Add ZendFi to an existing project |
+| `zendfi payment create` | Create a test payment |
+| `zendfi payment status <id>` | Check payment status |
+| `zendfi webhooks` | Test webhooks locally via tunnel |
+| `zendfi keys list` | List all API keys |
+| `zendfi keys create` | Create a new API key |
+| `zendfi keys rotate <id>` | Rotate an API key |
+| `zendfi intents create` | Create a payment intent |
+| `zendfi intents list` | List payment intents |
+| `zendfi intents get <id>` | Get intent details |
+| `zendfi intents confirm <id>` | Confirm a payment intent |
+| `zendfi intents cancel <id>` | Cancel a payment intent |
+| `zendfi ppp check <country>` | Get PPP factor for a country |
+| `zendfi ppp factors` | List all PPP factors |
+| `zendfi ppp calculate` | Calculate localized price |
+
+## Command Groups
+
+<CardGroup cols={3}>
+
+<Card title="Init and Create" icon="rocket" href="/cli/init">
+  Project scaffolding and framework detection. Add ZendFi to existing projects or start from a template.
+</Card>
+
+<Card title="Payments" icon="credit-card" href="/cli/payments">
+  Create test payments, check status, and watch payment lifecycle in real time.
+</Card>
+
+<Card title="Webhooks" icon="webhook" href="/cli/webhooks">
+  Local webhook testing with automatic tunnel setup through ngrok or Cloudflare.
+</Card>
+
+<Card title="API Keys" icon="key" href="/cli/keys">
+  List, create, and rotate API keys directly from the terminal.
+</Card>
+
+<Card title="Payment Intents" icon="file-invoice-dollar" href="/cli/advanced">
+  Two-phase payment flow management with create, confirm, and cancel operations.
+</Card>
+
+<Card title="PPP Pricing" icon="globe" href="/cli/advanced">
+  Purchasing Power Parity tools for international pricing optimization.
+</Card>
+
+</CardGroup>
+
+## Global Options
+
+Every command supports these flags:
+
+| Flag | Description |
+|---|---|
+| `--help` | Show help for a command |
+| `--version` | Show CLI version |
+
+## Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `ZENDFI_API_KEY` | Your API key (required for most commands) | -- |
+| `ZENDFI_API_URL` | Custom API base URL | `https://api.zendfi.tech/api/v1` |
+| `DEBUG` | Enable verbose output for troubleshooting | -- |
+
+## Quick Start
+
+<Steps>
+
+<Step title="Install the CLI">
+```bash
+npm install -g @zendfi/cli
+```
+</Step>
+
+<Step title="Set your API key">
+```bash
+export ZENDFI_API_KEY=zfi_test_your_key_here
+```
+</Step>
+
+<Step title="Create a test payment">
+```bash
+zendfi payment create --amount 50
+```
+The CLI creates the payment, copies the checkout URL to your clipboard, and optionally opens it in your browser.
+</Step>
+
+<Step title="Watch the payment">
+```bash
+zendfi payment status pay_test_abc123
+```
+See rich, formatted payment details including status, timeline, transaction signature, and wallet addresses.
+</Step>
+
+</Steps>
+
+## What's Next
+
+<CardGroup cols={2}>
+
+<Card title="Init and Create" icon="rocket" href="/cli/init">
+  Set up new projects or add ZendFi to existing ones.
+</Card>
+
+<Card title="Test Payments" icon="credit-card" href="/cli/payments">
+  Create and monitor test payments from your terminal.
+</Card>
+
+</CardGroup>

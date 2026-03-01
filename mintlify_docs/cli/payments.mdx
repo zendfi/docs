@@ -1,0 +1,241 @@
+---
+title: "Payments"
+description: "Create test payments, check payment status, and watch the payment lifecycle from your terminal."
+---
+
+The payments commands let you create, monitor, and inspect payments directly from the CLI. Useful for testing your integration without writing any code.
+
+## payment create
+
+Create a new payment and get a checkout URL.
+
+```bash
+zendfi payment create [options]
+```
+
+Aliases: `zendfi payment test`, `zendfi pay create`
+
+### Options
+
+| Flag | Description | Default |
+|---|---|---|
+| `--amount <amount>` | Payment amount in USD | Interactive prompt |
+| `--description <text>` | Payment description | Interactive prompt |
+| `--email <email>` | Customer email address | Interactive prompt |
+| `--open` | Open the checkout URL in your browser | Interactive prompt |
+| `--watch` | Watch payment status until completion | Interactive prompt |
+
+### Interactive Mode
+
+If you omit the flags, the CLI prompts you for each value:
+
+```bash
+$ zendfi payment create
+
+Create Test Payment
+
+? Amount (USD): 50
+? Description: Premium plan upgrade
+? Customer email (optional): alice@example.com
+```
+
+### Non-Interactive Mode
+
+Pass all options as flags to skip prompts:
+
+```bash
+zendfi payment create --amount 50 --description "Test order" --open --watch
+```
+
+### What Happens
+
+<Steps>
+
+<Step title="API key validation">
+The CLI checks for `ZENDFI_API_KEY` in your environment. If the key starts with `zfi_live_` instead of `zfi_test_`, it warns you and asks for confirmation before proceeding.
+</Step>
+
+<Step title="Payment creation">
+Sends a `POST /api/v1/payments` request with your parameters:
+
+```json
+{
+  "amount": 50,
+  "currency": "USD",
+  "description": "Premium plan upgrade",
+  "customer_email": "alice@example.com",
+  "metadata": {
+    "source": "cli-test"
+  }
+}
+```
+
+All CLI-created payments include `"source": "cli-test"` in their metadata so you can identify them.
+</Step>
+
+<Step title="Display results">
+Shows a formatted summary with Payment ID, status, amount, mode (Test/Live), and checkout URL. The checkout URL is automatically copied to your clipboard.
+</Step>
+
+<Step title="Optional: open in browser">
+If you pass `--open` or confirm the prompt, the CLI opens the checkout URL in your default browser.
+</Step>
+
+<Step title="Optional: watch status">
+If you pass `--watch` or confirm the prompt, the CLI polls the payment status every few seconds and displays live updates until the payment is confirmed, fails, or expires.
+</Step>
+
+</Steps>
+
+### Example Output
+
+```
+✓ Payment created!
+
+════════════════════════════════════════════════════════════
+
+  Payment Details:
+
+  Payment ID:   pay_test_7f3k9x2m
+  Status:       ⏳ PENDING
+  Amount:       $50.00 USD
+  Mode:         Test (Devnet)
+  Created:      12/15/2024, 2:30:00 PM
+
+  This is a test payment (devnet)
+     Use your test wallet to complete it
+
+──────────────────────────────────────────────────────────
+
+  Checkout URL:
+
+  https://checkout.zendfi.tech/pay/pay_test_7f3k9x2m
+
+════════════════════════════════════════════════════════════
+
+✓ Copied to clipboard!
+
+? Open checkout URL in browser? Yes
+  Opened in browser
+
+? Watch payment status? Yes
+  Watching... (Ctrl+C to stop)
+  ⏳ pending → ⏳ pending → ✓ CONFIRMED (12s)
+```
+
+---
+
+## payment status
+
+Check the current status and details of any payment.
+
+```bash
+zendfi payment status <payment-id>
+```
+
+### Arguments
+
+| Argument | Description | Required |
+|---|---|---|
+| `payment-id` | The payment ID (e.g., `pay_test_abc123`) | Yes |
+
+### Output Sections
+
+The status command displays a rich, formatted view of the payment:
+
+**Payment Details** -- ID, status badge, amount, mode (test/live), description, customer email.
+
+**Timeline** -- Creation time, confirmation time (if confirmed), duration between creation and confirmation, expiration countdown (if still pending).
+
+**Transaction** -- Solana transaction signature and a direct link to the block explorer (Solscan).
+
+**Wallets** -- Merchant wallet address and customer wallet address (truncated for readability).
+
+**Metadata** -- Any custom metadata attached to the payment.
+
+**Actions** -- For pending payments, shows the checkout URL. For confirmed payments, shows a success message. For failed or expired payments, shows the reason and suggests creating a new payment.
+
+### Status Badges
+
+| Status | Badge |
+|---|---|
+| `pending` | PENDING |
+| `confirmed` | CONFIRMED |
+| `failed` | FAILED |
+| `expired` | EXPIRED |
+
+### Example
+
+```bash
+$ zendfi payment status pay_test_7f3k9x2m
+
+✓ Payment found!
+
+══════════════════════════════════════════════════════════════════════
+
+  Payment Details
+
+  Payment ID:      pay_test_7f3k9x2m
+  Status:          ✓ CONFIRMED
+  Amount:          $50.00 USD
+  Mode:            Test (Devnet)
+  Description:     Premium plan upgrade
+  Customer:        alice@example.com
+
+  ──────────────────────────────────────────────────────────────────
+
+  Timeline
+
+  Created:         12/15/2024, 2:30:00 PM
+  Confirmed:       12/15/2024, 2:30:12 PM
+  Duration:        12 seconds
+
+  ──────────────────────────────────────────────────────────────────
+
+  Transaction
+
+  Signature:       5K7x...mR3q
+  Explorer:        https://solscan.io/tx/5K7x...mR3q
+
+  ──────────────────────────────────────────────────────────────────
+
+  ✓ Payment successfully completed!
+
+══════════════════════════════════════════════════════════════════════
+```
+
+---
+
+## Debugging
+
+Enable verbose output with the `DEBUG` environment variable:
+
+```bash
+DEBUG=1 zendfi payment status pay_test_abc123
+```
+
+This logs the raw API response JSON, which is useful for troubleshooting unexpected behavior.
+
+## Common Patterns
+
+### Quick smoke test
+
+```bash
+# Create and immediately watch a payment
+zendfi payment create --amount 1 --description "Smoke test" --open --watch
+```
+
+### Scripting
+
+```bash
+# Create a payment and extract the ID
+PAYMENT_ID=$(zendfi payment create --amount 50 2>/dev/null | grep "Payment ID" | awk '{print $NF}')
+echo "Created: $PAYMENT_ID"
+
+# Check status later
+zendfi payment status $PAYMENT_ID
+```
+
+### Live key safety
+
+The CLI prevents accidental live payments. If your `ZENDFI_API_KEY` starts with `zfi_live_`, the CLI displays a warning and requires explicit confirmation before creating a real payment. Use test keys (`zfi_test_`) for development and CI environments.

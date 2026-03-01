@@ -1,0 +1,151 @@
+---
+title: Authentication
+description: How to authenticate with the ZendFi API using Bearer tokens and API keys.
+---
+
+# Authentication
+
+Every request to the ZendFi API must include a valid API key. Keys are scoped to a specific mode (test or live) and tied to your merchant account.
+
+## API Key Format
+
+ZendFi API keys follow a predictable format that encodes their mode:
+
+| Prefix | Mode | Network | Purpose |
+|--------|------|---------|---------|
+| `zfi_test_` | Test | Solana Devnet | Development and testing |
+| `zfi_live_` | Live | Solana Mainnet | Production transactions |
+
+The SDK and API automatically route requests to the correct Solana network based on the key prefix. You do not need to specify devnet or mainnet anywhere -- it is determined by the key.
+
+## Using Your API Key
+
+Include your API key as a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer zfi_test_abc123def456
+```
+
+### With the SDK
+
+The SDK reads your key from the `ZENDFI_API_KEY` environment variable automatically:
+
+```typescript
+// Zero-config: reads from process.env.ZENDFI_API_KEY
+import { zendfi } from '@zendfi/sdk';
+
+const payment = await zendfi.createPayment({ amount: 50 });
+```
+
+You can also pass it explicitly:
+
+```typescript
+import { ZendFiClient } from '@zendfi/sdk';
+
+const client = new ZendFiClient({
+  apiKey: 'zfi_test_your_key_here',
+});
+```
+
+### With cURL
+
+```bash
+curl -X POST https://api.zendfi.tech/api/v1/payments \
+  -H "Authorization: Bearer zfi_test_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 50, "currency": "USD"}'
+```
+
+## Environment Variables
+
+The SDK checks these environment variables in order:
+
+| Variable | Framework |
+|----------|-----------|
+| `ZENDFI_API_KEY` | Any (Node.js) |
+| `NEXT_PUBLIC_ZENDFI_API_KEY` | Next.js |
+| `REACT_APP_ZENDFI_API_KEY` | Create React App |
+
+<Warning>
+Never expose your API key in client-side code. The `NEXT_PUBLIC_` and `REACT_APP_` prefixes are supported for convenience, but API calls should always be made from your server. Client-side exposure of your key allows anyone to create payments on your behalf.
+</Warning>
+
+## Managing API Keys
+
+### Via the Dashboard
+
+Your primary API keys are available in the [ZendFi Dashboard](https://app.zendfi.tech) under Settings.
+
+### Via the API
+
+You can also manage keys programmatically:
+
+```bash
+# List all keys
+curl https://api.zendfi.tech/api/v1/keys \
+  -H "Authorization: Bearer zfi_test_your_key"
+
+# Create a new key
+curl -X POST https://api.zendfi.tech/api/v1/keys \
+  -H "Authorization: Bearer zfi_test_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Production Backend", "mode": "live"}'
+
+# Rotate a key
+curl -X POST https://api.zendfi.tech/api/v1/keys/{key_id}/rotate \
+  -H "Authorization: Bearer zfi_test_your_key"
+```
+
+### Via the CLI
+
+```bash
+zendfi keys list
+zendfi keys create --name "CI/CD Pipeline" --mode test
+zendfi keys rotate key_abc123
+```
+
+## Key Rotation
+
+When you rotate a key, the old key is immediately invalidated and a new one is returned. Make sure to update your environment variables promptly.
+
+<Tip>
+Consider using separate keys for different environments (staging, production) and services. This limits the blast radius if a key is compromised and makes audit logs more useful.
+</Tip>
+
+## Error Responses
+
+If authentication fails, the API returns a `401` status code:
+
+```json
+{
+  "error": "Invalid or expired API key",
+  "code": "authentication_failed"
+}
+```
+
+Common causes:
+
+- Missing `Authorization` header
+- Incorrect key prefix (typo or malformed key)
+- Revoked or rotated key
+- Using a test key against a live-only endpoint (or vice versa)
+
+## Rate Limits
+
+Authenticated requests are rate-limited per merchant:
+
+| Endpoint Category | Limit | Window |
+|-------------------|-------|--------|
+| Payment operations | 50 requests | 1 hour |
+| Dashboard operations | 200 requests | 1 hour |
+| All other endpoints | 100 requests | 1 hour |
+
+Rate limit headers are included in every response:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 97
+X-RateLimit-Reset: 1709312400
+```
+
+When you exceed the limit, the API returns `429 Too Many Requests` with a `Retry-After` header.

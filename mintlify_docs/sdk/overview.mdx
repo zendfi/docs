@@ -1,0 +1,149 @@
+---
+title: SDK Overview
+description: Zero-config TypeScript SDK for ZendFi crypto payments.
+---
+
+# SDK Overview
+
+The `@zendfi/sdk` package gives you a fully-typed TypeScript client for the ZendFi API. It handles authentication, retries, idempotency, and environment detection automatically -- install it and start accepting payments in under a minute.
+
+## Installation
+
+<CodeGroup>
+
+```bash npm
+npm install @zendfi/sdk
+```
+
+```bash pnpm
+pnpm add @zendfi/sdk
+```
+
+```bash yarn
+yarn add @zendfi/sdk
+```
+
+</CodeGroup>
+
+## Quick Start
+
+```typescript
+import { ZendFiClient } from '@zendfi/sdk';
+
+const zendfi = new ZendFiClient({
+  apiKey: process.env.ZENDFI_API_KEY,
+});
+
+const payment = await zendfi.createPayment({
+  amount: 25.00,
+  description: 'My first payment',
+});
+
+console.log(payment.payment_url);
+```
+
+## Zero-Config Design
+
+The SDK reads configuration from multiple sources in this order:
+
+<Steps>
+  <Step title="Explicit Options">
+    Values passed directly to the `ZendFiClient` constructor take highest priority.
+  </Step>
+  <Step title="Environment Variables">
+    `ZENDFI_API_KEY`, `NEXT_PUBLIC_ZENDFI_API_KEY`, and `REACT_APP_ZENDFI_API_KEY` are checked automatically.
+  </Step>
+  <Step title="CLI Credentials">
+    If you ran `zendfi init`, your key is stored in `~/.zendfi/credentials.json` and loaded automatically.
+  </Step>
+</Steps>
+
+## Auto-Detection
+
+The SDK detects your environment and mode from context:
+
+| Signal | Detection |
+|--------|-----------|
+| `zfi_test_` prefix | Test mode (Solana Devnet) |
+| `zfi_live_` prefix | Live mode (Solana Mainnet) |
+| `NODE_ENV=production` | Production environment |
+| `localhost` hostname | Development environment |
+
+## Singleton vs Custom Instance
+
+The SDK exports both a singleton and a constructor:
+
+```typescript
+// Singleton -- auto-configured from environment
+import { zendfi } from '@zendfi/sdk';
+const payment = await zendfi.createPayment({ amount: 10 });
+
+// Custom instance -- explicit configuration
+import { ZendFiClient } from '@zendfi/sdk';
+const client = new ZendFiClient({ apiKey: 'zfi_test_...' });
+const payment = await client.createPayment({ amount: 10 });
+```
+
+The singleton throws a helpful error if `ZENDFI_API_KEY` is not set:
+
+```
+ZendFi singleton not initialized. Set ZENDFI_API_KEY environment 
+variable or create a custom instance: new ZendFiClient({ apiKey: "..." })
+```
+
+## Package Exports
+
+The SDK exports everything you need from a single entry point:
+
+```typescript
+import {
+  // Client
+  ZendFiClient,
+  zendfi,
+
+  // Types
+  type Payment,
+  type PaymentLink,
+  type Subscription,
+  type Invoice,
+  type InstallmentPlan,
+  type ZendFiConfig,
+
+  // Branded IDs
+  asPaymentId,
+  asMerchantId,
+  asInvoiceId,
+
+  // Errors
+  ZendFiError,
+  AuthenticationError,
+  PaymentError,
+  ValidationError,
+
+  // Embedded Checkout
+  ZendFiEmbeddedCheckout,
+
+  // Webhooks
+  processWebhook,
+
+  // Interceptors
+  InterceptorManager,
+} from '@zendfi/sdk';
+```
+
+## What's Next
+
+<CardGroup cols={2}>
+  <Card title="Client Reference" icon="code" href="/sdk/client">
+    Full method reference for ZendFiClient.
+  </Card>
+  <Card title="Types" icon="shapes" href="/sdk/types">
+    All type definitions and branded IDs.
+  </Card>
+  <Card title="Errors" icon="triangle-exclamation" href="/sdk/errors">
+    Error classes and handling patterns.
+  </Card>
+  <Card title="Embedded Checkout" icon="window-maximize" href="/sdk/embedded-checkout">
+    Drop-in payment UI component.
+  </Card>
+</CardGroup>

@@ -1,0 +1,184 @@
+---
+title: API Keys
+description: Create, list, and rotate your merchant API keys.
+---
+
+# API Keys
+
+API keys authenticate all requests to the ZendFi API. Each key is scoped to either **test** or **live** mode, and the prefix tells you which environment it targets.
+
+| Prefix | Mode | Network |
+|--------|------|---------|
+| `zfi_test_` | Test | Solana Devnet |
+| `zfi_live_` | Live | Solana Mainnet |
+
+## List API Keys
+
+```
+GET /api/v1/keys
+```
+
+Returns all API keys for the authenticated merchant. The actual key values are never returned -- only metadata.
+
+### Response
+
+```json
+[
+  {
+    "id": "key_abc123",
+    "mode": "test",
+    "is_active": true,
+    "created_at": "2026-03-01T12:00:00Z",
+    "last_used_at": "2026-03-05T09:30:00Z"
+  },
+  {
+    "id": "key_def456",
+    "mode": "live",
+    "is_active": true,
+    "created_at": "2026-03-01T12:00:00Z",
+    "last_used_at": null
+  }
+]
+```
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.zendfi.tech/api/v1/keys \
+  -H "Authorization: Bearer zfi_test_your_key"
+```
+
+```typescript SDK
+const keys = await zendfi.listApiKeys();
+```
+
+```bash CLI
+zendfi keys list
+```
+
+</CodeGroup>
+
+---
+
+## Create an API Key
+
+```
+POST /api/v1/keys
+```
+
+Generates a new API key. The key value is returned **only once** in the response -- store it securely.
+
+<ParamField body="mode" type="string" required>
+  Either `test` or `live`.
+</ParamField>
+
+### Example
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.zendfi.tech/api/v1/keys \
+  -H "Authorization: Bearer zfi_test_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "test"}'
+```
+
+```bash CLI
+zendfi keys create --mode test
+```
+
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "key": "zfi_test_a1b2c3d4e5f6...",
+  "id": "key_ghi789",
+  "mode": "test",
+  "created_at": "2026-03-05T14:00:00Z"
+}
+```
+
+<Warning>
+  The `key` field is only included in the create response. There is no way to retrieve it later. If you lose it, rotate the key to generate a new one.
+</Warning>
+
+---
+
+## Rotate an API Key
+
+```
+POST /api/v1/keys/{id}/rotate
+```
+
+Deactivates the specified key and generates a replacement. The old key stops working immediately, and the new key is returned in the response.
+
+<ParamField path="id" type="string" required>
+  API key ID to rotate.
+</ParamField>
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.zendfi.tech/api/v1/keys/key_abc123/rotate \
+  -H "Authorization: Bearer zfi_test_your_key"
+```
+
+```bash CLI
+zendfi keys rotate --key-id key_abc123
+```
+
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "old_key_id": "key_abc123",
+  "old_key_deactivated": true,
+  "new_key": "zfi_test_x9y8z7w6v5u4...",
+  "new_key_id": "key_jkl012",
+  "mode": "test",
+  "created_at": "2026-03-05T14:30:00Z"
+}
+```
+
+---
+
+## Key Security
+
+<AccordionGroup>
+  <Accordion title="Storage">
+    Keys are hashed with both SHA-256 (for fast lookup) and Argon2 (for breach resistance) before being stored. ZendFi never stores plaintext keys.
+  </Accordion>
+  <Accordion title="Environment Variables">
+    Always store keys in environment variables or a secrets manager. Never commit them to source control. Use `.env` files locally and your platform's secrets management in production.
+  </Accordion>
+  <Accordion title="Key Rotation">
+    Rotate keys regularly and immediately if a key may have been exposed. Rotation is atomic -- the old key is deactivated the moment the new one is created.
+  </Accordion>
+  <Accordion title="Mode Isolation">
+    Test keys cannot access live data and vice versa. This prevents accidental production charges during development.
+  </Accordion>
+</AccordionGroup>
+
+## Rate Limits
+
+API keys are rate-limited per merchant:
+
+| Endpoint Category | Limit | Window |
+|-------------------|-------|--------|
+| Payment creation | 50 requests | 1 hour |
+| Dashboard / reads | 200 requests | 1 hour |
+| All other endpoints | 100 requests | 1 hour |
+
+Rate limit headers are included in every response:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 87
+X-RateLimit-Reset: 1709298300
+```
+
+When you exceed the limit, the API returns `429 Too Many Requests` with a `Retry-After` header.

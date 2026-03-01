@@ -1,0 +1,311 @@
+---
+title: Client Reference
+description: Complete method reference for ZendFiClient.
+---
+
+# Client Reference
+
+The `ZendFiClient` class is the core of the SDK. It provides methods for every ZendFi API operation with built-in retries, idempotency, and typed responses.
+
+## Constructor
+
+```typescript
+import { ZendFiClient } from '@zendfi/sdk';
+
+const zendfi = new ZendFiClient(options?: Partial<ZendFiConfig>);
+```
+
+### Configuration Options
+
+<ParamField body="apiKey" type="string">
+  Your ZendFi API key. Falls back to `ZENDFI_API_KEY` env var.
+</ParamField>
+
+<ParamField body="baseURL" type="string" default="https://api.zendfi.tech">
+  API base URL. Override for self-hosted or proxy setups.
+</ParamField>
+
+<ParamField body="environment" type="string" default="auto-detected">
+  `development`, `staging`, or `production`. Auto-detected from `NODE_ENV`.
+</ParamField>
+
+<ParamField body="mode" type="string" default="auto-detected">
+  `test` or `live`. Auto-detected from API key prefix.
+</ParamField>
+
+<ParamField body="timeout" type="number" default="30000">
+  Request timeout in milliseconds.
+</ParamField>
+
+<ParamField body="retries" type="number" default="3">
+  Number of retry attempts for failed requests (5xx and network errors).
+</ParamField>
+
+<ParamField body="idempotencyEnabled" type="boolean" default="true">
+  Automatically generate idempotency keys for POST requests.
+</ParamField>
+
+<ParamField body="debug" type="boolean" default="false">
+  Log all requests and responses to the console.
+</ParamField>
+
+---
+
+## Payments
+
+### createPayment
+
+Creates a new payment and returns a checkout URL.
+
+```typescript
+const payment = await zendfi.createPayment({
+  amount: 49.99,
+  description: 'Pro Plan',
+  currency: 'USD',       // default
+  token: 'USDC',         // default
+  customer_email: 'jane@example.com',
+  metadata: { order_id: '12345' },
+  split_recipients: [    // optional
+    { recipient_wallet: '7xKXt...', percentage: 80 },
+    { recipient_wallet: '8yLYu...', percentage: 20 },
+  ],
+});
+
+console.log(payment.payment_url);
+```
+
+<ResponseField name="Returns" type="Payment">
+  Payment object with `id`, `status`, `payment_url`, `checkout_url`, `qr_code`, `expires_at`, and more.
+</ResponseField>
+
+### getPayment
+
+Retrieves a payment by ID.
+
+```typescript
+const payment = await zendfi.getPayment('pay_test_abc123');
+console.log(payment.status); // 'pending' | 'confirmed' | 'failed' | 'expired'
+```
+
+---
+
+## Payment Links
+
+### createPaymentLink
+
+Creates a shareable checkout URL.
+
+```typescript
+const link = await zendfi.createPaymentLink({
+  amount: 99.00,
+  description: 'Premium License',
+  onramp: true,            // enable fiat payment option
+  max_uses: 100,
+  expires_at: '2026-12-31T23:59:59Z',
+});
+
+console.log(link.url);             // convenience alias
+console.log(link.hosted_page_url); // same URL
+```
+
+### getPaymentLink
+
+```typescript
+const link = await zendfi.getPaymentLink('link_code_here');
+```
+
+### listPaymentLinks
+
+```typescript
+const links = await zendfi.listPaymentLinks();
+```
+
+---
+
+## Subscriptions
+
+### createSubscriptionPlan
+
+Defines a recurring billing plan.
+
+```typescript
+const plan = await zendfi.createSubscriptionPlan({
+  name: 'Pro Plan',
+  amount: 29.99,
+  interval: 'monthly',
+  trial_days: 14,
+});
+```
+
+### getSubscriptionPlan
+
+```typescript
+const plan = await zendfi.getSubscriptionPlan('plan_abc123');
+```
+
+### createSubscription
+
+Subscribes a customer to a plan.
+
+```typescript
+const sub = await zendfi.createSubscription({
+  plan_id: 'plan_abc123',
+  customer_email: 'customer@example.com',
+  customer_wallet: '7xKXt...',
+});
+```
+
+### getSubscription
+
+```typescript
+const sub = await zendfi.getSubscription('sub_abc123');
+```
+
+### cancelSubscription
+
+```typescript
+const canceled = await zendfi.cancelSubscription('sub_abc123');
+```
+
+---
+
+## Installment Plans
+
+### createInstallmentPlan
+
+Splits a purchase into scheduled payments.
+
+```typescript
+const plan = await zendfi.createInstallmentPlan({
+  customer_wallet: '7xKXt...',
+  total_amount: 1200.00,
+  installment_count: 4,
+  payment_frequency_days: 30,
+  description: 'Quarterly payments',
+});
+```
+
+### getInstallmentPlan
+
+```typescript
+const plan = await zendfi.getInstallmentPlan('plan_test_abc123');
+```
+
+### listInstallmentPlans
+
+```typescript
+const plans = await zendfi.listInstallmentPlans({ limit: 20, offset: 0 });
+```
+
+### listCustomerInstallmentPlans
+
+```typescript
+const plans = await zendfi.listCustomerInstallmentPlans('7xKXt...');
+```
+
+### cancelInstallmentPlan
+
+```typescript
+const result = await zendfi.cancelInstallmentPlan('plan_test_abc123');
+```
+
+---
+
+## Invoices
+
+### createInvoice
+
+Creates a professional invoice.
+
+```typescript
+const invoice = await zendfi.createInvoice({
+  customer_email: 'client@company.com',
+  customer_name: 'Acme Corp',
+  amount: 2500.00,
+  description: 'March consulting',
+  line_items: [
+    { description: 'Strategy session', quantity: 5, unit_price: 500 },
+  ],
+  due_date: '2026-03-15T00:00:00Z',
+});
+```
+
+### getInvoice
+
+```typescript
+const invoice = await zendfi.getInvoice('inv_test_abc123');
+```
+
+### listInvoices
+
+```typescript
+const invoices = await zendfi.listInvoices();
+```
+
+### sendInvoice
+
+Sends the invoice to the customer via email.
+
+```typescript
+const result = await zendfi.sendInvoice('inv_test_abc123');
+console.log(result.payment_url); // URL included in the email
+console.log(result.sent_to);     // verified recipient
+```
+
+---
+
+## Webhooks
+
+### verifyWebhook
+
+Verifies the HMAC-SHA256 signature of an incoming webhook.
+
+```typescript
+const isValid = zendfi.verifyWebhook({
+  payload: rawBody,                    // string or object
+  signature: req.headers['x-zendfi-signature'],
+  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+});
+
+if (!isValid) {
+  return res.status(401).json({ error: 'Invalid signature' });
+}
+```
+
+<Note>
+  Always pass the **raw request body** as the payload, not the parsed JSON. Parsing and re-serializing can alter whitespace and break the signature.
+</Note>
+
+---
+
+## Retry and Idempotency
+
+The client automatically retries failed requests:
+
+- **5xx errors**: Retried up to `retries` times with exponential backoff ($2^n$ seconds)
+- **Network errors**: Retried with the same backoff logic
+- **4xx errors**: Never retried (these indicate client-side issues)
+
+Idempotency keys are generated automatically for all POST requests when `idempotencyEnabled` is `true` (the default). This prevents duplicate charges from retried requests.
+
+---
+
+## Debug Mode
+
+Enable debug logging to see all requests and responses:
+
+```typescript
+const zendfi = new ZendFiClient({
+  apiKey: 'zfi_test_...',
+  debug: true,
+});
+```
+
+Output:
+
+```
+[ZendFi] POST /api/v1/payments
+[ZendFi] Request: {"amount":49.99,"description":"Pro Plan"}
+[ZendFi] 200 OK (142ms)
+[ZendFi] Response: {"id":"pay_test_abc123","status":"pending",...}
+```

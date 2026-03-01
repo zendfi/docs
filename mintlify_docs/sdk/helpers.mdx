@@ -1,0 +1,259 @@
+---
+title: Helpers
+description: Optional utilities for wallet connection, transaction polling, and dev tools.
+---
+
+# Helpers
+
+The SDK includes optional helper utilities that are tree-shakeable -- import only what you need. These are not required for basic SDK usage but simplify common integration tasks.
+
+```typescript
+import { WalletConnector, TransactionPoller, DevTools } from '@zendfi/sdk/helpers';
+```
+
+---
+
+## WalletConnector
+
+Detects and connects to Solana wallet browser extensions (Phantom, Solflare, Backpack, Coinbase, Trust).
+
+### Detect and Connect
+
+```typescript
+import { WalletConnector } from '@zendfi/sdk/helpers';
+
+const wallet = await WalletConnector.detectAndConnect({
+  preferredProvider: 'phantom',
+  autoConnect: true,
+});
+
+console.log(`Connected: ${wallet.address}`);
+console.log(`Provider: ${wallet.provider}`);
+```
+
+### Detect Available Wallets
+
+```typescript
+const wallets = WalletConnector.detectWallets();
+// ['phantom', 'solflare']
+```
+
+### ConnectedWallet Interface
+
+```typescript
+interface ConnectedWallet {
+  address: string;
+  provider: 'phantom' | 'solflare' | 'backpack' | 'coinbase' | 'trust' | 'unknown';
+  publicKey: any;
+  signTransaction: (tx: any) => Promise<any>;
+  signAllTransactions: (txs: any[]) => Promise<any[]>;
+  signMessage: (message: Uint8Array) => Promise<{ signature: Uint8Array }>;
+  disconnect: () => Promise<void>;
+  isConnected: () => boolean;
+  raw: any; // underlying provider object
+}
+```
+
+### Configuration
+
+```typescript
+interface WalletConnectorConfig {
+  preferredProvider?: 'phantom' | 'solflare' | 'backpack' | 'coinbase' | 'trust';
+  autoConnect?: boolean;
+  showInstallPrompt?: boolean;
+  network?: string;
+}
+```
+
+### React Hook
+
+```typescript
+import { createWalletHook } from '@zendfi/sdk/helpers';
+
+const useWallet = createWalletHook();
+
+function PayButton() {
+  const { wallet, connecting, error, connect, disconnect, isConnected } = useWallet();
+
+  if (connecting) return <span>Connecting...</span>;
+  if (error) return <span>Error: {error.message}</span>;
+
+  return isConnected
+    ? <button onClick={disconnect}>Disconnect {wallet.address.slice(0, 8)}...</button>
+    : <button onClick={connect}>Connect Wallet</button>;
+}
+```
+
+---
+
+## TransactionPoller
+
+Polls Solana transactions for confirmation with exponential backoff.
+
+### Wait for Confirmation
+
+```typescript
+import { TransactionPoller } from '@zendfi/sdk/helpers';
+
+const status = await TransactionPoller.waitForConfirmation(
+  '5UfDuKxNgqHYDi...',
+  {
+    timeout: 60000,
+    interval: 2000,
+    commitment: 'confirmed',
+  }
+);
+
+if (status.confirmed) {
+  console.log(`Confirmed in slot ${status.slot}`);
+} else {
+  console.error(`Failed: ${status.error}`);
+}
+```
+
+### TransactionStatus
+
+```typescript
+interface TransactionStatus {
+  confirmed: boolean;
+  signature: string;
+  slot?: number;
+  blockTime?: number;
+  confirmations?: number;
+  error?: string;
+}
+```
+
+### PollingOptions
+
+```typescript
+interface PollingOptions {
+  timeout?: number;      // Max wait time (default: 60000ms)
+  interval?: number;     // Initial poll interval (default: 2000ms)
+  maxInterval?: number;  // Max poll interval (default: 10000ms)
+  maxAttempts?: number;  // Max attempts (default: 30)
+  commitment?: 'processed' | 'confirmed' | 'finalized';
+  rpcUrl?: string;       // Custom RPC endpoint
+}
+```
+
+### TransactionMonitor
+
+For monitoring multiple transactions with structured callbacks:
+
+```typescript
+import { TransactionMonitor } from '@zendfi/sdk/helpers';
+
+const monitor = new TransactionMonitor();
+
+monitor.monitor('sig_abc...', {
+  onConfirmed: (status) => {
+    console.log(`Confirmed in slot ${status.slot}`);
+  },
+  onFailed: (status) => {
+    console.error(`Failed: ${status.error}`);
+  },
+  onTimeout: () => {
+    console.warn('Transaction monitoring timed out');
+  },
+});
+
+// Optionally pass polling options as the third argument
+monitor.monitor('sig_def...', {
+  onConfirmed: (status) => { /* ... */ },
+}, { timeout: 120000, interval: 3000 });
+
+// Stop monitoring a specific transaction
+monitor.stopMonitoring('sig_abc...');
+
+// Stop all monitors
+monitor.stopAll();
+
+// List active monitors
+console.log(monitor.getActiveMonitors());
+```
+
+---
+
+## DevTools
+
+Development-only utilities for debugging and testing.
+
+### Enable Debug Mode
+
+```typescript
+import { DevTools } from '@zendfi/sdk/helpers';
+
+DevTools.enableDebugMode();
+// All API requests will be logged to console
+```
+
+### Mock Wallet
+
+Create a mock wallet for testing without a real browser extension:
+
+```typescript
+const mockWallet = DevTools.mockWallet();
+// Returns a MockWallet object with a random devnet address
+// All signing operations are no-ops
+
+interface MockWallet {
+  address: string;
+  publicKey: any;
+  signTransaction: (tx: any) => Promise<any>;
+  signMessage: (message: Uint8Array) => Promise<{ signature: Uint8Array }>;
+  disconnect: () => Promise<void>;
+  isConnected: () => boolean;
+}
+```
+
+### Test Session Key
+
+```typescript
+const testKey = await DevTools.createTestSessionKey();
+console.log(testKey.sessionKeyId);
+console.log(testKey.budget); // USDC spending limit
+```
+
+### Performance Monitor
+
+Generic metric recorder for tracking custom performance data:
+
+```typescript
+import { PerformanceMonitor } from '@zendfi/sdk/helpers';
+
+const perf = new PerformanceMonitor();
+
+// Record metrics manually
+perf.record('api_latency', 142);
+perf.record('api_latency', 98);
+perf.record('api_latency', 210);
+
+// Get stats for a specific metric
+const stats = perf.getStats('api_latency');
+// { count, min, max, avg, p50, p95, p99 }
+
+// Get all recorded stats
+const allStats = perf.getAllStats();
+
+// Print a table report to console
+perf.printReport();
+
+// Clear all recorded data
+perf.clear();
+```
+
+<Warning>
+  DevTools only work in development environments. Calling `DevTools.enableDebugMode()` in production is a no-op.
+</Warning>
+
+---
+
+## Tree Shaking
+
+All helpers are independently importable. If you only use `WalletConnector`, the `TransactionPoller` and `DevTools` code is not included in your bundle:
+
+```typescript
+// Only WalletConnector is bundled
+import { WalletConnector } from '@zendfi/sdk/helpers';
+```

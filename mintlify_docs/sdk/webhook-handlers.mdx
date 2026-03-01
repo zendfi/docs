@@ -1,0 +1,201 @@
+---
+title: Webhook Handlers
+description: Type-safe, framework-specific webhook handlers with deduplication.
+---
+
+# Webhook Handlers
+
+The SDK includes ready-made webhook handlers for Express and Next.js that handle signature verification, JSON parsing, deduplication, and event routing automatically.
+
+## processWebhook
+
+The low-level webhook processor. Framework handlers build on top of this.
+
+```typescript
+import { processWebhook } from '@zendfi/sdk';
+
+const result = await processWebhook({
+  signature: req.headers['x-zendfi-signature'],
+  body: rawBody,
+  handlers: {
+    'payment.confirmed': async (payment) => {
+      await fulfillOrder(payment);
+    },
+  },
+  config: {
+    secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  },
+});
+```
+
+### WebhookResult
+
+```typescript
+interface WebhookResult {
+  success: boolean;     // did the webhook process without error
+  processed: boolean;   // was a handler actually invoked
+  error?: string;       // error message if failed
+  event?: WebhookEvent; // which event type was received
+  statusCode?: number;  // suggested HTTP status code
+}
+```
+
+---
+
+## Express Handler
+
+Import from `@zendfi/sdk/express`:
+
+```typescript
+import express from 'express';
+import { createExpressWebhookHandler } from '@zendfi/sdk/express';
+
+const app = express();
+
+app.post('/webhooks/zendfi',
+  express.raw({ type: 'application/json' }),
+  createExpressWebhookHandler({
+    secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+    handlers: {
+      'payment.confirmed': async (payment) => {
+        await db.orders.update(
+          { status: 'paid' },
+          { where: { id: payment.metadata.orderId } }
+        );
+      },
+      'payment.failed': async (payment) => {
+        await sendFailureNotification(payment);
+      },
+      'subscription.canceled': async (subscription) => {
+        await revokeAccess(subscription.customer_email);
+      },
+    },
+  })
+);
+```
+
+<Warning>
+  You **must** use `express.raw({ type: 'application/json' })` before the webhook handler. The handler needs the raw body string for signature verification. If you use `express.json()` instead, the signature check will fail.
+</Warning>
+
+---
+
+## Next.js Handler
+
+Import from `@zendfi/sdk/nextjs`. Works with the App Router:
+
+```typescript
+// app/api/webhooks/zendfi/route.ts
+import { createNextWebhookHandler } from '@zendfi/sdk/nextjs';
+
+export const POST = createNextWebhookHandler({
+  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  handlers: {
+    'payment.confirmed': async (payment) => {
+      await prisma.order.update({
+        where: { id: payment.metadata.orderId },
+        data: { status: 'paid', paidAt: new Date() },
+      });
+    },
+    'invoice.paid': async (data) => {
+      await markInvoiceFulfilled(data);
+    },
+  },
+});
+```
+
+---
+
+## Handler Config
+
+Both framework handlers accept a shared configuration:
+
+```typescript
+interface WebhookHandlerConfig {
+  /** Your webhook secret */
+  secret: string;
+
+  /** Called after successful processing (for deduplication) */
+  onProcessed?: (webhookId: string) => Promise<void>;
+
+  /** Check if webhook was already processed */
+  isProcessed?: (webhookId: string) => Promise<boolean>;
+
+  /** Global error handler */
+  onError?: (error: Error, event?: WebhookEvent) => void | Promise<void>;
+}
+```
+
+The `handlers` map is passed alongside the config when creating framework-specific handlers (see Express/Next.js examples above).
+
+### Handler Callback Signature
+
+Each handler receives two arguments — the event-specific data object and the full webhook payload:
+
+```typescript
+type WebhookEventHandler<T = any> = (
+  data: T,
+  event: WebhookPayload
+) => void | Promise<void>;
+```
+
+## Available Event Handlers
+
+```typescript
+type WebhookHandlers = Partial<{
+  'payment.created': WebhookEventHandler;
+  'payment.confirmed': WebhookEventHandler;
+  'payment.failed': WebhookEventHandler;
+  'payment.expired': WebhookEventHandler;
+  'subscription.created': WebhookEventHandler;
+  'subscription.activated': WebhookEventHandler;
+  'subscription.canceled': WebhookEventHandler;
+  'subscription.payment_failed': WebhookEventHandler;
+  'split.completed': WebhookEventHandler;
+  'split.failed': WebhookEventHandler;
+  'installment.due': WebhookEventHandler;
+  'installment.paid': WebhookEventHandler;
+  'installment.late': WebhookEventHandler;
+  'invoice.sent': WebhookEventHandler;
+  'invoice.paid': WebhookEventHandler;
+}>;
+```
+
+You only need to register handlers for events you care about. Unhandled events return a 200 response automatically.
+
+---
+
+## Deduplication
+
+The SDK includes built-in deduplication to handle webhook retries. By default, it uses an in-memory set (auto-pruned at 10,000 entries). For production, provide your own storage:
+
+```typescript
+createExpressWebhookHandler({
+  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  handlers: { /* ... */ },
+
+  // Use Redis for production deduplication
+  isProcessed: async (webhookId) => {
+    const exists = await redis.exists(`webhook:${webhookId}`);
+    return exists === 1;
+  },
+  onProcessed: async (webhookId) => {
+    await redis.set(`webhook:${webhookId}`, '1', 'EX', 86400); // 24h TTL
+  },
+});
+```
+
+## Error Handling
+
+Register a global error handler:
+
+```typescript
+createNextWebhookHandler({
+  secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+  handlers: { /* ... */ },
+  onError: async (error, event) => {
+    console.error(`Webhook error for ${event}:`, error);
+    await alertOps({ error: error.message, event });
+  },
+});
+```

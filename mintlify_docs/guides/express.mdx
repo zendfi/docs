@@ -1,0 +1,373 @@
+---
+title: "Express Integration"
+description: "Build a payment API with Express.js and the ZendFi SDK."
+---
+
+This guide covers building a complete payment backend with Express.js. You will create payment endpoints, handle webhooks, and implement error handling.
+
+## Prerequisites
+
+- Node.js 18+
+- Express.js 4.x or 5.x
+- A ZendFi account with test API keys
+
+## Project Setup
+
+<Steps>
+
+<Step title="Create the project">
+
+```bash
+mkdir zendfi-express && cd zendfi-express
+npm init -y
+npm install express @zendfi/sdk dotenv cors
+npm install -D typescript @types/express @types/cors tsx
+```
+
+Or use the CLI scaffolding tool:
+
+```bash
+npx create-zendfi-app my-api --template express-api
+```
+</Step>
+
+<Step title="Configure TypeScript">
+
+```json tsconfig.json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}
+```
+</Step>
+
+<Step title="Set up environment variables">
+
+```bash .env
+ZENDFI_API_KEY=zfi_test_your_key_here
+ZENDFI_WEBHOOK_SECRET=whsec_your_secret_here
+PORT=3000
+```
+</Step>
+
+<Step title="Create the ZendFi client">
+
+```typescript src/lib/zendfi.ts
+import { ZendFiClient } from '@zendfi/sdk';
+
+export const zendfi = new ZendFiClient();
+```
+</Step>
+
+</Steps>
+
+## Application Structure
+
+```
+src/
+  lib/
+    zendfi.ts         # ZendFi client instance
+  routes/
+    payments.ts       # Payment endpoints
+    webhooks.ts       # Webhook handler
+  middleware/
+    error-handler.ts  # Global error handling
+  index.ts            # Express app entry point
+```
+
+## Entry Point
+
+```typescript src/index.ts
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import { paymentRoutes } from './routes/payments.js';
+import { webhookRoutes } from './routes/webhooks.js';
+import { errorHandler } from './middleware/error-handler.js';
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// CORS for frontend access
+app.use(cors());
+
+// Webhooks need raw body for signature verification --
+// must be registered BEFORE express.json()
+app.use('/api/webhooks', webhookRoutes);
+
+// JSON parsing for all other routes
+app.use(express.json());
+
+// Payment routes
+app.use('/api/payments', paymentRoutes);
+
+// Health check
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// Global error handler
+app.use(errorHandler);
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+```
+
+<Warning>
+Register the webhook route **before** `express.json()`. The webhook handler needs the raw request body to verify the HMAC signature. If Express parses the body first, verification will fail.
+</Warning>
+
+## Payment Routes
+
+```typescript src/routes/payments.ts
+import { Router } from 'express';
+import { zendfi } from '../lib/zendfi.js';
+
+export const paymentRoutes = Router();
+
+// Create a payment
+paymentRoutes.post('/', async (req, res, next) => {
+  try {
+    const { amount, currency, description, customer_email, metadata } = req.body;
+
+    const payment = await zendfi.createPayment({
+      amount,
+      currency: currency || 'USD',
+      description,
+      customer_email,
+      metadata,
+    });
+
+    res.status(201).json({
+      id: payment.id,
+      status: payment.status,
+      amount: payment.amount,
+      checkout_url: payment.checkout_url,
+      qr_code: payment.qr_code,
+      expires_at: payment.expires_at,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get payment by ID
+paymentRoutes.get('/:id', async (req, res, next) => {
+  try {
+    const payment = await zendfi.getPayment(req.params.id);
+    res.json(payment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Create a payment link
+paymentRoutes.post('/links', async (req, res, next) => {
+  try {
+    const { amount, currency, title, description } = req.body;
+
+    const link = await zendfi.createPaymentLink({
+      amount,
+      currency: currency || 'USD',
+      description: description || title,
+    });
+
+    res.status(201).json(link);
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+## Webhook Handler
+
+```typescript src/routes/webhooks.ts
+import { Router } from 'express';
+import { createExpressWebhookHandler } from '@zendfi/sdk/express';
+
+export const webhookRoutes = Router();
+
+webhookRoutes.post(
+  '/zendfi',
+  createExpressWebhookHandler({
+    secret: process.env.ZENDFI_WEBHOOK_SECRET!,
+    handlers: {
+      'payment.confirmed': async (payment) => {
+        console.log('Payment confirmed:', payment.id);
+
+        // Fulfill the order
+        // await db.orders.update({
+        //   where: { paymentId: payment.id },
+        //   data: { status: 'paid' },
+        // });
+      },
+
+      'payment.failed': async (payment) => {
+        console.log('Payment failed:', payment.id);
+
+        // Handle failure (notify customer, cancel reservation, etc.)
+      },
+
+      'subscription.canceled': async (data) => {
+        console.log('Subscription cancelled:', data);
+
+        // Revoke access
+      },
+    },
+  })
+);
+```
+
+## Error Handler
+
+```typescript src/middleware/error-handler.ts
+import type { Request, Response, NextFunction } from 'express';
+import {
+  AuthenticationError,
+  ValidationError,
+  RateLimitError,
+  PaymentError,
+  NetworkError,
+} from '@zendfi/sdk';
+
+export function errorHandler(
+  err: Error,
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+) {
+  console.error('Error:', err.message);
+
+  if (err instanceof AuthenticationError) {
+    return res.status(401).json({
+      error: 'authentication_error',
+      message: 'Invalid or missing API key',
+    });
+  }
+
+  if (err instanceof ValidationError) {
+    return res.status(400).json({
+      error: 'validation_error',
+      message: err.message,
+      code: err.code,
+    });
+  }
+
+  if (err instanceof RateLimitError) {
+    return res.status(429).json({
+      error: 'rate_limit',
+      message: 'Too many requests',
+      suggestion: err.suggestion,
+    });
+  }
+
+  if (err instanceof PaymentError) {
+    return res.status(422).json({
+      error: 'payment_error',
+      message: err.message,
+      code: err.code,
+    });
+  }
+
+  if (err instanceof NetworkError) {
+    return res.status(502).json({
+      error: 'network_error',
+      message: 'Unable to reach payment service',
+    });
+  }
+
+  // Unknown errors
+  return res.status(500).json({
+    error: 'internal_error',
+    message: 'An unexpected error occurred',
+  });
+}
+```
+
+## Idempotency
+
+For payment creation, pass an idempotency key to prevent duplicate charges:
+
+```typescript
+paymentRoutes.post('/', async (req, res, next) => {
+  try {
+    const payment = await zendfi.createPayment(
+      {
+        amount: req.body.amount,
+        currency: 'USD',
+        description: req.body.description,
+      },
+      {
+        idempotencyKey: req.headers['x-idempotency-key'] as string,
+      }
+    );
+
+    res.status(201).json(payment);
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+The client passes `Idempotency-Key` in the request header. If the same key is sent again within 24 hours, ZendFi returns the original response without creating a new payment.
+
+## Testing
+
+<Steps>
+
+<Step title="Start the server">
+```bash
+npx tsx src/index.ts
+```
+</Step>
+
+<Step title="Start webhook forwarding">
+```bash
+zendfi webhooks --forward-to http://localhost:3000/api/webhooks/zendfi
+```
+</Step>
+
+<Step title="Create a payment">
+```bash
+curl -X POST http://localhost:3000/api/payments \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 25, "description": "Test order"}'
+```
+</Step>
+
+<Step title="Check the response">
+```json
+{
+  "id": "pay_test_abc123",
+  "status": "pending",
+  "amount": 25,
+  "checkout_url": "https://checkout.zendfi.tech/pay/pay_test_abc123",
+  "qr_code": "solana:...",
+  "expires_at": "2024-12-16T14:30:00Z"
+}
+```
+</Step>
+
+</Steps>
+
+## Production Checklist
+
+Before going live, verify:
+
+- [ ] Switch to live API key (`zfi_live_`)
+- [ ] Webhook secret is set in production environment
+- [ ] Webhook endpoint is registered in ZendFi Dashboard
+- [ ] Error handling covers all SDK error types
+- [ ] Idempotency keys are used for payment creation
+- [ ] CORS is restricted to your frontend domain
+- [ ] Rate limiting is configured on your Express server
+- [ ] HTTPS is enabled (required for webhook delivery)
