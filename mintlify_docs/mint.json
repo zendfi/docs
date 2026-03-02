@@ -163,6 +163,7 @@
   "seo": {
     "indexHiddenPages": false
   },
+  "js": "/custom.js",
   "analytics": {},
   "api": {
     "baseUrl": "https://api.zendfi.tech",
