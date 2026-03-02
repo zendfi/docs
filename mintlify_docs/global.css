@@ -72,9 +72,18 @@ h2, h3, h4 {
   border-left-width: 3px;
 }
 
-/* Smooth scrolling */
+/* Smooth scrolling — disabled when Lenis is active to avoid conflict */
 html {
   scroll-behavior: smooth;
+}
+
+html.lenis,
+html.lenis body {
+  scroll-behavior: auto;
+}
+
+html.lenis.lenis-smooth {
+  scroll-behavior: auto;
 }
 
 /* Sidebar active state */
@@ -153,14 +162,121 @@ html {
 
 /* ── Lenis overrides ────────────────────────── */
 
-html.lenis, html.lenis body {
+html.lenis,
+html.lenis body {
   height: auto;
-}
-
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
 }
 
 .lenis.lenis-smooth [data-lenis-prevent] {
   overscroll-behavior: contain;
+}
+
+/* ── Sidebar Toggle ─────────────────────────── */
+
+/* Hide sidebar + transition */
+#sidebar {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body[data-sidebar-collapsed="true"] #sidebar {
+  transform: translateX(-100%);
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Expand content area when sidebar is hidden */
+#content-area {
+  transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body[data-sidebar-collapsed="true"] #content-area {
+  padding-left: 0;
+  margin-left: 0;
+}
+
+/* Hide sidebar scrollbar */
+#sidebar,
+#sidebar-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#sidebar::-webkit-scrollbar,
+#sidebar-content::-webkit-scrollbar {
+  display: none;
+}
+
+/* Toggle button */
+#zfi-sidebar-toggle {
+  display: none;
+  position: fixed;
+  left: 17rem;
+  top: 6.80rem;
+  z-index: 50;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #374151;
+  cursor: pointer;
+  opacity: 0.3;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.2s ease,
+              transform 0.2s ease,
+              background 0.2s ease;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+#zfi-sidebar-toggle:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Dark mode toggle button */
+.dark #zfi-sidebar-toggle {
+  background: rgba(20, 20, 20, 0.85);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #6b7280;
+}
+
+/* Button position when sidebar is collapsed */
+body[data-sidebar-collapsed="true"] #zfi-sidebar-toggle {
+  left: 0.75rem;
+  opacity: 0.6;
+}
+
+/* Chevron rotation when collapsed */
+body[data-sidebar-collapsed="true"] #zfi-sidebar-toggle .zfi-chevron {
+  transform: rotate(180deg);
+}
+
+#zfi-sidebar-toggle .zfi-chevron {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Only show button on desktop */
+@media (min-width: 1024px) {
+  #zfi-sidebar-toggle {
+    display: flex;
+  }
+}
+
+/* ── TOC fade effect ────────────────────────── */
+
+#table-of-contents {
+  opacity: 0.25;
+  transition: opacity 0.25s ease;
+}
+
+#table-of-contents:hover {
+  opacity: 1;
 }
